@@ -22,7 +22,7 @@ Tracked in legacy #63.
 | [13-agent-dataset-provenance.md](13-agent-dataset-provenance.md) | Independent agent registry, recognition/serving policy and retained WordPress 1.7.0 provenance fixture | Project-owner authorised; tests in `tests/test_agent_registry.py` and `tests/test_categories.py` |
 | [14-page-exclusion-settings.md](14-page-exclusion-settings.md) | Page action-menu exclusion form, permissions, locks, CSRF and export transitions (#17) | Project-owner authorised; tests in `tests/test_page_settings.py` |
 | [15-editor-exclusion-panel.md](15-editor-exclusion-panel.md) | Optional editor checkbox, revision/preview behaviour, permissions and shared exclusion lifecycle (#18) | Project-owner authorised; tests in `tests/test_editor_panel.py` |
-| [16-agent-traffic-simulator.md](16-agent-traffic-simulator.md) | Deterministic traffic, durable client evidence, cache assertions and UTC reconciliation (#59) | Project-owner authorised; local tests in `tests/test_agent_simulator.py`; deployed and genuine vendor verification remain separate |
+| [16-agent-traffic-simulator.md](16-agent-traffic-simulator.md) | Deterministic traffic, durable client evidence, cache assertions and UTC reconciliation (#59) | Project-owner authorised; local tests in `tests/test_agent_simulator.py` and `tests/test_simulator_fixtures.py` cover all six explicit fixtures; deployed and genuine vendor verification remain separate |
 
 ## Status
 

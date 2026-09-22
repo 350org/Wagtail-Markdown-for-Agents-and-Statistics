@@ -84,6 +84,10 @@ current exports.
 
 ## Try the agent access report
 
+For a separate synthetic corpus covering all six simulator edge cases, see the
+[simulator fixture setup](agent-simulator.md#repeatable-local-corpus). It uses its
+own database and export directory and includes a published-only preview adapter.
+
 Open <http://localhost:8000/admin/reports/agent-access/> and sign in, or choose
 **Reports → Agent access** in the admin. The report is empty until page Markdown
 requests have been recorded. Each Markdown response from the curl commands above

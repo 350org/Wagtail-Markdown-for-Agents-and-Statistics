@@ -85,6 +85,59 @@ at the origin. HTTP errors and redirects are recorded, not retried or followed.
 
 ## Explicit fixtures
 
+### Repeatable local corpus
+
+The sandbox can create all six fixtures in a separate database and export directory.
+From the repository root, start with a fresh `sandbox/simulator-data/` directory:
+
+```bash
+mkdir -p sandbox/simulator-data
+uv run sandbox/manage.py migrate --settings=sandbox.simulator_settings
+uv run sandbox/manage.py agentmd_simulator_fixtures --settings=sandbox.simulator_settings \
+  > sandbox/simulator-data/fixtures.json
+uv run sandbox/manage.py runserver 127.0.0.1:8000 --settings=sandbox.simulator_settings
+```
+
+In another terminal:
+
+```bash
+uv run python -m scripts.agent_simulator plan --target http://localhost:8000 \
+  --fixtures sandbox/simulator-data/fixtures.json \
+  --output sandbox/simulator-data/plan.json \
+  --log sandbox/simulator-data/discovery.jsonl --max-requests 250 --rate 5
+uv run python -m scripts.agent_simulator run \
+  --plan sandbox/simulator-data/plan.json --log sandbox/simulator-data/run.jsonl
+```
+
+The command refuses to replace an existing `/simulator/` branch. To start again,
+stop the server and move the entire `sandbox/simulator-data/` directory aside,
+then repeat the setup. Do not run `agentmd_generate` against this corpus: two
+published pages deliberately have no export. Normal sandbox data is separate.
+
+| Fixture | Actual state | GET / HEAD expectation |
+| --- | --- | --- |
+| `fallback` | Published article with no generated export | 200 HTML |
+| `excluded` | Published article with `PageAgentSettings.excluded=True` | 200 HTML |
+| `preview` | Exportable synthetic article through Wagtail's preview renderer | 200 HTML |
+| `missing-export` | Direct export URL for an ungenerated article | 404 HTML |
+| `private-export` | Direct export URL for a login-restricted article | 404 HTML |
+| `navigation-index` | Generated directory index with no page owner and a public child | 200 Markdown |
+
+The preview adapter is enabled only by `sandbox.simulator_settings`. It marks the
+fixed `/simulator/preview/?preview=1` request as a preview before negotiation and
+calls `serve_preview` using the published revision. It cannot select a draft or
+arbitrary page ID, and checks page and ancestor restrictions. The same page without
+the preview flag serves Markdown. Never deploy this sandbox configuration.
+
+`tests/test_simulator_fixtures.py` verifies each fixture's state, all twelve GET/HEAD
+responses, no counter increments for fixtures, and a complete 250-request plan
+against real Wagtail views and database counters. Reconciliation uses explicitly
+modelled origin rows from the Django test transport. These are local integration
+checks, not nginx/CDN evidence; the historical live run remains inconclusive until
+equivalent deployed fixtures are independently verified.
+
+### Fixtures on another controlled site
+
 Use public, controlled fixtures, with expected status and content type. Example:
 
 ```json
@@ -118,6 +171,8 @@ export fixtures are anonymous denied requests, not attempts to retrieve private 
 A navigation-only index has no page owner. A manifested `index.md` **does** have an
 owner and must be counted; the planner rejects classifying it as a navigation-only
 fixture. All fixtures run as GET and HEAD and are excluded from expected counters.
+`missing_fixtures` includes any kind whose GET and HEAD checks do not both fit in
+the request budget, even when that kind was supplied in the configuration.
 Fixtures can specify `access_method` (`ua` by default). Use the corresponding query
 URL explicitly when testing `query-param`. Current rendering-policy decisions are
 outside this tool: fixtures test the deployed policy, not a proposed new policy.

@@ -8,6 +8,9 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Simulator fixture coverage now requires both GET and HEAD to fit in the plan;
+  supplying a fixture no longer hides its omission from a truncated request budget.
+
 - Bound stored agent labels to the known dataset plus one unknown bucket, avoiding
   arbitrary User-Agent fragments and unbounded daily statistics rows. Migration
   `0006_anonymize_unknown_agents` merges legacy labels without losing totals;
@@ -66,6 +69,11 @@ versioning: [SemVer](https://semver.org/).
   block reference moved to issue #65.
 
 ### Added
+
+- Isolated sandbox setup for all six simulator fixtures, including a published-only
+  Wagtail preview adapter. Integration checks exercise twelve fixture requests with
+  unchanged counters and reconcile a complete 250-request plan against real local
+  database counters. Deployed fixture acceptance remains separate.
 
 - Repository agent traffic simulator (#59): seeded plan/run/reconcile commands,
   manifest discovery, production-shaped and dataset-synthetic traffic, both cache
