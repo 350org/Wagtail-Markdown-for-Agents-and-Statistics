@@ -40,6 +40,7 @@ id_ed25519
 sandbox/db.sqlite3
 sandbox/media/
 sandbox/static/
+sandbox/simulator-data/
 markdown_export/
 
 # Tooling

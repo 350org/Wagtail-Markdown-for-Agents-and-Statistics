@@ -1,7 +1,11 @@
 # Agent traffic simulator (#59)
 
 Project-owner authorised, 21 September 2026. Local evidence is in
-`tests/test_agent_simulator.py`; deployed verification is a separate activity.
+`tests/test_agent_simulator.py` and `tests/test_simulator_fixtures.py`; deployed
+verification is a separate activity. The [repeatable local corpus](../agent-simulator.md#repeatable-local-corpus)
+creates all six explicit fixtures using isolated sandbox settings.
+The [22 September local verification](../verification/2026-09-22-local-fixtures.md)
+records the separate loopback HTTP run and its counter comparison.
 
 1. Given a manifest and canonical page locations, planning with the same seed
    produces the same bounded request sequence. IDs and direct URLs come from the

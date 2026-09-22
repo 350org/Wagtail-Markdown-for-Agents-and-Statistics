@@ -344,12 +344,10 @@ def build_plan(
                     scenario="aggregate",
                 )
             )
-    fixture_kinds = set()
     for fixture in fixtures:
         kind = fixture["kind"]
         if kind not in REQUIRED_FIXTURES:
             raise ValueError(f"Unknown fixture kind: {kind}")
-        fixture_kinds.add(kind)
         page_id = fixture.get("page_id")
         if kind == "navigation-index" and any(
             p["export_url"] == safe_url(fixture["url"], target) for p in pages
@@ -413,6 +411,11 @@ def build_plan(
                     delay=1 if intent == "training" else rng.uniform(2, 5),
                 )
             )
+    completed_fixtures = {
+        kind
+        for kind in REQUIRED_FIXTURES
+        if {r.method for r in requests if r.scenario == kind} == {"GET", "HEAD"}
+    }
     return {
         "schema_version": 1,
         "target": target,
@@ -425,7 +428,7 @@ def build_plan(
         "coverage": {
             "suite_complete": max_requests >= required_count,
             "suite_requests": required_count,
-            "missing_fixtures": sorted(set(REQUIRED_FIXTURES) - fixture_kinds),
+            "missing_fixtures": sorted(set(REQUIRED_FIXTURES) - completed_fixtures),
             "followed_links": sum(r.scenario == "follow-link" for r in requests),
             "dataset_labels": sorted({label(r.ua) for r in requests if r.scenario == "fleet"}),
         },
