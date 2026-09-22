@@ -63,9 +63,34 @@ rerun evidence, not a claim that the original invocations were green. All seven
 new fixture tests passed in both full runs. The older environment emitted upstream
 deprecation warnings. Ruff lint/format and `git diff --check` also passed.
 
+## Follow-up review — 22 September 2026
+
+Review began with a clean working tree: the fixture work and this report were
+already committed in `7f18b9c57590056e80d034a90483a4aaa563f78a`. No blocking
+defects were found in the fixture implementation, preview restrictions or GET/HEAD
+coverage change; no implementation changes were required.
+
+An independent offline check of the retained scratch artifacts verified the plan
+SHA-256 against `run-start`, all 250 attempted requests against the exact plan,
+250 paired passing receipts, all twelve fixture requests, and 173 expected counter
+increments with zero residual in every snapshot bucket. No live requests were made
+for this review.
+
+Both full suites were rerun using `.venv/bin/pytest -q` and the existing
+`.tox/py311-dj42-wagtail63/bin/pytest -q` environment. Each again produced 1,432
+passes and three socket-binding permission failures. Targeted reruns of those
+three tests with loopback access passed in both environments. These reruns cover
+all 1,435 tests per environment in combination, not a single green full invocation.
+Ruff lint/format and whitespace checks passed. The compatibility environment was
+reused, not freshly provisioned by tox.
+
 ## Still required for deployed acceptance
 
 Create equivalent controlled fixtures on the agreed deployment and retain correlated
 origin logs plus counter snapshots. Independently establish cold-cache state and
 complete the agreed multi-day and genuine vendor-fetch checks. Client decisions
 D9/D12 and the restricted-link policy remain separate.
+
+The [next bounded deployed verification](2026-09-22-next-deployed-verification.md)
+records the proposed limits, fixture prerequisites, evidence requirements and
+deployment information still needed. It is a preparation record, not a live run.
