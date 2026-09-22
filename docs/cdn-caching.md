@@ -16,34 +16,52 @@ current exports and the relevant negotiation settings enabled.
 | # | Where in the dashboard | Setting | Why |
 | --- | --- | --- | --- |
 | 1 | Caching → Cache Rules | If HTML is cached with a "cache everything" rule: Edge TTL **use cache-control header if present**, never *ignore cache-control header* | Prevents storage of new negotiated Markdown when every cache layer respects the headers; does not remove old cached responses |
-| 2 | Caching → Cache Rules | A **Bypass cache** rule matching `output_format=md` in the query string or a known agent User-Agent, ordered **after** rule 1 | Sends agents to the origin. The last matching rule wins; placed first, the rule does nothing |
+| 2 | Caching → Cache Rules | A **Bypass cache** rule matching `output_format=md` in the query string or an automatic Markdown-serving User-Agent, ordered **after** rule 1 | Sends agents to the origin. The last matching rule wins; placed first, the rule does nothing |
 | 3 | Security → Settings → Bot traffic | Review **Bot fight mode** with the operator; it was off for the controlled test | Challenges can prevent agent requests from reaching the origin |
 | 4 | same → Configure AI bot policies | Allow the intended agent behaviours; Search and Training to suit the site's own policy | Blocked requests never reach the package |
 | 5 | same dialog | **Bot Preference Sync** off, unless Cloudflare should manage `robots.txt` | It rewrites `robots.txt` at the edge over the origin's file |
 | 6 | Security → Settings | Review **Browser integrity check** with the operator; it was off for the controlled test | It can block requests that look like bots |
 
 An `Accept` clause was rejected by the tested free-plan account; do not assume it
-is available without checking. Generate rule 2 from the deployed package's agent
-list (substitute the hostname). This prints an expression without changing settings:
+is available without checking. Generate rule 2 from the **deployed** package's
+[agent registry](agent-registry.md), substituting the hostname:
 
 ```bash
-PYTHONPATH=src python3 -c '
-import json
-from wagtail_markdown_agents.data.agents import AGENT_UA_STRINGS as A
-host = "www.example.org"
-clauses = [f"http.request.uri.query contains {json.dumps(value)}"
-           for value in ("output_format=md", "output_format=markdown")]
-clauses += [f"http.user_agent contains {json.dumps(agent)}" for agent in sorted(set(A))]
-print("(http.host eq " + json.dumps(host) + " and (" + " or ".join(clauses) + "))")'
+python -m wagtail_markdown_agents.cloudflare --host www.example.org
 ```
 
-The shipped dataset has 69 strings. Review the generated length against the
-dashboard's expression limit. `contains` is case-sensitive where the package's
-matching is not; check the actual UA spelling and query variants. Broad query
-containment may bypass similar values without selecting Markdown. Regenerate the
-rule after dataset changes and inspect the saved expression. The measured rule
-used only the `md` query clause; the example also covers the supported `markdown`
-alias and does not describe a further live settings change.
+From a source checkout, prefix the command with `PYTHONPATH=src`. This prints the
+expression and does not contact Cloudflare. The generator uses only automatic
+Markdown-serving identities, not every recognised agent. For example, Googlebot,
+Applebot, bingbot and Google-Agent remain normal HTML clients unless they explicitly
+request Markdown. Registry version `2026-09-22.1` enables 12 automatic identities.
+
+In **Caching → Cache Rules**, edit the existing Markdown **Bypass cache** rule,
+replace its expression with the generated output and keep it after the
+cache-everything rule. Save and inspect the expression and ordering. Deploy the
+matching package version with the rule: leaving the old application active while
+removing its bypass entries can send cached HTML to agents it still negotiates.
+Prefer updating the application first when narrowing this list; use a temporary
+union of old and new bypass clauses when additions also change automatic serving.
+No WAF, AI bot policy, Bot Fight Mode or robots.txt change is required by this update.
+
+The expression uses Cloudflare's documented
+[`lower` and `url_decode` functions](https://developers.cloudflare.com/ruleset-engine/rules-language/functions/)
+to cover case variants and percent-encoded query names. It deliberately bypasses
+any query containing `output_format`, including non-Markdown values, and any header
+containing a serving token. These are safe supersets of origin detection: extra
+requests may reach Django, but only the origin decides whether to serve Markdown.
+The origin also checks product-token boundaries. A cache bypass is not identity
+verification and does not bypass security rules.
+
+Match deployment toggles with `--no-user-agent` or `--no-query-param`. Add
+`--include-accept` only on a plan that accepts the header expression. Without it,
+recognition-only and unknown clients using **only** `Accept: text/markdown` can still
+receive cached HTML; use the query form or direct export URL. Check the expression
+against the account's limit, save it and run the verification sequence below.
+This revised expression is locally generated and tested, not yet verified on a live
+Cloudflare account. The 21 September measurements later in this guide describe the
+previous registry and rule.
 
 When measuring counters, review Speed Brain, Early Hints, Rocket Loader and Always
 Online with the operator: extra traffic and HTML rewriting can affect the evidence.
@@ -53,7 +71,7 @@ What to expect once it is in place, on a URL whose HTML is already cached:
 | Request | Response |
 | --- | --- |
 | Browser | cached HTML |
-| Known agent User-Agent (`GPTBot`, `ClaudeBot`, …) | Markdown, from the origin |
+| Automatic Markdown agent (`GPTBot`, `ClaudeBot`, …) | Markdown, from the origin |
 | `?output_format=md` | Markdown when the query bypass reaches an eligible export |
 | `Accept: text/markdown` from an unlisted User-Agent | cached HTML in the measured free-plan configuration |
 

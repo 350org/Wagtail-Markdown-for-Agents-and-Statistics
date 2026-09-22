@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from django.db import NotSupportedError, OperationalError, connections, router, transaction
 from wagtail import hooks
 
-from .data.agents import AGENT_CATEGORIES
+from .data.agents import AGENT_CATEGORIES, INTENT_CATEGORIES
 from .models import AgentAccess
 from .negotiation import (
     METHOD_ACCEPT_HEADER,
@@ -26,7 +26,6 @@ from .signals import markdown_served
 ACCESS_METHODS = frozenset(
     {METHOD_QUERY_PARAM, METHOD_ACCEPT_HEADER, METHOD_USER_AGENT, METHOD_EXPORT_URL}
 )
-INTENT_CATEGORIES = ("on-demand", "search", "training", "unknown")
 
 
 def get_agent_categories() -> dict[str, list[str]]:
@@ -44,7 +43,8 @@ def get_agent_categories() -> dict[str, list[str]]:
 def categorise_agent(agent: str, *, categories=None) -> str:
     """Derive intent from a stored label, without querying or updating counters.
 
-    Category order wins over substring position. An unexpected category still
+    Exact canonical labels win before compatibility substring matching for hooks.
+    Within each pass, category order wins. An unexpected category still
     wins its match, but is returned as ``unknown`` for the fixed reporting keys.
     Pass a map from ``get_agent_categories`` to share one hook snapshot across
     an entire report. Omission builds a fresh map, preserving standalone usage.
@@ -54,6 +54,9 @@ def categorise_agent(agent: str, *, categories=None) -> str:
     label = agent.strip().lower()
     if categories is None:
         categories = get_agent_categories()
+    for category, substrings in categories.items():
+        if any(substring and substring.lower() == label for substring in substrings):
+            return category if category in INTENT_CATEGORIES else "unknown"
     for category, substrings in categories.items():
         if any(substring and substring.lower() in label for substring in substrings):
             return category if category in INTENT_CATEGORIES else "unknown"

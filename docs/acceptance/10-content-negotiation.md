@@ -7,7 +7,7 @@ on the sandbox fixture.
 
 - Given a published page with a current export, GET at its canonical URL with
   `?output_format=md` (or `markdown`, any case), with `Accept` containing the
-  explicit `text/markdown` media range, or with a known agent User-Agent returns the
+  explicit `text/markdown` media range, or with an automatic-serving agent User-Agent returns the
   stored Markdown with `text/markdown; charset=utf-8`, private/no-store cache
   headers, `Vary: Accept, User-Agent`, the canonical HTML source and Content-Signal.
 - The access method label is the first matching trigger in the order query
@@ -15,8 +15,8 @@ on the sandbox fixture.
   Direct export routes keep `export-url`. Labels never change.
 - `Accept: */*`, `text/*`, `text/markdown;q=0`, `text/x-markdown` and a browser's
   default Accept header receive HTML. Plain curl receives HTML.
-- Known-agent matching is a case-insensitive substring test returning the first
-  dataset entry in dataset order. It still labels agents when `NEGOTIATE_USER_AGENT`
+- Known-agent matching is a case-insensitive product-token test returning the first
+  identity in registry order. Automatic serving also requires its auto_markdown flag. It still labels agents when `NEGOTIATE_USER_AGENT`
   is off; the toggle only disables serving by that trigger. Each trigger can be
   disabled independently; disabled triggers fall through to the next.
 - HEAD returns the GET headers and no body and records no page read. POST, PUT,

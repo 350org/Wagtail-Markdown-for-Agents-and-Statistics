@@ -1,168 +1,81 @@
-"""Default AI agent User-Agent dataset.
+"""Reviewed identities; recognition and automatic serving are independent.
 
-Substring matches, case-insensitive. Both tuples equal the WordPress 1.7.0
-reference pinned in tests/fixtures/agents-wordpress-1.7.0.json, followed only by
-entries listed in that fixture's ``wagtail_additions`` block and documented in
-docs/agent-access-stats.md (#76). Treat the historical category map as
-append-only: edits can retroactively relabel counters at read time. Runtime
-detection-list removals are separate and do not erase stored labels.
+No network access at import or request time. See docs/agent-registry.md for the
+source policy, matching contract, historical labels and update procedure.
 """
 
-#: UA substrings that identify AI agents. Grouped by provenance.
-AGENT_UA_STRINGS: tuple[str, ...] = (
-    # Baseline (shipped since the WP plugin's 1.1.0).
-    "GPTBot",
-    "ChatGPT-User",
-    "ClaudeBot",
-    "Claude-Web",
-    "anthropic-ai",
-    "PerplexityBot",
-    "Google-Extended",  # robots.txt token, never a UA string; kept (append-only)
-    "Amazonbot",
-    "cohere-ai",
-    "meta-externalagent",
-    "Bytespider",
-    "CCBot",
-    "Applebot-Extended",  # robots.txt token, never a UA string; kept (append-only)
-    "OAI-SearchBot",
-    "Claude-User",
-    "Perplexity-User",
-    # Cloudflare Radar AI_ASSISTANT — fetched in response to a human prompt.
-    "meta-externalfetcher/",
-    "MistralAI-User",
-    "Google-Agent",
-    "DuckAssistBot",
-    "Devin",
-    "TwinAgent",
-    "ApifyWebsiteContentCrawler",
-    "ChathiveCrawler",
-    "CledaraBot",
-    "EasyScan",
-    "HarkBot",
-    "HIFIBot",
-    "QATechBot",
-    "Instapaper",
-    "Nava/",
-    "Retool/",
-    # Cloudflare Radar AI_SEARCH — indexing to answer queries with citations.
-    "Claude-SearchBot",
-    "Bravebot",
-    "Amzn-SearchBot",
-    "Cloudflare-AI-Search",
-    "Anomura",
-    "Element451Bot",
-    "KernelSearchBot",
-    "ShapBot/",
-    "alphalens-bot",
-    # Cloudflare Radar AI_CRAWLER — corpus collection and background crawling.
-    "KimiBot",
-    "PetalBot",
-    "GoogleOther",
-    "CloudVertexBot",
-    "ICC-Crawler/",
-    "Cotoyogi/",
-    "atlassian-bot",
-    "LinerBot",
-    "magpie-crawler",
-    "bigsur.ai",
-    "QualifiedBot",
-    "Awario",
-    "amazon-kendra-",
-    "Anchor Browser",
-    "BorderxBot",
-    "CitibotSiteCrawler",
-    "CloudflareBrowserRenderingCrawler",
-    "netEstate NE Crawler",
-    "FishBot",
-    "make.com",
-    "NavuBot",
-    "Novellum",
-    "AdpResearchBot/",
-    "SelectikaScraper",
-    "SemrushBot-OCOB",
-    "SemrushBot-SWA/",
-    "WARDBot",
-    "ygs-scraper-bot",
+import json
+import re
+from dataclasses import dataclass
+from importlib.resources import files
+
+from .legacy_agents import LEGACY_CATEGORIES
+
+INTENT_CATEGORIES = ("on-demand", "search", "training", "mixed", "unknown")
+
+
+@dataclass(frozen=True)
+class Agent:
+    label: str
+    operator: str
+    tokens: tuple[str, ...]
+    purposes: tuple[str, ...]
+    auto_markdown: bool
+    sources: tuple[str, ...]
+    reviewed: str
+    notes: str
+
+    @property
+    def category(self) -> str:
+        intents = set(self.purposes) & {"on-demand", "search", "training"}
+        if len(intents) > 1:
+            return "mixed"
+        return next(iter(intents), "unknown")
+
+
+_data = json.loads(files(__package__).joinpath("agent-registry.json").read_text())
+REGISTRY_VERSION = _data["version"]
+AGENTS = tuple(
+    Agent(**{key: tuple(value) if isinstance(value, list) else value for key, value in row.items()})
+    for row in _data["agents"]
+)
+AGENT_UA_STRINGS = tuple(token for agent in AGENTS for token in agent.tokens)
+MARKDOWN_UA_STRINGS = tuple(
+    token for agent in AGENTS if agent.auto_markdown for token in agent.tokens
 )
 
-#: Intent-category → UA substrings. Order matters: more specific first, so
-#: e.g. "Claude-User" (on-demand) wins before "ClaudeBot" (training) is tried.
-#: Unmatched agents are reported as "unknown".
-AGENT_CATEGORIES: dict[str, tuple[str, ...]] = {
-    "on-demand": (
-        "ChatGPT-User",
-        "Claude-User",
-        "Claude-Web",
-        "Perplexity-User",
-        "Gemini-User",
-        "meta-externalfetcher",
-        "MistralAI-User",
-        "Google-Agent",
-        "DuckAssistBot",
-        "Devin",
-        "TwinAgent",
-        "ApifyWebsiteContentCrawler",
-        "ChathiveCrawler",
-        "CledaraBot",
-        "EasyScan",
-        "HarkBot",
-        "HIFIBot",
-        "QATechBot",
-        "Instapaper",
-        "Nava/",
-        "Retool/",
-    ),
-    "search": (
-        "OAI-SearchBot",
-        "PerplexityBot",
-        "Applebot-Extended",
-        "Claude-SearchBot",
-        "Bravebot",
-        "Amzn-SearchBot",
-        "Cloudflare-AI-Search",
-        "Anomura",
-        "Element451Bot",
-        "KernelSearchBot",
-        "ShapBot",
-        "alphalens-bot",
-    ),
-    "training": (
-        "GPTBot",
-        "ClaudeBot",
-        "CCBot",
-        "Google-Extended",
-        "Bytespider",
-        "meta-externalagent",
-        "Amazonbot",
-        "cohere-ai",
-        "anthropic-ai",
-        "KimiBot",
-        "PetalBot",
-        "GoogleOther",
-        "CloudVertexBot",
-        "ICC-Crawler",
-        "Cotoyogi",
-        "atlassian-bot",
-        "LinerBot",
-        "magpie-crawler",
-        "bigsur.ai",
-        "QualifiedBot",
-        "Awario",
-        "amazon-kendra-",
-        "Anchor Browser",
-        "BorderxBot",
-        "CitibotSiteCrawler",
-        "CloudflareBrowserRenderingCrawler",
-        "netEstate NE Crawler",
-        "FishBot",
-        "make.com",
-        "NavuBot",
-        "Novellum",
-        "AdpResearchBot",
-        "SelectikaScraper",
-        "SemrushBot-OCOB",
-        "SemrushBot-SWA",
-        "WARDBot",
-        "ygs-scraper-bot",
-    ),
+# Match product tokens, not incidental URL fragments or longer product names.
+# A version may follow a slash; bare tokens are accepted too. Registry order
+# breaks ties when a header claims several identities, for both serving and stats.
+_MATCHERS = tuple(
+    (
+        agent,
+        re.compile(
+            r"(?:^|[\s;(])(?:" + "|".join(map(re.escape, agent.tokens)) + r")(?=/|[\s;)]|$)",
+            re.IGNORECASE | re.ASCII,
+        ),
+    )
+    for agent in AGENTS
+)
+
+
+def identify_agent(user_agent: str) -> Agent | None:
+    """Recognise a claimed identity; this does not authenticate the client."""
+    if not isinstance(user_agent, str) or not user_agent:
+        return None
+    return next((agent for agent, pattern in _MATCHERS if pattern.search(user_agent)), None)
+
+
+# Active metadata owns current classifications. Retired labels remain readable;
+# they do not return to detection or the CDN serving list. Exact-label matching
+# in stats keeps historical Applebot-Extended separate from Applebot.
+_active_labels = {agent.label.casefold() for agent in AGENTS}
+AGENT_CATEGORIES = {
+    category: tuple(agent.label for agent in AGENTS if agent.category == category)
+    + tuple(
+        label
+        for label in LEGACY_CATEGORIES.get(category, ())
+        if label.casefold() not in _active_labels
+    )
+    for category in INTENT_CATEGORIES
 }

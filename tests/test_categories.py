@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from wagtail import hooks
 
-from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENT_UA_STRINGS
+from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENTS
 from wagtail_markdown_agents.models import AgentAccess
 from wagtail_markdown_agents.negotiation import detect_agent
 from wagtail_markdown_agents.stats import categorise_agent, get_agent_categories
@@ -54,7 +54,7 @@ def test_ordered_hook_mutations_are_isolated():
         hooks.register_temporarily("construct_markdown_agent_categories", second, order=10),
         hooks.register_temporarily("construct_markdown_agent_categories", first, order=-10),
     ):
-        assert categorise_agent("CustomBot") == "on-demand"
+        assert categorise_agent("CustomBot") == "training"  # Exact hook label wins over Custom.
         assert get_agent_categories()["training"].count("CustomBot") == 1
     assert get_agent_categories() == original
     assert categorise_agent("CustomBot") == "unknown"
@@ -63,10 +63,10 @@ def test_ordered_hook_mutations_are_isolated():
 @pytest.mark.parametrize(
     "first_category,expected", [("experimental", "unknown"), ("search", "search")]
 )
-def test_hook_can_replace_order_and_unknown_first_match_wins(first_category, expected):
+def test_hook_can_replace_order_and_unknown_exact_match_wins(first_category, expected):
     def override(categories):
         categories.clear()
-        categories.update({first_category: ["Bot"], "training": ["GPTBot"]})
+        categories.update({first_category: ["GPTBot"], "training": ["GPTBot"]})
 
     with hooks.register_temporarily("construct_markdown_agent_categories", override):
         assert categorise_agent("GPTBot") == expected
@@ -98,7 +98,7 @@ def test_history_reclassified_without_database_writes(django_assert_num_queries,
     )
     before = AgentAccess.objects.values().get()
     # Runtime detection changes do not remove historical classification entries.
-    monkeypatch.setattr("wagtail_markdown_agents.negotiation.AGENT_UA_STRINGS", ())
+    monkeypatch.setattr("wagtail_markdown_agents.data.agents._MATCHERS", ())
     assert detect_agent(row.agent) is None
     with django_assert_num_queries(0):
         assert categorise_agent(row.agent) == "training"
@@ -114,67 +114,38 @@ def test_history_reclassified_without_database_writes(django_assert_num_queries,
     assert AgentAccess.objects.values().get() == before
 
 
-REFERENCE_FIXTURE = Path(__file__).with_name("fixtures") / "agents-wordpress-1.7.0.json"
-STATS_GUIDE = Path(__file__).parents[1] / "docs" / "agent-access-stats.md"
-ECHOBOX_UA = (
-    "Mozilla/5.0 (compatible; EchoboxBot/1.0; hash/w4mwnpbXf3MFAbxOkJRw; +http://www.echobox.com)"
-)
+def test_retired_labels_keep_their_frozen_classification():
+    from wagtail_markdown_agents.data.legacy_agents import LEGACY_CATEGORIES
 
-
-@pytest.fixture(scope="module")
-def reference():
-    return json.loads(REFERENCE_FIXTURE.read_text())
-
-
-def test_dataset_equals_pinned_reference_plus_documented_additions(reference):
-    additions = reference["wagtail_additions"]
-    assert (*reference["detection"], *additions["detection"]) == AGENT_UA_STRINGS
-    assert list(AGENT_CATEGORIES) == list(reference["categories"]) == list(additions["categories"])
-    for category, labels in reference["categories"].items():
-        assert AGENT_CATEGORIES[category] == (*labels, *additions["categories"][category])
-    guide = STATS_GUIDE.read_text()
-    category_additions = [label for labels in additions["categories"].values() for label in labels]
-    documented = (*additions["detection"], *category_additions)
-    for label in documented:
-        assert f"`{label}`" in guide, f"Wagtail addition {label!r} is not documented in the guide"
-
-
-def test_no_duplicate_or_shadowed_entries():
-    assert len(set(AGENT_UA_STRINGS)) == len(AGENT_UA_STRINGS)
-    lowered = [entry.lower() for entry in AGENT_UA_STRINGS]
-    for entry in lowered:
-        # Appending entries can never change which label an existing agent stores.
-        assert [other for other in lowered if entry in other] == [entry]
-    for labels in AGENT_CATEGORIES.values():
-        assert len(set(labels)) == len(labels)
-
-
-def test_first_match_precedence_over_full_headers():
-    for entry in AGENT_UA_STRINGS:
-        header = f"Mozilla/5.0 (compatible; {entry.swapcase()}; +https://example.com/bot)"
-        assert detect_agent(header) == entry
-        assert categorise_agent(entry) != "unknown"
-    for category, labels in AGENT_CATEGORIES.items():
+    fixture = Path(__file__).with_name("fixtures") / "agents-wordpress-1.7.0.json"
+    reference = json.loads(fixture.read_text())
+    assert {k: list(v) for k, v in LEGACY_CATEGORIES.items()} == reference["categories"]
+    active = {agent.label.lower() for agent in AGENTS}
+    for category, labels in LEGACY_CATEGORIES.items():
         for label in labels:
-            assert categorise_agent(label.swapcase()) == category
-    # Detection stores the first entry in dataset order; classification of the
-    # stored label then checks on-demand, search and training in that order.
-    assert detect_agent("ClaudeBot gptbot") == "GPTBot"
-    assert detect_agent("Claude-User ClaudeBot") == "ClaudeBot"
-    assert categorise_agent("Claude-User ClaudeBot") == "on-demand"
-    assert categorise_agent(detect_agent("Claude-User ClaudeBot")) == "training"
-    assert categorise_agent(detect_agent("ShapBot/1.0")) == "search"
-    assert categorise_agent(detect_agent("meta-externalfetcher/1.1")) == "on-demand"
+            if label.lower() not in active:
+                assert categorise_agent(label) == category
 
 
-def test_category_only_robots_only_and_removed_tokens():
-    assert "Gemini-User" in AGENT_CATEGORIES["on-demand"]
-    assert "Gemini-User" not in AGENT_UA_STRINGS
-    assert detect_agent("Gemini-User") is None
-    assert categorise_agent("Gemini-User") == "on-demand"
-    for token in ("Google-Extended", "Applebot-Extended"):
-        assert token in AGENT_UA_STRINGS  # Historical robots.txt tokens, not observed UAs.
-    # EchoboxBot's hash was imported from Cloudflare Radar and dropped upstream before 1.7.0.
-    assert "w4mwnpbXf3MFAbxOkJRw" not in (*AGENT_UA_STRINGS, *AGENT_CATEGORIES["training"])
-    assert detect_agent(ECHOBOX_UA) is None
-    assert categorise_agent("w4mwnpbXf3MFAbxOkJRw") == "unknown"
+def test_current_metadata_reports_mixed_and_unspecified_purposes():
+    assert categorise_agent("Applebot") == "mixed"
+    assert categorise_agent("Googlebot") == "mixed"
+    assert categorise_agent("bingbot") == "mixed"
+    assert categorise_agent("GoogleOther") == "unknown"
+    assert categorise_agent("CloudVertexBot") == "search"
+    # Historical controls must not be caught by the shorter active identity.
+    assert categorise_agent("Applebot-Extended") == "search"
+    assert categorise_agent("Google-Extended") == "training"
+
+
+def test_retired_or_robots_only_tokens_are_not_detected():
+    for token in (
+        "Gemini-User",
+        "Google-Extended",
+        "Applebot-Extended",
+        "Claude-Web",
+        "anthropic-ai",
+        "Instapaper",
+        "w4mwnpbXf3MFAbxOkJRw",
+    ):
+        assert detect_agent(token) is None

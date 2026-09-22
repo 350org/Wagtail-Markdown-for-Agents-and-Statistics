@@ -128,7 +128,7 @@ def test_combined_filters_and_reporting_consistency(report):
     assert response.status_code == 200
     assert [r.pk for r in response.context["object_list"]] == [row.pk]
     summary = response.context["summary"]
-    assert [t["count"] for t in summary["tiles"]] == [17, 0, 0, 17, 0]
+    assert [t["count"] for t in summary["tiles"]] == [17, 0, 0, 17, 0, 0]
     assert sum(sum(b["counts"]) for b in summary["buckets"]) == 17
     assert sum(bar["count"] for bar in summary["bars"]) == 17
     assert {bar["key"] for bar in summary["bars"]} == {"training"}
@@ -152,7 +152,7 @@ def test_hook_snapshot_shared_by_filters_chart_tiles_and_rows(report):
     with hooks.register_temporarily("construct_markdown_agent_categories", override):
         response = report(intent="on-demand")
         assert calls == [1]
-        assert [t["count"] for t in response.context["summary"]["tiles"]] == [23, 23, 0, 0, 0]
+        assert [t["count"] for t in response.context["summary"]["tiles"]] == [23, 23, 0, 0, 0, 0]
         assert sum(b["counts"][0] for b in response.context["summary"]["buckets"]) == 23
         assert sum(b["count"] for b in response.context["summary"]["bars"]) == 23
         assert response.context["object_list"][0].intent == "on-demand"
@@ -331,3 +331,16 @@ def test_new_agent_during_report_uses_same_hook_snapshot(report, monkeypatch):
         response = report()
     assert response.context["summary"]["tiles"][2]["count"] == 20
     assert response.context["object_list"][1].intent == "search"
+
+
+def test_mixed_purposes_filter_chart_and_totals_agree(report):
+    counter(agent="Applebot", count=7)
+    counter(agent="bingbot", count=11)
+    counter(agent="GPTBot", count=20)
+    response = report(intent="mixed")
+    summary = response.context["summary"]
+    assert [tile["count"] for tile in summary["tiles"]] == [18, 0, 0, 0, 18, 0]
+    assert sum(bar["count"] for bar in summary["bars"]) == 18
+    assert {bar["key"] for bar in summary["bars"]} == {"mixed"}
+    assert {row.intent for row in response.context["object_list"]} == {"mixed"}
+    assert "Mixed purposes" in response.content.decode()

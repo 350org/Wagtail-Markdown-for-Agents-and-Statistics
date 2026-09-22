@@ -31,6 +31,9 @@ coverage and limitations.
 
 ## Admin report (#35 / A09)
 
+The independent registry adds a mixed-purpose intent bucket. Such counters contribute
+once to the total and once to mixed purposes. See [registry acceptance](13-agent-dataset-provenance.md).
+
 - The initial range is today and the preceding 29 UTC dates, even when the active
   timezone is on the previous local day. Date presets and inclusive custom ranges
   exclude both earlier and later dates. Invalid ranges show errors, not data.

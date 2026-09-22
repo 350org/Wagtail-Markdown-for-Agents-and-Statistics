@@ -110,6 +110,10 @@
     --agentmd-series: var(--agentmd-red);
 }
 
+.agentmd-mixed {
+    --agentmd-series: var(--agentmd-dark-grey);
+}
+
 .agentmd-chart {
     background: var(--agentmd-white);
     color: var(--agentmd-dark-grey);

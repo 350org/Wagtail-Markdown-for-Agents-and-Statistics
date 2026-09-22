@@ -31,8 +31,9 @@ use the first matching entry from the dataset, preserving its canonical spelling
 Identification still runs with `NEGOTIATE_USER_AGENT = False`; that setting affects
 serving only. All other clients, including curl and browsers, share the empty
 label `""`, displayed as `unknown`. Arbitrary header fragments are never stored.
-With the current 69-entry dataset, at most 70 labels can be recorded per page,
-method and UTC date, regardless of how many different User-Agent values arrive.
+With registry `2026-09-22.1`, at most 24 labels can be newly recorded per page,
+method and UTC date (23 identities plus unknown), regardless of how many different
+User-Agent values arrive.
 Methods are at most 20 characters.
 
 No IP addresses, request URLs or full User-Agent headers are persisted. Known
@@ -92,11 +93,13 @@ counter write. This package does not configure a deployment's scheduler or proxy
 ## Intent categories and overrides (#34)
 
 Call `wagtail_markdown_agents.stats.categorise_agent(row.agent)` when reading a
-counter. It returns `on-demand`, `search`, `training` or `unknown`. No category is
-stored, and classification performs no database queries. Empty or unmatched labels
-are unknown. Matching uses case-insensitive substrings in category-map order;
-first match wins, regardless of where the substring occurs in the label. A match
-under an unexpected category returns `unknown` immediately. Empty substrings are
+counter. It returns `on-demand`, `search`, `training`, `mixed` or `unknown`.
+No category is stored, and classification performs no database queries. Empty or unmatched labels
+are unknown. Matching first checks case-insensitive exact labels in category-map
+order, then
+falls back to substring matching for compatibility with project hooks. Within each
+pass, the first match wins. Exact labels distinguish Applebot from the historical
+Applebot-Extended token. A match under an unexpected category returns `unknown` immediately. Empty substrings are
 ignored. On-demand is an estimate of intent, not proof of a human-triggered fetch.
 Classification is independent of `NEGOTIATE_USER_AGENT` and the detection list.
 
@@ -154,7 +157,9 @@ titles and numeric IDs; missing pages show **Deleted page #ID**. Rows retain the
 original numeric identities and counts after deletion.
 
 The daily-record table has 50 rows per page, newest date first and stable dimension
-ordering within a date. Pagination preserves filters. The five tiles and chart
+ordering within a date (page ID, agent, method, then row ID). A repeat request
+increments its daily counter without moving the row; no last-access timestamp is
+stored. Pagination preserves filters. The six tiles and chart
 cover **all matching rows**, independently of the current results page. There are
 separate empty states for no recorded history and no matching records.
 
@@ -167,13 +172,13 @@ filter count, so first/last monthly or yearly buckets can be partial. SQL groups
 counts by bucket and agent before Python applies the shared category snapshot;
 the report does not load each daily record to draw charts or issue per-page queries.
 
-Total plus on-demand, search, training and unknown tiles show counts, sparklines
-and Pearson correlation **r** against successive time buckets. Positive/negative
+Total plus on-demand, search, training, mixed purposes and unknown tiles show
+counts, sparklines and Pearson correlation **r** against successive time buckets. Positive/negative
 values indicate rising/falling association with time, never percentage change or
 statistical significance. Undefined correlation (flat or fewer than two buckets)
 is neutral; values rounding to zero at two decimal places are also neutral.
 The stacked bar chart uses the 350.org palette with labelled intent colours and
-an expandable table of exact bucket counts. All four intents contribute to bar
+an expandable table of exact bucket counts. All five intents contribute to bar
 heights, including unknown, so the chart reconciles to the total tile. The on-demand tile and legend explicitly say **estimate**.
 
 The report states the CDN/static bypass and aggregate-download exclusions above.
@@ -195,34 +200,22 @@ UA-triggered serving and change future recorded labels, but do not erase existin
 labels or remove historical category mappings. Keep the historical map when an
 agent is disabled for detection. Runtime settings themselves remain #38.
 
-### Reviewed dataset baseline (#76)
+### Independent registry — 22 September 2026
 
-The data-only fixture `tests/fixtures/agents-wordpress-1.7.0.json` records the 69
-ordered detection strings and the three category lists from WordPress 1.7.0 commit
-`8ad646e826ccbc836863aca30745abe0c5198a53` (`src/Core/Options.php` and
-`src/Negotiate/AgentDetector.php`). The values were re-extracted from that commit on
-15 September 2026 and match the fixture exactly. Tests compare every entry and its
-order with the fixture, check that no shipped string is a case-insensitive substring
-of another, that every detection entry matches inside a full header and resolves to
-a category, and that every category label wins its own category under first-match
-precedence. There is no minimum-count assertion.
+The [agent registry](agent-registry.md) now owns active detection and automatic
+serving policy. WordPress 1.7.0 remains a frozen historical reference, not the
+required active list. Removed detection entries stay in historical classification;
+existing counters are neither deleted nor rewritten. Active metadata is used when
+reading reports, so reviewed purpose corrections affect earlier rows too. This
+release moves `GoogleOther` from training to unknown and `CloudVertexBot` from
+training to search. Googlebot, Applebot and bingbot use mixed purposes. A mixed
+counter contributes once to the total and once to the mixed bucket.
 
-Wagtail-specific additions belong in the fixture's `wagtail_additions` block, after
-the reference entries, and must be named in this guide; the test fails otherwise.
-The block is currently empty. For site-specific agents prefer the
-`construct_markdown_agent_categories` hook or, from #38, runtime settings, rather
-than editing the shipped dataset.
+All intent labels describe estimated purposes, not what a particular request will
+actually do. Recognition does not verify identity. Recognition-only bots are counted
+when they explicitly obtain page Markdown; their normal HTML visits are not counted.
 
-Decision (15 September 2026): the earlier Wagtail-only entry `w4mwnpbXf3MFAbxOkJRw`
-is removed from detection and from the training category. It is the `hash/` segment
-of the EchoboxBot User-Agent
-(`Mozilla/5.0 (compatible; EchoboxBot/1.0; hash/w4mwnpbXf3MFAbxOkJRw; +http://www.echobox.com)`),
-which the Cloudflare Radar bot directory lists as an AI crawler. The WordPress plugin
-imported it with its Radar refresh on 29 July 2026 (commit `bfb444d`) and removed it
-on 11 August 2026 (commit `ed2ba29`), before 1.7.0; the Wagtail bootstrap copied the
-list in between. No release has shipped, so no stored counters carry that label; any
-that did would now report as `unknown`. EchoboxBot itself is not detected by the
-shipped dataset; add `EchoboxBot` as a documented addition or a runtime entry if a
-site wants it. `Gemini-User` remains category-only, matching the reference.
-`Google-Extended` and `Applebot-Extended` are retained historical robots.txt tokens,
-not observed User-Agent strings.
+The frozen WordPress fixture and `data/legacy_agents.py` retain provenance and
+historical categories. Migration `0006` keeps its original frozen labels; it must
+run before the new application starts recording new identities. No new database
+migration or deletion of existing counters is required.

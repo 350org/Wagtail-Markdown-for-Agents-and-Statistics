@@ -20,6 +20,7 @@ INTENT_LABELS = {
     "on-demand": _("On-demand (estimate)"),
     "search": _("Search"),
     "training": _("Training"),
+    "mixed": _("Mixed purposes"),
     "unknown": _("Unknown"),
 }
 

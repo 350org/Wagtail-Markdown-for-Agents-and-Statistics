@@ -61,6 +61,7 @@ verification, and the cache configuration a live site needs.
 | --- | --- |
 | Install, configure, verify, upgrade, uninstall | [INSTALL.md](INSTALL.md) |
 | Review handover readiness, verification limits and open client decisions | [Pre-transfer review](docs/transfer-readiness.md) |
+| Review recognised agents and automatic Markdown policy | [Agent registry](docs/agent-registry.md) |
 | Put the site behind Cloudflare, another CDN or a page cache | [CDN and cache guide](docs/cdn-caching.md) |
 | Understand which requests get Markdown | [Content negotiation](docs/negotiation.md) |
 | Let agents discover the Markdown from HTML | [Discovery headers and template tag](docs/discovery-headers.md) |

@@ -30,7 +30,7 @@
             <h2 id="agentmd-limits-title">{% trans "What these counts mean" %}</h2>
             <p>{% trans "Counts record successful page Markdown GET response selection in Django, not proof of completed delivery. CDN and static hosting requests that bypass Django are not counted." %}</p>
             <p>{% trans "HTML, errors, fallback responses, HEAD, previews and aggregate downloads (navigation-only indexes, llms.txt, manifests and bundles) are outside page counts. A page-owned index.md counts as a page request. Direct page exports appear as export-url." %}</p>
-            <p>{% trans "On-demand is an estimate of intent, not proof of a human-triggered fetch. Agent labels are client-supplied and do not verify bot identity. Category overrides apply to historical counts at read time." %}</p>
+            <p>{% trans "Purposes are estimates, not proof of how a response was used. Mixed purposes are counted once. On-demand does not prove a human-triggered fetch. Agent labels are client-supplied and do not verify bot identity. Category overrides apply to historical counts at read time." %}</p>
         </section>
     </div>
 {% endblock %}

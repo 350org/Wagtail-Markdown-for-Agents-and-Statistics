@@ -403,7 +403,7 @@ external/media links and code examples intact (audit A01/A02).
 (enforced by a system check):
 
 - **Request phase**: detection precedence `?output_format=md|markdown` >
-  `Accept: text/markdown` > UA-substring match (if enabled). The Accept rule requires
+  `Accept: text/markdown` > reviewed automatic-serving UA identity (if enabled). The Accept rule requires
   `text/markdown` as an explicit media range (`text/*` and `*/*` never match, `q=0`
   excludes), so curl and browsers are never served Markdown by accident. Only public
   page GET/HEAD requests are candidates; skip admin, APIs, previews and submissions.
@@ -608,8 +608,8 @@ view and prune command ship with it.
 
 `AgentAccess` model: (page_id, agent ≤100 chars, access_method ≤20, access_date), unique
 together, daily upsert (`count = count + 1`). Intent categories (on-demand / search /
-training / unknown) derived **at read time** from the UA-substring→category map — treat
-both the agent list and the map as append-only or historical rows relabel. Wagtail admin
+training / mixed / unknown) derived **at read time** from the registry and historical category map. Review classification changes
+explicitly because they can relabel historical reports. Wagtail admin
 reporting view: date presets, filters, chart by intent, stat tiles with trends. Prune
 command + retention setting.
 The report includes an intent-category filter as well as agent, method and date
@@ -634,13 +634,16 @@ failure handling and CDN limits. **Implemented in #34:** `stats.categorise_agent
 derives intent at read time with ordered, case-insensitive first-match lookup.
 `construct_markdown_agent_categories` mutates a fresh category map in hook order;
 unexpected category keys classify as unknown. The statistics guide documents
-historical reclassification and dataset verification. **Implemented in #76:** the
-dataset equals the pinned WordPress 1.7.0 fixture plus an explicit, empty,
-`wagtail_additions` block, with shadowing, full-header and precedence tests; the
-unreferenced `w4mwnpbXf3MFAbxOkJRw` entry (EchoboxBot hash, dropped upstream before
-1.7.0) is removed. **Implemented in #35:**
+historical reclassification and dataset verification. **Revised 22 September 2026:** the independent, versioned
+[agent registry](agent-registry.md) supersedes the WordPress parity constraint.
+Active records carry sources, review dates, HTTP tokens, purposes and a separate
+`auto_markdown` flag. Recognition uses product-token boundaries; stats prefer exact
+canonical labels before compatibility substring hooks. Frozen WordPress categories
+remain for retired labels. Purpose corrections are explicit read-time changes,
+not rewrites of stored counters. Robots.txt-only controls are not HTTP identities.
+Generate CDN bypass rules from the serving subset. **Implemented in #35:**
 the native Wagtail report combines page/agent/method/intent/date filters, 50-row
-pagination, five tiles and accessible intent charts. It defaults to 30 inclusive
+pagination, six tiles and accessible intent charts. It defaults to 30 inclusive
 UTC dates; grain is daily through 92 dates, monthly through 1,827, yearly thereafter.
 One hook snapshot supplies all classification within a request. Trends are Pearson
 correlation with neutral flat/insufficient series; on-demand is labelled an estimate.

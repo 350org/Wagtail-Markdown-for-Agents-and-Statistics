@@ -14,7 +14,7 @@ ranges rather than searching for a substring, so browsers (``text/html,
 from django.http import HttpRequest
 from django.utils.http import parse_header_parameters
 
-from .data.agents import AGENT_UA_STRINGS
+from .data.agents import identify_agent
 from .settings import get_setting
 
 #: Access-method labels, in precedence order. Stable values — they become
@@ -37,8 +37,10 @@ def detect(request: HttpRequest) -> str | None:
         request.headers.get("Accept", "")
     ):
         return METHOD_ACCEPT_HEADER
-    if get_setting("NEGOTIATE_USER_AGENT") and detect_agent(request.headers.get("User-Agent", "")):
-        return METHOD_USER_AGENT
+    if get_setting("NEGOTIATE_USER_AGENT"):
+        agent = identify_agent(request.headers.get("User-Agent", ""))
+        if agent is not None and agent.auto_markdown:
+            return METHOD_USER_AGENT
     return None
 
 
@@ -96,17 +98,6 @@ def _quality(value: str | None) -> float:
 
 
 def detect_agent(user_agent: str) -> str | None:
-    """Return the first matched entry from ``data.agents``, or ``None``.
-
-    Matching is a case-insensitive substring test in dataset order, so labels
-    are stable as the append-only dataset grows. This runs independently of the
-    ``NEGOTIATE_USER_AGENT`` serving toggle so statistics (#33) can still label
-    known agents that were served through another trigger or not at all.
-    """
-    if not isinstance(user_agent, str) or not user_agent:
-        return None
-    haystack = user_agent.lower()
-    for entry in AGENT_UA_STRINGS:
-        if entry.lower() in haystack:
-            return entry
-    return None
+    """Return a reviewed canonical label, independently of automatic serving."""
+    agent = identify_agent(user_agent)
+    return agent.label if agent is not None else None

@@ -34,7 +34,7 @@ dimensions (#32/#33) and must never be renamed.
 | --- | --- | --- | --- |
 | 1 | `?output_format=md` or `?output_format=markdown` (case-insensitive) | `NEGOTIATE_QUERY_PARAM` | `query-param` |
 | 2 | `Accept` contains the explicit media range `text/markdown` with `q > 0` | `NEGOTIATE_ACCEPT_HEADER` | `accept-header` |
-| 3 | `User-Agent` contains a known agent substring | `NEGOTIATE_USER_AGENT` | `ua` |
+| 3 | `User-Agent` matches an automatic-serving identity | `NEGOTIATE_USER_AGENT` | `ua` |
 
 The explicit export routes keep their own `export-url` label (#72) and are not
 affected by negotiation precedence.
@@ -46,12 +46,12 @@ The Accept rule parses media ranges rather than searching for a substring.
 Markdown by accident. An unparsable `q` keeps the range: the client still asked
 for Markdown explicitly.
 
-Known agents come from the append-only dataset in `data/agents.py`. Matching is a
-case-insensitive substring test in dataset order and returns the first matching
-entry, so an agent's label stays the same as the list grows. `detect_agent()` runs
-independently of `NEGOTIATE_USER_AGENT`; the toggle only decides whether a matched
-agent is *served* Markdown, so statistics can still label a known agent that
-arrived through another trigger. HTML responses are not counted.
+Known agents come from the reviewed [registry](agent-registry.md). Matching is a
+case-insensitive product-token test in registry order and returns the selected
+identity's stable label. `detect_agent()` recognises entries independently of
+`NEGOTIATE_USER_AGENT`; automatic serving additionally requires `auto_markdown`.
+Statistics can label recognition-only agents arriving through explicit triggers.
+HTML responses are not counted.
 
 All three settings default to `True`. Disabling every trigger leaves only the
 explicit export routes.
@@ -132,3 +132,17 @@ triggers that work behind any shared cache. The
 [CDN and cache guide](cdn-caching.md) covers both orderings, bypass rules per cache
 layer, per-method header overrides, the statistics gaps and what was measured on
 the live sandbox.
+
+## Reviewed agent policy
+
+The [independent registry](agent-registry.md) separates recognition for statistics
+from automatic Markdown serving. `NEGOTIATE_USER_AGENT` uses only identities with
+`auto_markdown: true`; recognising a search crawler or browser agent is not enough.
+Matching checks case-insensitive HTTP product-token boundaries and selects the first
+matching identity in registry order. One identity determines both serving and the
+stored statistics label. Explicit query/Accept requests remain available to all
+clients, subject to the existing export and cache rules.
+
+Retired WordPress entries and robots.txt-only controls no longer trigger detection.
+Update the [Cloudflare cache-bypass expression](cdn-caching.md) with the deployed
+registry; its serving subset is generated separately from the recognition list.

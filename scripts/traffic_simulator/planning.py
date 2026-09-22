@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit, urlunsp
 import yaml
 from markdown_it import MarkdownIt
 
-from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENT_UA_STRINGS
+from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENTS, identify_agent
 
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -33,13 +33,14 @@ METHODS = ("accept-header", "query-param", "ua", "export-url")
 
 
 def label(ua):
-    for token in AGENT_UA_STRINGS:
-        if token.lower() in ua.lower():
-            return token.strip()[:100]
-    return ""
+    agent = identify_agent(ua)
+    return agent.label if agent is not None else ""
 
 
 def category(agent):
+    for kind, entries in AGENT_CATEGORIES.items():
+        if any(entry.lower() == agent.lower() for entry in entries):
+            return kind
     return next(
         (
             kind
@@ -53,8 +54,8 @@ def category(agent):
 def fleet():
     """Only OpenAI publishes full examples here; other full headers are synthetic.
 
-    Sources checked 2026-09-21. Even an official example sent by this tool is
-    simulated traffic. Dataset-only robots.txt tokens deliberately stay synthetic.
+    Sources checked 2026-09-22. Even an official example sent by this tool is
+    simulated traffic. Only reviewed HTTP identities enter the fleet.
     """
     prefix = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; "
     official = {
@@ -65,10 +66,11 @@ def fleet():
     }
     representatives = (*official, "ClaudeBot", "Claude-User", "Claude-SearchBot")
     result = []
-    for token in dict.fromkeys((*representatives, *AGENT_UA_STRINGS)):
+    for identity in sorted(AGENTS, key=lambda a: (a.label not in representatives,)):
+        token = identity.label
         provenance = "dataset-synthetic"
-        source = "shipped-dataset"
-        ua = f"Mozilla/5.0 (compatible; {token}{'' if token.endswith('/') else '/'}1.0)"
+        source = identity.sources[0]
+        ua = f"Mozilla/5.0 (compatible; {identity.tokens[0]}/1.0)"
         if token in official:
             ua, provenance, source = official[token], "official-example", OPENAI_SOURCE
         elif token in representatives:
@@ -82,6 +84,7 @@ def fleet():
                 "provenance": provenance,
                 "source": source,
                 "traffic": "simulated",
+                "auto_markdown": identity.auto_markdown,
             }
         )
     return result
@@ -260,12 +263,16 @@ def build_plan(
         url = page["export_url"] if trigger == "export-url" else page["url"]
         if trigger == "query-param":
             url = query_url(url)
+        full_hash = page.get("full_hash", "")
+        if trigger == "ua" and not agent.get("auto_markdown", True):
+            extra.update(expected_type="text/html", countable=False)
+            full_hash = ""  # The manifest hash describes Markdown, not the HTML control.
         return RequestSpec(
             safe_url(url, target),
             page_id=page["id"],
             ua=agent["ua"],
             access_method=trigger,
-            full_hash=page.get("full_hash", ""),
+            full_hash=full_hash,
             provenance=agent["provenance"],
             **extra,
         )
@@ -370,8 +377,7 @@ def build_plan(
                 suite.append(
                     page_request(by_export[link], agents[1], "export-url", scenario="follow-link")
                 )
-    # All dataset labels receive all triggers. These are deliberately distinct
-    # from production-shaped examples; robots.txt tokens are not real UA claims.
+    # All active identities receive all triggers, including recognition-only HTML controls.
     for index, agent in enumerate(agents):
         for method in METHODS:
             suite.append(page_request(pages[index % len(pages)], agent, method, scenario="fleet"))
@@ -434,7 +440,7 @@ def assess(spec, status, headers, body, *, cache_profile="strict"):
         cache_profile == "cloudflare-free"
         and spec.expected_type == "text/markdown"
         and spec.access_method == "accept-header"
-        and not any(token.lower() in spec.ua.lower() for token in AGENT_UA_STRINGS)
+        and not (identify_agent(spec.ua) and identify_agent(spec.ua).auto_markdown)
         and status == 200
         and content_type == "text/html"
         and headers.get("cf-cache-status", "").upper() == "HIT"

@@ -307,3 +307,13 @@ Google-Extended and Applebot-Extended (robots.txt controls, not observed UAs).
 
 Local tests cover planning, transport, cache assertions and evidence reconciliation.
 They do not constitute deployed cache verification or genuine vendor-origin evidence.
+
+## Independent registry update — 22 September 2026
+
+Fleet identities and matching now come from the [agent registry](agent-registry.md).
+Each identity is exercised through all triggers, but recognition-only User-Agent
+requests expect HTML, no Markdown hash and no page counter. Explicit query/Accept
+and export requests still expect Markdown. The free-plan warm-cache Accept-only
+limitation also covers recognised agents that are outside the automatic-serving
+subset. Historical run evidence retains the dataset and expectations used at the
+time; regenerate plans when deploying a new registry version.

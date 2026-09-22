@@ -47,7 +47,7 @@
 {% endif %}
 {% if object_list %}
     <h2>{% trans "Daily records" %}</h2>
-    <p>{% trans "Each row is one page, agent, method and UTC day. Summary totals and charts include all matching records across every page of results." %}</p>
+    <p>{% trans "Each row is one page, agent, method and UTC day. Rows are ordered by day (newest first), then page ID, agent and method. Repeat visits increase the count without moving the row. Summary totals and charts include all matching records across every page of results." %}</p>
     <div class="agentmd-table-scroll">
         <table class="listing">
             <thead><tr><th scope="col">{% trans "Date (UTC)" %}</th><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Access method" %}</th><th scope="col">{% trans "Intent" %}</th><th scope="col">{% trans "Requests" %}</th></tr></thead>

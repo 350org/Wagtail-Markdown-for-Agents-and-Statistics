@@ -28,7 +28,7 @@ DEFAULTS: dict[str, Any] = {
     # Negotiation triggers.
     "NEGOTIATE_QUERY_PARAM": True,  # ?output_format=md|markdown
     "NEGOTIATE_ACCEPT_HEADER": True,  # Accept: text/markdown
-    "NEGOTIATE_USER_AGENT": True,  # UA-substring match against data/agents.py
+    "NEGOTIATE_USER_AGENT": True,  # Reviewed registry's auto_markdown identities only.
     # Content-Signal response header value; empty string suppresses the header.
     "CONTENT_SIGNAL": "ai-input=yes, search=yes",
     # HTML discovery: Link alternate + Vary: Accept on eligible HTML 200 responses.

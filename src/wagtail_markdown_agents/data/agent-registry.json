@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "version": "2026-09-22.1",
+  "agents": [
+    {
+      "label": "GPTBot",
+      "operator": "OpenAI",
+      "tokens": [
+        "GPTBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developers.openai.com/api/docs/bots"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Dedicated model-development crawler; serving is package policy, not proof of Markdown support."
+    },
+    {
+      "label": "ChatGPT-User",
+      "operator": "OpenAI",
+      "tokens": [
+        "ChatGPT-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developers.openai.com/api/docs/bots"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "User-directed retrieval, distinct from the search crawler."
+    },
+    {
+      "label": "ClaudeBot",
+      "operator": "Anthropic",
+      "tokens": [
+        "ClaudeBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Dedicated model-development crawler."
+    },
+    {
+      "label": "Claude-User",
+      "operator": "Anthropic",
+      "tokens": [
+        "Claude-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "User-directed retrieval."
+    },
+    {
+      "label": "Claude-SearchBot",
+      "operator": "Anthropic",
+      "tokens": [
+        "Claude-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Dedicated Claude search indexing."
+    },
+    {
+      "label": "OAI-SearchBot",
+      "operator": "OpenAI",
+      "tokens": [
+        "OAI-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developers.openai.com/api/docs/bots"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Dedicated ChatGPT search crawler; downstream use cannot be proven from a request."
+    },
+    {
+      "label": "PerplexityBot",
+      "operator": "Perplexity",
+      "tokens": [
+        "PerplexityBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://docs.perplexity.ai/docs/resources/perplexity-crawlers"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Operator distinguishes search indexing from foundation-model training."
+    },
+    {
+      "label": "Perplexity-User",
+      "operator": "Perplexity",
+      "tokens": [
+        "Perplexity-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://docs.perplexity.ai/docs/resources/perplexity-crawlers"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "User-directed retrieval."
+    },
+    {
+      "label": "meta-externalagent",
+      "operator": "Meta",
+      "tokens": [
+        "meta-externalagent"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/meta-externalagent"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Radar training classification; description also mentions product indexing. Classification is an estimate."
+    },
+    {
+      "label": "meta-externalfetcher/",
+      "operator": "Meta",
+      "tokens": [
+        "meta-externalfetcher"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/meta-externalfetcher"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Keep the historical stored label, including slash; match the actual product token."
+    },
+    {
+      "label": "meta-webindexer",
+      "operator": "Meta",
+      "tokens": [
+        "meta-webindexer"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/meta-web-indexer"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Purpose follows Radar description of Meta AI search; its Social / Link Preview category conflicts. Recognition only pending operator and serving validation."
+    },
+    {
+      "label": "MistralAI-User",
+      "operator": "Mistral AI",
+      "tokens": [
+        "MistralAI-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/mistralai-user"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Radar identifies a user-directed agent."
+    },
+    {
+      "label": "DuckAssistBot",
+      "operator": "DuckDuckGo",
+      "tokens": [
+        "DuckAssistBot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Real-time retrieval for AI-assisted answers, not model training."
+    },
+    {
+      "label": "Google-Agent",
+      "operator": "Google",
+      "tokens": [
+        "Google-Agent"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/google-agent"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Browser navigation and actions on user request; recognise it but preserve HTML needed by browser workflows."
+    },
+    {
+      "label": "Amazonbot",
+      "operator": "Amazon",
+      "tokens": [
+        "Amazonbot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/amazon-bot"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Radar training category is an estimate; general Amazon product crawler remains recognition-only."
+    },
+    {
+      "label": "CCBot",
+      "operator": "Common Crawl",
+      "tokens": [
+        "CCBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.cloudflare.com/ai-crawl-control/reference/bots/"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Radar training category is an estimate for a general corpus crawler; recognition only."
+    },
+    {
+      "label": "FacebookBot",
+      "operator": "Meta",
+      "tokens": [
+        "FacebookBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.cloudflare.com/ai-crawl-control/reference/bots/"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Documented separately from facebookexternalhit and meta-externalagent; recognition only pending operator validation."
+    },
+    {
+      "label": "Applebot",
+      "operator": "Apple",
+      "tokens": [
+        "Applebot"
+      ],
+      "purposes": [
+        "search",
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://support.apple.com/en-gb/119829"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Operator documents search and potential model training; Applebot-Extended is a use-control token, not this HTTP identity."
+    },
+    {
+      "label": "Googlebot",
+      "operator": "Google",
+      "tokens": [
+        "Googlebot"
+      ],
+      "purposes": [
+        "search",
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers",
+        "https://radar.cloudflare.com/bots/directory/google"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "General search crawler with multiple downstream uses. Do not automatically change its representation."
+    },
+    {
+      "label": "bingbot",
+      "operator": "Microsoft",
+      "tokens": [
+        "bingbot"
+      ],
+      "purposes": [
+        "search",
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/bing"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Radar lists both search and training; general search remains recognition-only."
+    },
+    {
+      "label": "GoogleOther",
+      "operator": "Google",
+      "tokens": [
+        "GoogleOther",
+        "GoogleOther-Image",
+        "GoogleOther-Video"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Generic research crawler; operator documentation does not establish training intent. Include documented image/video variants."
+    },
+    {
+      "label": "CloudVertexBot",
+      "operator": "Google",
+      "tokens": [
+        "Google-CloudVertexBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Site-owner-requested Vertex AI indexing. Retain historical stored label; require the full documented HTTP token."
+    },
+    {
+      "label": "OAI-AdsBot",
+      "operator": "OpenAI",
+      "tokens": [
+        "OAI-AdsBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.openai.com/api/docs/bots"
+      ],
+      "reviewed": "2026-09-22",
+      "notes": "Advertising validation, not foundation-model training or a request for Markdown."
+    }
+  ]
+}

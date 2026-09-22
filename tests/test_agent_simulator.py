@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 from scripts import agent_simulator as sim
 
-from wagtail_markdown_agents.data.agents import AGENT_UA_STRINGS
+from wagtail_markdown_agents.data.agents import AGENTS
 from wagtail_markdown_agents.stats import agent_label
 
 TARGET = "https://www.example.org"
@@ -88,7 +88,7 @@ def test_plan_is_seeded_bounded_and_reports_missing_fixtures():
     }
     assert {r["ordering"] for r in a["requests"]} >= {"html-first", "agent-first"}
     assert {r["method"] for r in a["requests"]} == {"HEAD", "GET"}
-    assert set(AGENT_UA_STRINGS) <= {r["agent"] for r in a["requests"]}
+    assert {agent.label for agent in AGENTS} <= {r["agent"] for r in a["requests"]}
     assert a["coverage"]["suite_complete"]
     short = sim.build_plan(inventory(), TARGET, max_requests=2)
     assert not short["coverage"]["suite_complete"]
@@ -732,3 +732,33 @@ def test_missing_origin_during_multi_day_window_covers_intermediate_dates():
         "2026-09-22",
         "2026-09-23",
     }
+
+
+def test_recognition_only_fleet_expects_html_and_does_not_hash_it_as_markdown():
+    plan = sim.build_plan(inventory(), TARGET, max_requests=1000)
+    controls = [
+        r for r in plan["requests"] if r["scenario"] == "fleet" and r["agent"] == "Applebot"
+    ]
+    assert len(controls) == 4
+    for row in controls:
+        if row["access_method"] == "ua":
+            assert row["expected_type"] == "text/html"
+            assert not row["countable"] and not row["full_hash"]
+            outcome = sim.assess(
+                sim.RequestSpec.from_dict(row), 200, {"content-type": "text/html"}, b"normal HTML"
+            )
+            assert outcome["outcome"] == "pass"
+        else:
+            assert row["expected_type"] == "text/markdown" and row["countable"]
+
+
+def test_recognised_accept_only_client_has_free_plan_cache_limit():
+    spec = request(ua="Applebot/0.1", access_method="accept-header")
+    outcome = sim.assess(
+        spec,
+        200,
+        {"content-type": "text/html", "cf-cache-status": "HIT"},
+        b"HTML",
+        cache_profile="cloudflare-free",
+    )
+    assert outcome["outcome"] == "known-limitation"

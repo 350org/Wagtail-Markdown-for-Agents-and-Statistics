@@ -95,7 +95,7 @@ lands; the existing `settings.DEFAULTS` does not implement them yet.
 | `post_type_configs = {}` | `PAGE_FIELDS` for bodies plus frontmatter hooks/`extra_frontmatter`; A03 adds declarative frontmatter, labels, nested/repeated field and featured-image mappings in v0.2. |
 | `delete_files_on_uninstall = false` | Explicit maintenance/removal instructions and commands (A13). WP actually retains the Markdown tree even when true; only the bundle is optionally deleted. |
 | `ua_force_enabled = true` | `NEGOTIATE_USER_AGENT = True`; affects serving, not stats identification. Runtime editing in v0.2 legacy #38. |
-| `ua_agent_strings = 69 entries` | `AGENT_UA_STRINGS` equals the 69 entries in order, pinned in `tests/fixtures/agents-wordpress-1.7.0.json`. The former Wagtail-only `w4mwnpbXf3MFAbxOkJRw` entry was removed in #76 (A11). |
+| `ua_agent_strings = 69 entries` | Superseded on 22 September 2026 by the independent [agent registry](agent-registry.md). The pinned WordPress fixture now verifies historical categories only; active identities and serving policy are reviewed separately. |
 
 WP also has filter-defined response headers and intent categories, and a CLI prune
 default of 90 days. Wagtail must provide the retention default in deployment settings

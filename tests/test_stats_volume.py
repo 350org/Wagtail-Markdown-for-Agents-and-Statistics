@@ -40,6 +40,7 @@ AGENTS = {
     "GPTBot": "training",
     "": "unknown",
 }
+INTENTS = ("on-demand", "search", "training", "mixed", "unknown")
 METHODS = ("query-param", "accept-header", "ua", "export-url")
 TABLE = AgentAccess._meta.db_table
 
@@ -124,7 +125,7 @@ def test_report_volume(seed, client, admin_user, pages):
         {"p": 999999},
         *({"preset": str(days)} for days in (7, 30, 90, 365)),
         *({"method": method} for method in METHODS),
-        *({"intent": intent} for intent in AGENTS.values()),
+        *({"intent": intent} for intent in INTENTS),
         *({"agent": f"label:{agent}"} for agent in AGENTS),
         {"page_id": live_id},
         {"page_id": deleted_id},
@@ -172,7 +173,7 @@ def test_report_volume(seed, client, admin_user, pages):
         assert summary["grain"] == grain
         totals = {
             intent: sum(r.count for r in expected if AGENTS[r.agent] == intent)
-            for intent in AGENTS.values()
+            for intent in INTENTS
         }
         assert [tile["count"] for tile in summary["tiles"]] == [
             sum(totals.values()),
@@ -185,7 +186,7 @@ def test_report_volume(seed, client, admin_user, pages):
             buckets[row.access_date.isoformat()[:width], AGENTS[row.agent]] += row.count
         for bucket in summary["buckets"]:
             assert bucket["counts"] == [
-                buckets[bucket["date"].isoformat()[:width], intent] for intent in AGENTS.values()
+                buckets[bucket["date"].isoformat()[:width], intent] for intent in INTENTS
             ]
         assert sum(bar["count"] for bar in summary["bars"]) == sum(totals.values())
         page = response.context["page_obj"]

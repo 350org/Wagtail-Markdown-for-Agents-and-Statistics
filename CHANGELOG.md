@@ -24,6 +24,18 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Replace the inherited active WordPress agent list with independent registry
+  `2026-09-22.1`: 23 source-backed identities, 12 automatic Markdown identities,
+  product-token matching, review metadata and separate recognition/serving policy.
+  Robots.txt-only and unreviewed legacy entries no longer trigger detection;
+  frozen historical labels remain readable. Reports add mixed purposes, classify
+  GoogleOther as unknown and CloudVertexBot as search, and prefer exact labels
+  before legacy hook substring matches. No counters are rewritten.
+- Generate a host-scoped Cloudflare cache-bypass expression from the serving subset
+  with `python -m wagtail_markdown_agents.cloudflare --host HOST`. Update the
+  deployed rule alongside the package. The traffic simulator now expects HTML for
+  recognition-only User-Agent requests and labels them independently of serving.
+
 - Pre-transfer review: clarified compatibility versus security support and complete
   removal steps; restored the pending D12 proposal and corrected D9 hook guidance;
   included onboarding documentation and test sources in source distributions.

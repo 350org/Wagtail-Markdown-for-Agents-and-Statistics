@@ -75,8 +75,8 @@ when adapting code or importing assets.
 - Work from the behavioural specification in [docs/design.md](docs/design.md)
   and implement the behaviour using Django and Wagtail conventions.
 - Keep the source revision and attribution for imported reference data. The agent
-  dataset's pinned fixture and verification are documented in
-  [dataset provenance](docs/acceptance/13-agent-dataset-provenance.md). Check the
+  registry's evidence, review procedure and historical fixture are documented in
+  [agent registry](docs/agent-registry.md). Check the
   provenance and terms of new data or assets before importing them.
 - Identify the source and any adaptations in the pull request when porting code
   from the WordPress plugin or another project.
