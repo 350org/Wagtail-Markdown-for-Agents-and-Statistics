@@ -9,7 +9,7 @@ exports your whole site as a browsable Markdown tree with `llms.txt` and a conte
 manifest for incremental sync.
 
 This is a Wagtail port of the WordPress plugin
-[Markdown for Agents and Statistics](https://github.com/dogwonder/markdown-for-agents-and-statistics),
+[Markdown for Agents and Statistics](https://wordpress.org/plugins/markdown-for-agents-and-statistics/),
 developed in collaboration with [350.org](https://350.org) and
 [The Chancery Lane Project](https://chancerylaneproject.org).
 
