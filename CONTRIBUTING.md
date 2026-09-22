@@ -60,6 +60,13 @@ it is a reference, not a package dependency. The
 [WordPress parity audit](docs/wordpress-parity-audit.md) pins the reviewed source
 revision and maps its behaviour to Wagtail issues and remaining acceptance criteria.
 
+Maintain the [current implementation matrix](docs/wordpress-parity-status.md) and
+[drift ledger](docs/wordpress-drift-ledger.md) when porting a fix, adding a feature
+or changing a deliberate difference. Link behavioural evidence; a planned feature
+or frozen agent fixture does not prove product parity. Before each release, the
+release maintainer completes the upstream interval review and records verification
+using the [release checklist](docs/release-checklist.md).
+
 Notes on 350.org's own page models and StreamField blocks are recorded on issue #65.
 That schema is provisional; recheck the source when implementing integration work and
 keep the package independent of it.

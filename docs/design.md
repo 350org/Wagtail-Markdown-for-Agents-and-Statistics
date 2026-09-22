@@ -8,10 +8,12 @@ the issue tracker defines what the first release delivers; bundles, ARD catalogs
 other roadmap features are not v0.1 release dependencies.
 
 The [WordPress parity audit](wordpress-parity-audit.md) records the 1.7.0 reference
-behaviour, all settings and 22 public extension points, current issue coverage and
-remaining work. Its A01–A13 requirements supplement this design; proposed new work
-still needs implementation and acceptance tests. The audit's GitHub sync record links
-the implementation issues and milestones.
+behaviour, all settings and 22 public extension points, historical issue coverage and
+remaining work. The [current matrix](wordpress-parity-status.md) records implementation
+status; the [drift ledger](wordpress-drift-ledger.md) tracks subsequent upstream changes
+and deliberate differences. The audit's A01–A13 requirements supplement this design;
+proposed new work still needs implementation and acceptance tests. The audit's
+GitHub sync record links the implementation issues and milestones.
 
 ## Purpose
 
