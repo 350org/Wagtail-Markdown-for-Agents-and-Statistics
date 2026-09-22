@@ -1,0 +1,72 @@
+{% load wagtailadmin_tags i18n %}
+{% if summary %}
+    <h2>{% trans "Summary" %} <span class="agentmd-range">{{ summary.start|date:"j M Y" }} – {{ summary.end|date:"j M Y" }} (UTC)</span></h2>
+    {% if object_list %}
+        <section class="agentmd-chart" aria-labelledby="agentmd-chart-title">
+            <h2 id="agentmd-chart-title">{% trans "Requests by intent" %}</h2>
+            <p>{% if summary.grain == "daily" %}{% trans "Daily buckets" %}{% elif summary.grain == "monthly" %}{% trans "Monthly buckets" %}{% else %}{% trans "Yearly buckets" %}{% endif %} · UTC</p>
+            <ul class="agentmd-legend" aria-label="{% trans 'Chart legend' %}">
+                {% for series in summary.series %}<li class="agentmd-{{ series.key }}"><span aria-hidden="true"></span>{{ series.label }}</li>{% endfor %}
+            </ul>
+            <div class="agentmd-plot">
+                <span class="agentmd-axis-max">{{ summary.maximum|intcomma }}</span>
+                <span class="agentmd-axis-mid">{{ summary.midpoint|intcomma }}</span>
+                <svg viewBox="-5 -5 910 230" role="img" aria-labelledby="agentmd-chart-description" preserveAspectRatio="none">
+                    <title id="agentmd-chart-description">{% trans "Request counts by intent over time. Exact counts are available in the time bucket table below." %}</title>
+                    <path class="agentmd-grid" d="M0 0H900 M0 110H900 M0 220H900" />
+                    {% for bar in summary.bars %}
+                        <rect class="agentmd-{{ bar.key }}" x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}"><title>{{ bar.date|date:"Y-m-d" }} · {{ bar.label }}: {{ bar.count|intcomma }}</title></rect>
+                    {% endfor %}
+                </svg>
+                <span class="agentmd-axis-zero">0</span>
+            </div>
+            <div class="agentmd-axis-dates"><span>{{ summary.start|date:"j M Y" }}</span><span>{{ summary.end|date:"j M Y" }}</span></div>
+            <details>
+                <summary>{% trans "View time bucket counts" %}</summary>
+                <div class="agentmd-table-scroll">
+                    <table class="listing">
+                        <caption class="w-sr-only">{% trans "Counts per time bucket. Dates mark the start of each bucket; only the selected date range is counted." %}</caption>
+                        <thead><tr><th scope="col">{% trans "Bucket start (UTC)" %}</th>{% for series in summary.series %}<th scope="col">{{ series.label }}</th>{% endfor %}</tr></thead>
+                        <tbody>{% for bucket in summary.buckets %}<tr><th scope="row">{{ bucket.date|date:"Y-m-d" }}</th>{% for count in bucket.counts %}<td>{{ count|intcomma }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+                    </table>
+                </div>
+            </details>
+        </section>
+    {% endif %}
+    <div class="agentmd-tiles">
+        {% for tile in summary.tiles %}
+            <section class="agentmd-tile agentmd-{{ tile.key }}" aria-label="{{ tile.label }}">
+                <h3>{{ tile.label }}</h3>
+                <p class="agentmd-count">{{ tile.count|intcomma }}</p>
+                <svg class="agentmd-sparkline" viewBox="0 -2 160 36" aria-hidden="true"><polyline points="{{ tile.points }}" /></svg>
+                <p>{{ tile.trend }}{% if tile.correlation != None %} · r = {{ tile.correlation }}{% endif %}</p>
+            </section>
+        {% endfor %}
+    </div>
+    <p class="help">{% trans "Trends show correlation (r) between time buckets and request counts, not percentage change. Flat or insufficient series are neutral. Missing buckets count as zero; the first and last buckets may cover partial periods." %}</p>
+{% endif %}
+{% if object_list %}
+    <h2>{% trans "Daily records" %}</h2>
+    <p>{% trans "Each row is one page, agent, method and UTC day. Summary totals and charts include all matching records across every page of results." %}</p>
+    <div class="agentmd-table-scroll">
+        <table class="listing">
+            <thead><tr><th scope="col">{% trans "Date (UTC)" %}</th><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Access method" %}</th><th scope="col">{% trans "Intent" %}</th><th scope="col">{% trans "Requests" %}</th></tr></thead>
+            <tbody>
+                {% for row in object_list %}
+                    <tr><td>{{ row.access_date|date:"Y-m-d" }}</td><th scope="row">{{ row.page_label }}</th><td>{{ row.agent|default:_("unknown") }}</td><td>{{ row.access_method }}</td><td>{{ row.intent_label }}</td><td>{{ row.count|intcomma }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "wagtailadmin/shared/pagination_nav.html" with items=page_obj linkurl=index_url %}
+{% elif summary %}
+    <div class="help-block help-info" role="status">
+        {% if has_history %}
+            <h2>{% trans "No page requests match these filters" %}</h2>
+            <p>{% trans "Try a wider date range or reset the filters." %}</p>
+        {% else %}
+            <h2>{% trans "No recorded page requests yet" %}</h2>
+            <p>{% trans "Successful page Markdown GETs that reach Django will appear here." %}</p>
+        {% endif %}
+    </div>
+{% endif %}

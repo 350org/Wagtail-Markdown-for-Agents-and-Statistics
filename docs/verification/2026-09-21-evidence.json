@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-21",
+  "purpose": "Integrity references for privately retained bounded live verification evidence; raw artifacts contain deployment URLs and are not committed.",
+  "simulator_revision": "7b72d01bc5be659b6dc10b4a1477470d9c23d473",
+  "origin_revision": "52e9022649154025d35bf146f5bf84846a6c8fc8",
+  "preflight_requests": 20,
+  "simulator_requests": 1000,
+  "assertion_passes": 964,
+  "known_limitations": 36,
+  "assertion_failures": 0,
+  "counter_expected": 603,
+  "counter_observed": 603,
+  "counter_residual": 0,
+  "counter_tolerance": 0,
+  "reconciliation_status": "inconclusive",
+  "reconciliation_warnings": [
+    "Plan has incomplete scenario coverage; matched counters are not acceptance"
+  ],
+  "artifacts": {
+    "plan.json": {
+      "bytes": 649490,
+      "sha256": "a8a724b2c4953baba49f793175b73da52f6040540c5743927925321f3eae2962"
+    },
+    "discovery.jsonl": {
+      "bytes": 27414,
+      "sha256": "87777dca51a85c1b59655b52ebd72c79595e239ba7f3c594237817c184c83b78"
+    },
+    "correlation-probe.jsonl": {
+      "bytes": 1963,
+      "sha256": "eabdd38650101fc0607832a55ee700729678b4fb865a53055f60c8e936f29013"
+    },
+    "correlation-verified.json": {
+      "bytes": 620,
+      "sha256": "ac166aa3d4f2e0bc1493021062f992b58f0e60256589c222613683ef2de0cb3d"
+    },
+    "client.jsonl": {
+      "bytes": 1451300,
+      "sha256": "a8199d1040f3962043ed7b81201d96ef91a6abde8388d2906bc78c8aea317101"
+    },
+    "origin.jsonl": {
+      "bytes": 299433,
+      "sha256": "411e64683dc4ee83181e1f539344873ef655ccaf383b3ca6189d1c988036559f"
+    },
+    "before.json": {
+      "bytes": 11598,
+      "sha256": "db7ddda29f5c712146e494daa903e58e47f8ac1e6ce48fb398e53e7e4d447e98"
+    },
+    "after.json": {
+      "bytes": 87433,
+      "sha256": "9644030c735c98a2a051a42e8ae883bd780988222cf9e8a700be74fff401d998"
+    },
+    "report.json": {
+      "bytes": 175935,
+      "sha256": "d39b3320a7131601ed0ed496b1edfe4eba06c1d591bcb7f39962dddadebaeb24"
+    },
+    "client-audit.json": {
+      "bytes": 795,
+      "sha256": "fbdb687ccff30e58a4c550d46141279252d010cd3a169120d9b46f98e641f44e"
+    },
+    "environment-evidence.json": {
+      "bytes": 1441,
+      "sha256": "b946e81f1bb1e3c60aedcd8ec3632a1c80c0b3f41e325ca354addb92b4654a67"
+    },
+    "origin-versions.json": {
+      "bytes": 82,
+      "sha256": "26052a0122dd469e0b51f03f1d32eb487ae9e792b90137c4dfda34b76932be89"
+    }
+  }
+}

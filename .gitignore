@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.tox/
+.venv/
+uv.lock
+
+# Local secrets (keep deliberately sanitised examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+.envrc
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Local databases and backups
+*.sqlite3
+*.sqlite3-*
+*.sqlite
+*.sqlite-*
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+
+# Django / Wagtail sandbox
+sandbox/db.sqlite3
+sandbox/media/
+sandbox/static/
+markdown_export/
+
+# Tooling
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

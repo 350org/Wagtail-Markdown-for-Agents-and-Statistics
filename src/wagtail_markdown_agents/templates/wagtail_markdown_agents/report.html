@@ -1,0 +1,36 @@
+{% extends "wagtailadmin/reports/base_report.html" %}
+{% load static wagtailadmin_tags i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'wagtail_markdown_agents/report.css' %}">
+{% endblock %}
+
+{% block listing %}
+    <div class="nice-padding agentmd-report">
+        <h1>{% trans "Agent access" %}</h1>
+        <p>{% trans "Recorded page Markdown requests, grouped by estimated intent." %}</p>
+        <form method="get" action="{{ index_url }}" class="agentmd-filters" aria-label="{% trans 'Report filters' %}">
+            {% for field in report_form %}
+                {% include "wagtailadmin/shared/field.html" with field=field %}
+            {% endfor %}
+            <div class="agentmd-filter-actions">
+                <button type="submit" class="button">{% trans "Apply filters" %}</button>
+                <a href="{{ index_url }}" class="button button-secondary">{% trans "Reset" %}</a>
+            </div>
+        </form>
+        <p class="help">{% trans "Dates are inclusive and use UTC. Choose Custom dates to apply the From and To fields." %}</p>
+        {% if report_form.errors %}
+            <div class="help-block help-critical" role="alert">{% trans "Correct the filters above to see the report." %}</div>
+        {% endif %}
+        <div id="listing-results">
+            {% include "wagtail_markdown_agents/report_results.html" %}
+        </div>
+        <section class="agentmd-limits" aria-labelledby="agentmd-limits-title">
+            <h2 id="agentmd-limits-title">{% trans "What these counts mean" %}</h2>
+            <p>{% trans "Counts record successful page Markdown GET response selection in Django, not proof of completed delivery. CDN and static hosting requests that bypass Django are not counted." %}</p>
+            <p>{% trans "HTML, errors, fallback responses, HEAD, previews and aggregate downloads (navigation-only indexes, llms.txt, manifests and bundles) are outside page counts. A page-owned index.md counts as a page request. Direct page exports appear as export-url." %}</p>
+            <p>{% trans "On-demand is an estimate of intent, not proof of a human-triggered fetch. Agent labels are client-supplied and do not verify bot identity. Category overrides apply to historical counts at read time." %}</p>
+        </section>
+    </div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% trans "Markdown settings" %} — {{ page.get_admin_display_title }}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=_("Markdown settings") subtitle=page.get_admin_display_title icon="doc-full" %}
+    <div class="nice-padding">
+        <p>{% trans "Changes apply immediately when you save. You do not need to publish the page again." %}</p>
+        <form action="{% url 'agentmd_page_settings' page.pk %}" method="post">
+            {% csrf_token %}
+            {% formattedfield form.excluded %}
+            <p>{% trans "Clearing this checkbox allows Markdown export only if the page is published and meets the site's export rules. If automatic generation is disabled, the export will return after the next generation run." %}</p>
+            <button type="submit" class="button">{% trans "Save" %}</button>
+            <a href="{% url 'wagtailadmin_pages:edit' page.pk %}" class="button button-secondary">{% trans "Cancel" %}</a>
+        </form>
+    </div>
+{% endblock %}

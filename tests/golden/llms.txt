@@ -1,0 +1,9 @@
+# Example Climate
+
+> Campaigns and resources for a fossil-free future.
+
+## Explore
+
+- [Site index](http://example.org/markdown/index.md): Browse available content.
+- [About us](http://example.org/markdown/about.md): Our purpose and approach.
+- [Campaigns](http://example.org/markdown/campaigns/index.md): Explore our campaigns.

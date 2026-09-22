@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wagtail-markdown-for-agents"
+version = "0.1.0.dev0"
+description = "Serve Wagtail content to AI agents as Markdown: static export, llms.txt, and HTTP content negotiation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Rich Holman" }]
+keywords = [
+    "wagtail",
+    "django",
+    "markdown",
+    "llms-txt",
+    "ai-agents",
+    "content-negotiation",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Framework :: Wagtail",
+    "Framework :: Wagtail :: 6",
+    "Framework :: Wagtail :: 7",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "wagtail>=6.3,<8",
+    "markdownify>=1.2.3",
+    "pyyaml>=6.0",
+    "markdown-it-py>=3,<5",
+]
+
+[project.urls]
+Repository = "https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics"
+Issues = "https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues"
+Changelog = "https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    # Patched, supported development baseline; tox covers older compatibility lines.
+    "Django>=5.2.17,<6.1",
+    "wagtail>=7.4.3,<7.5",
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "ruff>=0.8",
+    "tox>=4.23",
+    "tox-uv>=1.16",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wagtail_markdown_agents"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src", "tests", "sandbox", "scripts", "docs", "tox.ini",
+    "README.md", "INSTALL.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests", "sandbox"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ", "C4", "SIM"]
+ignore = ["SIM108"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["wagtail_markdown_agents"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "sandbox.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+django_find_project = false
+markers = [
+    "export_lifecycle: exercise real automatic CMS export receivers",
+    "stats_volume: deterministic volume checks and observational stats benchmarks",
+]

@@ -1,0 +1,71 @@
+name: CI
+
+# Manual only: the hosted-minutes allowance is small, so validation happens
+# locally (tox + ruff, see CONTRIBUTING.md). Run this on demand with
+#   gh workflow run CI --ref <branch>
+# after enabling it once with `gh workflow enable CI`.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # An explicit manual run validates the selected revision in full.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --group dev ruff check .
+      - run: uv run --group dev ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.11"
+            tox-env: py311-dj42-wagtail63
+          - python: "3.12"
+            tox-env: py312-dj52-wagtail7
+          - python: "3.13"
+            tox-env: py313-dj52-wagtail70
+          - python: "3.13"
+            tox-env: py313-dj52-wagtail7
+          - python: "3.13"
+            tox-env: py313-dj60-wagtail74
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv tool install tox --with tox-uv
+      - run: tox -e ${{ matrix.tox-env }}
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: agentmd-test
+          POSTGRES_DB: agentmd_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - run: uv run --with 'psycopg[binary]>=3.1' pytest --ds=sandbox.postgres_settings

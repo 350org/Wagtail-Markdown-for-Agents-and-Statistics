@@ -1,0 +1,242 @@
+.agentmd-report {
+    --agentmd-blue: #0F81E8;
+    --agentmd-white: #FFFFFF;
+    --agentmd-light-grey: #E6F0FA;
+    --agentmd-dark-grey: #17292E;
+    --agentmd-orange: #FFA902;
+    --agentmd-teal: #40D7D4;
+    --agentmd-red: #FF6112;
+    padding-block: 2rem;
+}
+
+.agentmd-report h1 {
+    margin-top: 0;
+}
+
+.agentmd-report h2 {
+    margin-top: 2rem;
+}
+
+.agentmd-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem 1.5rem;
+    margin-top: 2rem;
+}
+
+.agentmd-filters .w-field__wrapper {
+    margin: 0;
+    min-width: 0;
+}
+
+.agentmd-filters select, .agentmd-filters input {
+    width: 100%;
+    max-width: 100%;
+}
+
+.agentmd-filter-actions {
+    display: flex;
+    align-items: end;
+    gap: .5rem;
+    padding-bottom: .1rem;
+}
+
+.agentmd-range {
+    font-size: .875rem;
+    font-weight: normal;
+    display: inline-block;
+}
+
+.agentmd-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+}
+
+.agentmd-tile {
+    padding: 1.25rem;
+    border: 1px solid var(--w-color-border-furniture);
+    border-radius: .25rem;
+    background: var(--w-color-surface-page);
+    border-inline-start: 4px solid var(--agentmd-series);
+}
+
+.agentmd-tile h3 {
+    margin: 0;
+    font-size: .875rem;
+}
+
+.agentmd-tile p {
+    margin-bottom: 0;
+}
+
+.agentmd-tile .agentmd-count {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-block: .75rem;
+}
+
+.agentmd-sparkline {
+    width: 100%;
+    height: 36px;
+}
+
+.agentmd-report polyline {
+    fill: none;
+    stroke: var(--agentmd-series, var(--w-color-text-context));
+    stroke-width: 2.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.agentmd-total {
+    --agentmd-series: var(--agentmd-blue);
+}
+
+.agentmd-on-demand {
+    --agentmd-series: var(--agentmd-orange);
+}
+
+.agentmd-search {
+    --agentmd-series: var(--agentmd-blue);
+}
+
+.agentmd-training {
+    --agentmd-series: var(--agentmd-teal);
+}
+
+.agentmd-unknown {
+    --agentmd-series: var(--agentmd-red);
+}
+
+.agentmd-chart {
+    background: var(--agentmd-white);
+    color: var(--agentmd-dark-grey);
+    border: 1px solid var(--agentmd-light-grey);
+    border-radius: .25rem;
+    padding: 1.5rem;
+    margin-block: 1.5rem;
+}
+
+.agentmd-chart h2 {
+    margin-top: 0;
+    color: var(--agentmd-dark-grey);
+}
+
+.agentmd-chart .listing {
+    color: var(--agentmd-dark-grey);
+}
+
+.agentmd-chart .listing th {
+    color: var(--agentmd-dark-grey);
+}
+
+.agentmd-chart .listing tbody tr:hover {
+    background: var(--agentmd-light-grey);
+}
+
+.agentmd-plot rect {
+    fill: var(--agentmd-series);
+}
+
+.agentmd-grid {
+    fill: none;
+    stroke: var(--agentmd-light-grey);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.agentmd-legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0;
+}
+
+.agentmd-legend span {
+    display: inline-block;
+    width: .75rem;
+    height: .75rem;
+    background: var(--agentmd-series);
+    margin-inline-end: .5rem;
+    vertical-align: middle;
+}
+
+.agentmd-plot {
+    position: relative;
+    margin: 2rem 0 0 3rem;
+    border-inline-start: 1px solid var(--w-color-border-furniture);
+    border-bottom: 1px solid var(--w-color-border-furniture);
+}
+
+.agentmd-plot svg {
+    display: block;
+    width: 100%;
+    height: 240px;
+    overflow: visible;
+}
+
+.agentmd-axis-max, .agentmd-axis-mid, .agentmd-axis-zero {
+    position: absolute;
+    inset-inline-end: calc(100% + .5rem);
+    font-size: .75rem;
+}
+
+.agentmd-axis-max {
+    top: 0;
+}
+
+.agentmd-axis-mid {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.agentmd-axis-zero {
+    bottom: 0;
+}
+
+.agentmd-axis-dates {
+    display: flex;
+    justify-content: space-between;
+    margin: .5rem 0 1rem 3rem;
+    font-size: .75rem;
+}
+
+.agentmd-chart details {
+    margin-block: 1rem 2rem;
+}
+
+.agentmd-chart summary {
+    cursor: pointer;
+    color: var(--agentmd-dark-grey);
+    text-decoration: underline;
+}
+
+.agentmd-table-scroll {
+    overflow-x: auto;
+}
+
+.agentmd-table-scroll .listing {
+    margin-bottom: 1rem;
+}
+
+.agentmd-table-scroll th, .agentmd-table-scroll td {
+    overflow-wrap: anywhere;
+}
+
+.agentmd-limits {
+    border-top: 1px solid var(--w-color-border-furniture);
+    margin-top: 2rem;
+}
+
+.agentmd-report .help-info {
+    background: var(--agentmd-light-grey);
+    color: var(--agentmd-dark-grey);
+}
+
+.agentmd-report .help-block h2 {
+    color: inherit;
+    margin-top: 0;
+}

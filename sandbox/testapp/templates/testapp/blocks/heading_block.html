@@ -1,0 +1,2 @@
+{# Mirrors bakerydemo's HeadingBlock template: size is h2-h4, blank means h2. #}
+{% with tag=value.size|default:"h2" %}<{{ tag }}>{{ value.heading_text }}</{{ tag }}>{% endwith %}

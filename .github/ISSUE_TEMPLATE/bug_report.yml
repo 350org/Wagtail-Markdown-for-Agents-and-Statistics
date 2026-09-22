@@ -1,0 +1,20 @@
+name: Bug report
+description: Something is broken
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include the request/command, expected vs actual behaviour.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Versions
+      placeholder: "wagtail-markdown-for-agents 0.1.0, Wagtail 7.x, Django 5.2, Python 3.12"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Relevant settings
+      description: Your WAGTAIL_MARKDOWN_AGENTS dict and middleware order, redacted as needed.
