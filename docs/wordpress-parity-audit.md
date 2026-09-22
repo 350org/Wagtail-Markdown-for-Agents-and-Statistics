@@ -4,6 +4,12 @@ Audited 7 September 2026. This records behavioural requirements, not translated 
 Read alongside [design.md](design.md), the architecture authority, and the
 [licensing and attribution policy](../CONTRIBUTING.md#licensing-and-attribution).
 
+This is a historical audit: its pre-audit coverage and original verification counts
+are not current implementation status. Use the [current matrix](wordpress-parity-status.md)
+for implemented/planned scope and the [drift ledger](wordpress-drift-ledger.md) for
+later WordPress changes and intentional differences. Keep this pinned reference
+when advancing the release review revision.
+
 **Product parity is not the v0.1 scope.** v0.1 does not cover the complete WordPress
 feature set. In particular, OKF bundles and ARD catalogs are out of scope for v0.1,
 alongside multi-site, runtime-editable agent lists and taxonomy exports. Roadmap gaps

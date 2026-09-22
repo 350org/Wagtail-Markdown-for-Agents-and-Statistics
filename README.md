@@ -76,6 +76,7 @@ verification, and the cache configuration a live site needs.
 | Add an exclusion checkbox to a page model's editor | [Editor exclusion panel](docs/editor-exclusion-panel.md) |
 | Change where and how export files are stored | [Managed export storage](docs/storage-writer.md) |
 | Work on the package | [Development guide](docs/development.md), [CONTRIBUTING.md](CONTRIBUTING.md), [architecture](docs/design.md), [acceptance scenarios](docs/acceptance/README.md), [WordPress parity audit](docs/wordpress-parity-audit.md) |
+| Track WordPress parity and prepare a release | [Current implementation matrix](docs/wordpress-parity-status.md), [drift ledger](docs/wordpress-drift-ledger.md), [release checklist](docs/release-checklist.md) |
 
 ## Excluding a page
 
