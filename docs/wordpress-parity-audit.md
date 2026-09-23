@@ -327,7 +327,8 @@ update (22 September 2026): all other clients now share the empty unknown bucket
 the original first-product-token rule is superseded to bound row growth and avoid
 persisting personal data. Daily buckets use UTC, matching WP. First matching category wins;
 unexpected categories display as unknown. Source thresholds are daily through a
-92-day span, monthly through 1,827 days, yearly thereafter; default view is 30 days.
+92-day span, monthly through 1,827 days, yearly thereafter. The original default
+was 30 days; dashboard issue #20 changes it to 7 days.
 Trend tiles use correlation over time buckets, not a percentage-change claim; neutral
 for flat/insufficient series. Preserve pagination, filters, total plus four intent
 tiles, empty states and the on-demand estimate label.

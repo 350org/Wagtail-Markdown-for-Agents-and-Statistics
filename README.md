@@ -118,8 +118,8 @@ uv run ruff check .                       # lint
 ```
 
 The [development guide](docs/development.md) covers the local sandbox site, trying
-Markdown serving and the agent access report by hand, and manual testing against
-Wagtail's bakerydemo.
+Markdown serving and the agent access report by hand, and [setting up or refreshing
+Wagtail's bakerydemo](docs/development.md#manual-testing-with-bakerydemo).
 
 ## Contributing
 

@@ -45,7 +45,7 @@ matrix IDs below provide stable local tracking until that mapping is completed.
 | P13 Background generation jobs | **Planned, v0.2:** only a synchronous enqueue seam exists. Durable bulk-job progress, locks, heartbeat, recovery, bounded errors and debouncing are not implemented. | [Current seam](../src/wagtail_markdown_agents/tasks.py); audit A05, legacy #40. |
 | P14 Runtime settings and rebuild notices | **Partial:** deployment settings and system checks implemented. Runtime editing, settings UI and configuration-staleness/regeneration workflow remain **v0.2**. | [Settings](../src/wagtail_markdown_agents/settings.py), [checks](system-checks.md); audit A03/A06, legacy #38/#75. |
 | P15 Daily access counters | **Implemented:** atomic UTC counters for successful page Markdown GET selection, bounded known/unknown labels, retained deleted-page history and explicit pruning. | [Contract](agent-access-stats.md), [tests](../tests/test_stats.py), [anonymisation tests](../tests/test_stats_anonymization.py); D01–D04. |
-| P16 Statistics report | **Implemented:** combined date/page/agent/method/intent filters, pagination, intent chart, six tiles and correlation trends. Shared category colours drive card borders, chart, legend and sparklines. | [Report tests](../tests/test_report.py), [CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css); D03/D08 and U01 in the ledger. |
+| P16 Statistics report | **Implemented:** 7-day default, combined date/page/agent/operator/method/intent filters, headline leaders, operator cards, pagination, purpose chart, six trend tiles and daily records. Shared category colours drive purpose tiles, chart and legend. | [Report tests](../tests/test_report.py), [CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css); D03/D08 and U01/U07 in the ledger. |
 | P17 ZIP/OKF bundle | **Planned, v1.0:** no bundle builder, download or bundle lifecycle implementation. An `okf_version` frontmatter value does not establish bundle support. | [Design](design.md#bundle--ard--okf-v10); audit A10, legacy #42/#43/#46. |
 | P18 ARD catalog | **Planned, v1.0:** no catalog generation, catalog hook or `.well-known` route. | [Design](design.md#bundle--ard--okf-v10); legacy #44. |
 | P19 Public extension surface | **Partial:** core policy/path, rendering/frontmatter, response/discovery, index/category hooks and generation/deletion/link signals exist. Full 22-point equivalence requires the **v1.0** audit; taxonomy, catalog and job-budget counterparts depend on their features. | [Historical hook inventory](wordpress-parity-audit.md#public-extension-surface), [signals](../src/wagtail_markdown_agents/signals.py); audit A08, legacy #47. |
@@ -58,11 +58,10 @@ matrix IDs below provide stable local tracking until that mapping is completed.
 ## Dashboard changes must preserve the reporting contract
 
 Cloudflare is a presentation reference. WordPress remains the reviewed behavioural
-reference, subject to the documented differences. Operator cards, a leading-page
-summary and other proposed additions are **not implemented** by this review.
-[Proposal #20](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues/20)
-tracks the four-section layout and WordPress review before implementation; no
-release milestone is assigned.
+reference, subject to the documented differences. The Wagtail dashboard implements
+the [issue #20](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues/20)
+summary, operator cards and 7-day default based on the recorded WordPress #29
+outcome. No release milestone is assigned.
 
 For any dashboard change, preserve:
 
@@ -72,13 +71,19 @@ For any dashboard change, preserve:
   failure rate, byte consumption, completed delivery or total edge traffic.
 - Existing intent chart, detailed records, trend semantics and the on-demand estimate
   label. Mixed and unknown counts must reconcile with the total.
-- A single category mapping for chart/legend/card/sparkline colours, with text labels.
+- A single category mapping for chart, legend and purpose-tile colours, with text labels.
   The 350.org palette need not match the WordPress palette.
 
 [Report tests](../tests/test_report.py) cover combined-filter consistency,
 whole-report totals across pagination, shared classification snapshots and mixed
 purposes. Visual changes also require a rendered check of category colours, labels
 and responsive layout; those Python tests are not a visual comparison suite.
+
+On 23 September 2026 the dashboard was rendered in the local Wagtail sandbox at
+desktop and 390px widths. The narrow view had no page-level horizontal overflow;
+selecting an OpenAI card changed the headline, purpose chart, agent choices and
+records to the same filtered set. This was a local visual check, not a production
+deployment check.
 
 ## Verification of this documentation review
 
