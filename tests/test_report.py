@@ -183,6 +183,33 @@ def test_deleted_pages_unknown_agents_and_counting_limits(report):
     assert response.context["summary"]["tiles"][0]["count"] == 3
 
 
+def test_page_filter_is_a_searchable_datalist(report):
+    root = Page.get_first_root_node()
+    about = root.add_child(instance=Page(title="About us", slug="about-us"))
+    news = root.add_child(instance=Page(title="News", slug="news"))
+    counter(page_id=about.pk, count=5)
+    counter(page_id=news.pk, count=7)
+    counter(page_id=999, count=11)
+    html = report().content.decode()
+    assert 'list="id_page_id-options"' in html and '<datalist id="id_page_id-options">' in html
+    for label in [f"About us (#{about.pk})", f"News (#{news.pk})", "Deleted page #999"]:
+        assert f'<option value="{label}">' in html
+    assert '<select name="page_id"' not in html
+
+    for value in [str(about.pk), f"#{about.pk}", f"About us (#{about.pk})", "about US"]:
+        response = report(page_id=value)
+        assert response.context["summary"]["tiles"][0]["count"] == 5, value
+        # Bare IDs from leader links show the readable label in the box.
+        assert f'value="About us (#{about.pk})"' in response.content.decode()
+    assert report(page_id="Deleted page #999").context["summary"]["tiles"][0]["count"] == 11
+    assert report(page_id="").context["summary"]["tiles"][0]["count"] == 23
+
+    for value in ["Missing", "12345678", "About", "(#999) About"]:
+        response = report(page_id=value)
+        assert response.context["report_form"].errors["page_id"], value
+        assert response.context["summary"] is None
+
+
 def test_pagination_preserves_filters_and_whole_report_totals(report):
     AgentAccess.objects.bulk_create(
         [

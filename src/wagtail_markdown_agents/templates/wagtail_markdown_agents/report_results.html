@@ -26,19 +26,7 @@
             {% endif %}
         </section>
     </div>
-    <h2>{% trans "Operators" %}</h2>
-    <p>{% trans "Select an operator to filter the whole report. Unattributed means agents whose operator we haven't identified." %}</p>
-    {% if report_form.cleaned_data.operator %}<p><a href="{{ summary.clear_operator_url }}">{% trans "Clear operator filter" %}</a></p>{% endif %}
-    <div class="agentmd-operators">
-        {% for card in summary.operator_cards %}
-            <a class="agentmd-operator{% if card.active %} agentmd-operator-active{% endif %}" href="{{ card.url }}" aria-label="{% if card.active %}{% trans 'Clear filter for' %}{% else %}{% trans 'Filter by' %}{% endif %} {{ card.name }}: {{ card.count|intcomma }} {% trans 'requests' %}"{% if card.active %} aria-current="true"{% endif %}>
-                <strong>{{ card.name }}</strong>{% if card.active %}<span class="agentmd-filtered">{% trans "Filtered" %}</span>{% endif %}
-                <span class="agentmd-operator-count">{{ card.count|intcomma }} {% trans "requests" %}</span>
-                <span class="agentmd-operator-agents">{% for agent, count in card.agents %}{{ agent|default:_("unknown") }}: {{ count|intcomma }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if card.more %} · +{{ card.more }} {% trans "more agents" %}{% endif %}</span>
-            </a>
-        {% endfor %}
-    </div>
-    <h2>{% trans "Purpose" %}</h2>
+    <h2>{% trans "Purposes" %}</h2>
     {% if object_list %}
         <section class="agentmd-chart" aria-labelledby="agentmd-chart-title">
             <h2 id="agentmd-chart-title">{% trans "Requests by purpose" %}</h2>
@@ -82,6 +70,18 @@
         {% endfor %}
     </div>
     <p class="help">{% trans "Trends show correlation (r) between time buckets and request counts, not percentage change. Flat or insufficient series are neutral. Missing buckets count as zero; the first and last buckets may cover partial periods." %}</p>
+    <h2>{% trans "Operators" %}</h2>
+    <p>{% trans "Select an operator to filter the whole report. Unattributed means agents whose operator we haven't identified." %}</p>
+    {% if report_form.cleaned_data.operator %}<p><a href="{{ summary.clear_operator_url }}">{% trans "Clear operator filter" %}</a></p>{% endif %}
+    <div class="agentmd-operators">
+        {% for card in summary.operator_cards %}
+            <a class="agentmd-operator{% if card.active %} agentmd-operator-active{% endif %}" href="{{ card.url }}" aria-label="{% if card.active %}{% trans 'Clear filter for' %}{% else %}{% trans 'Filter by' %}{% endif %} {{ card.name }}: {{ card.count|intcomma }} {% trans 'requests' %}"{% if card.active %} aria-current="true"{% endif %}>
+                <strong>{{ card.name }}</strong>{% if card.active %}<span class="agentmd-filtered">{% trans "Filtered" %}</span>{% endif %}
+                <span class="agentmd-operator-count">{{ card.count|intcomma }} {% trans "requests" %}</span>
+                <span class="agentmd-operator-agents">{% for agent, count in card.agents %}{{ agent|default:_("unknown") }}: {{ count|intcomma }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if card.more %} · +{{ card.more }} {% trans "more agents" %}{% endif %}</span>
+            </a>
+        {% endfor %}
+    </div>
 {% endif %}
 {% if object_list %}
     <h2>{% trans "Daily records" %}</h2>

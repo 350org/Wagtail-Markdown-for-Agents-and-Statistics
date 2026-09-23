@@ -27,6 +27,10 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- The agent access report's page filter is now a text box with datalist
+  suggestions instead of a dropdown listing every page. It accepts a suggested
+  label, a page ID or an exact title; `page_id` links are unchanged. The report
+  now shows Purposes before Operators.
 - Replace the inherited active WordPress agent list with independent registry
   `2026-09-22.1`: 23 source-backed identities, 12 automatic Markdown identities,
   product-token matching, review metadata and separate recognition/serving policy.
