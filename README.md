@@ -71,6 +71,8 @@ verification, and the cache configuration a live site needs.
 | Read the agent access report and understand its limits | [Agent access statistics](docs/agent-access-stats.md), [benchmarks](docs/agent-stats-benchmarks.md) |
 | Plan simulated traffic and reconcile deployment evidence | [Agent traffic simulator](docs/agent-simulator.md) |
 | Review measured cache behaviour and counter reconciliation | [Bounded live verification, 21 September 2026](docs/verification/2026-09-21-bounded-live-run.md) |
+| Review independently proven cold-cache behaviour for one URL | [Bounded cold-cache verification, 23 September 2026](docs/verification/2026-09-23-cold-cache-run.md) |
+| Track the multi-day check and deferred vendor verification | [Remaining verification review, 23 September 2026](docs/verification/2026-09-23-remaining-checks-review.md) |
 | Fix a `manage.py check` message | [Configuration checks](docs/system-checks.md) |
 | Control how a page type or block becomes Markdown | [Page rendering](docs/page-rendering.md), [internal links](docs/internal-links.md) |
 | Add an exclusion checkbox to a page model's editor | [Editor exclusion panel](docs/editor-exclusion-panel.md) |

@@ -314,6 +314,10 @@ origin row; these provide the counter dimensions for its unique test URL.
 
 ## Genuine vendor verification (separate procedure)
 
+The [23 September remaining-checks record](verification/2026-09-23-remaining-checks-review.md)
+tracks the reduced three-sample observation across 48 hours. Its first sample
+passed; the other two are scheduled. The owner deferred paid vendor verification.
+
 The simulator never claims that vendor-shaped traffic came from a vendor. Production
 examples were checked on **21 September 2026** against [OpenAI's crawler
 reference](https://developers.openai.com/api/docs/bots) and [Anthropic's bot

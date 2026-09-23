@@ -9,8 +9,13 @@ Verification update, 23 September 2026: the
 [bounded deployed fixture run](verification/2026-09-23-bounded-deployed-run.md)
 passed all twelve fixture GET/HEAD checks and matched 472 expected/observed
 counter increments at zero tolerance. The 21 September gaps described below are
-historical; cold-cache, multi-day and genuine vendor-origin evidence remain open,
-as do D6/D9/D12 and client presentation decisions.
+historical. A separate [bounded cold-cache run](verification/2026-09-23-cold-cache-run.md)
+established the selected URL's cold state at the observed LHR edge. Multi-day
+and genuine vendor-origin evidence remain open, as do D6/D9/D12 and client
+presentation decisions. The [remaining-checks review](verification/2026-09-23-remaining-checks-review.md)
+records the started 48-hour observation: one sample passed and two are scheduled.
+Paid vendor verification is deferred by the owner; neither remaining check is
+claimed complete.
 
 **Verdict: conditionally ready for repository handover as a development preview;
 not fully accepted v0.1 delivery.** The accompanying fixes should be reviewed and
@@ -136,12 +141,15 @@ The [existing live report](verification/2026-09-21-bounded-live-run.md) records
 zero assertion/transport failures, and exactly 603 expected/observed counter
 increments. The reconciler still returned **inconclusive (exit 2)**.
 
-Remaining evidence at the 21 September review was explicit. Item 1 was completed
-by the 23 September bounded run; items 2–4 remain open:
+Remaining evidence at the 21 September review was explicit. Items 1 and 2 now
+have bounded deployed evidence; items 3 and 4 remain open:
 
 1. Six fixtures: fallback, excluded pages, previews, missing exports, private
    exports and navigation-only indexes — completed 23 September 2026.
-2. Independently proven cold-cache state; warm browser controls alone do not prove it.
+2. Independently proven cold-cache state — established for one selected ordinary
+   URL at the observed LHR edge by [two exact-URL purges and first-request
+   evidence](verification/2026-09-23-cold-cache-run.md). Complete edge-wide
+   no-refill evidence was unavailable.
 3. Multi-day behaviour and reconciliation, within the agreed maintenance scope.
 4. Genuine vendor-origin fetches; simulated User-Agent strings cannot authenticate
    OpenAI/Anthropic traffic.
