@@ -6,6 +6,7 @@
     --agentmd-orange: #FFA902;
     --agentmd-teal: #40D7D4;
     --agentmd-red: #FF6112;
+    --agentmd-mixed: #80959C;
     padding-block: 2rem;
 }
 
@@ -27,6 +28,11 @@
 .agentmd-filters .w-field__wrapper {
     margin: 0;
     min-width: 0;
+}
+
+.agentmd-filters .w-field {
+    display: block;
+    width: 100%;
 }
 
 .agentmd-filters select, .agentmd-filters input {
@@ -53,6 +59,38 @@
     gap: 1rem;
 }
 
+.agentmd-filters + .help,
+.agentmd-tiles + .help {
+    margin-block-start: .5rem;
+}
+
+.agentmd-headlines, .agentmd-operators {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 1rem;
+}
+
+.agentmd-headline, .agentmd-operator {
+    display: block;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--w-color-border-furniture);
+    border-radius: .25rem;
+    background: var(--w-color-surface-page);
+    overflow-wrap: anywhere;
+}
+
+.agentmd-headline h3 { margin-top: 0; font-size: .875rem; }
+.agentmd-headline .agentmd-count { font-size: 1.6rem; font-weight: bold; margin: .5rem 0; }
+.agentmd-headline p:last-child { margin-bottom: 0; }
+.agentmd-operator { color: var(--w-color-text-label); text-decoration: none; }
+.agentmd-operator:hover, .agentmd-operator:focus-visible { border-color: var(--w-color-text-link-default); text-decoration: none; }
+.agentmd-operator-active { border-width: 2px; }
+.agentmd-operator-count, .agentmd-operator-agents { display: block; margin-top: .5rem; }
+.agentmd-operator-count { font-size: 1.25rem; font-weight: bold; }
+.agentmd-operator-agents { line-height: 1.5; }
+.agentmd-filtered { float: right; font-size: .75rem; font-weight: bold; }
+
 .agentmd-tile {
     padding: 1.25rem;
     border: 1px solid var(--w-color-border-furniture);
@@ -76,20 +114,6 @@
     margin-block: .75rem;
 }
 
-.agentmd-sparkline {
-    width: 100%;
-    height: 36px;
-}
-
-.agentmd-report polyline {
-    fill: none;
-    stroke: var(--agentmd-series, var(--w-color-text-context));
-    stroke-width: 2.5;
-    vector-effect: non-scaling-stroke;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
 .agentmd-total {
     --agentmd-series: var(--agentmd-blue);
 }
@@ -107,11 +131,11 @@
 }
 
 .agentmd-unknown {
-    --agentmd-series: var(--agentmd-red);
+    --agentmd-series: var(--agentmd-mixed);
 }
 
 .agentmd-mixed {
-    --agentmd-series: var(--agentmd-dark-grey);
+    --agentmd-series: var(--agentmd-red);
 }
 
 .agentmd-chart {
