@@ -124,10 +124,10 @@ print("Sample traffic added. Refresh Reports → Agent access.")
 PY
 ```
 
-Refresh the report. With an initially empty statistics table, the last 30 days
-show **2,480 requests across 120 daily records** (plus any requests from the curl
+Refresh the report. With an initially empty statistics table, the default last 7 days
+show **659 requests across 28 daily records** (plus any requests from the curl
 examples above). Try combining the Unknown intent,
-`export-url` method and deleted-page filters; this gives **120 requests** with a
+`export-url` method and deleted-page filters; this gives **28 requests** with a
 neutral trend. Use Last 365 days for monthly buckets, or Custom dates spanning
 more than 1,827 days for yearly buckets. **View time bucket counts** exposes the
 chart's exact values, and pagination keeps the selected filters.
@@ -141,12 +141,31 @@ overrides and counting limits. Stop the local server with Ctrl-C.
 
 ## Manual testing with bakerydemo
 
-For realistic StreamField content, install the package into Wagtail's official demo site:
+For realistic StreamField content, install the package into Wagtail's official demo site.
+Run these commands from the **package repository root** (the directory containing
+`scripts/`), not from `bakerydemo/bakerydemo`:
 
 ```bash
 ./scripts/bakerydemo-setup.sh   # clones ../bakerydemo, installs this package editable
 cd ../bakerydemo && .venv/bin/python manage.py runserver
 ```
+
+If bakerydemo is already set up, refresh its editable installation after moving or
+renaming this checkout. From the **package repository root**:
+
+```bash
+uv pip install --python ../bakerydemo/.venv/bin/python -e .
+cd ../bakerydemo
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py runserver
+```
+
+The path after `--python` is relative to your current directory. The final `.` is
+required: it tells `-e` to install this checkout. If your prompt shows
+`bakerydemo/bakerydemo`, return to this repository before running the install.
+Stop a running demo server before migrating, then restart it. Migration `0006`
+merges historical unrecognised agent labels into the empty unknown label while
+preserving request counts.
 
 The script pins bakerydemo to its last Wagtail 7.4 LTS commit (newer bakerydemo
 requires Wagtail 8, which this package does not yet support). It adds the middleware

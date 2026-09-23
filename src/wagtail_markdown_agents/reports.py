@@ -1,17 +1,20 @@
 """Read-only Wagtail reporting over the daily access counters."""
 
 import math
+from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, timedelta
 
 from django import forms
 from django.db.models import F, Sum
 from django.db.models.functions import TruncMonth, TruncYear
 from django.utils.functional import cached_property
+from django.utils.http import urlencode
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.views.reports import ReportView
 from wagtail.models import Page
 from wagtail.permission_policies import ModelPermissionPolicy
 
+from .data.operators import OPERATOR_NAMES, operator_for_agent
 from .models import AgentAccess
 from .stats import ACCESS_METHODS, INTENT_CATEGORIES, categorise_agent, get_agent_categories
 
@@ -46,6 +49,7 @@ class ReportFilterForm(forms.Form):
     end = forms.DateField(label=_("To (UTC)"), widget=forms.DateInput(attrs={"type": "date"}))
     page_id = forms.ChoiceField(label=_("Page"), required=False)
     agent = forms.ChoiceField(label=_("Agent"), required=False)
+    operator = forms.ChoiceField(label=_("Operator"), required=False)
     method = forms.ChoiceField(
         label=_("Access method"),
         required=False,
@@ -57,13 +61,24 @@ class ReportFilterForm(forms.Form):
 
     def __init__(self, data, *, today, pages, agents):
         data = data.copy()
-        preset = data.get("preset") or ("custom" if data.get("start") or data.get("end") else "30")
+        preset = data.get("preset") or ("custom" if data.get("start") or data.get("end") else "7")
         data["preset"] = preset
         if preset in {"7", "30", "90", "365"}:
             data["start"] = (today - timedelta(days=int(preset) - 1)).isoformat()
             data["end"] = today.isoformat()
+        operator = data.get("operator")
+        if operator in {*OPERATOR_NAMES, "unattributed"}:
+            agents = [agent for agent in agents if operator_for_agent(agent) == operator]
+            selected_agent = data.get("agent", "")
+            if selected_agent.startswith("label:") and selected_agent[6:] not in agents:
+                data["agent"] = ""
         super().__init__(data)
         self.fields["page_id"].choices = [("", _("All pages")), *pages]
+        self.fields["operator"].choices = [
+            ("", _("All operators")),
+            *((key, name) for key, name in OPERATOR_NAMES.items()),
+            ("unattributed", _("Unattributed")),
+        ]
         # Prefix every value so the stored empty label has its own selectable value.
         self.fields["agent"].choices = [("", _("All agents"))] + [
             (f"label:{agent}", agent or _("unknown")) for agent in agents
@@ -102,16 +117,6 @@ def correlation(values):
     return max(-1.0, min(1.0, numerator / denominator))
 
 
-def points(values, maximum, *, width=900, height=220):
-    """Numeric SVG coordinates only; no user content enters SVG attributes."""
-    if len(values) == 1:
-        values = values * 2
-    return " ".join(
-        f"{i * width / max(1, len(values) - 1):.2f},{height - value * height / max(1, maximum):.2f}"
-        for i, value in enumerate(values)
-    )
-
-
 def summarise(queryset, start, end, intent_for_agent):
     grain, dates = bucket_dates(start, end)
     counts = {day: dict.fromkeys(INTENT_CATEGORIES, 0) for day in dates}
@@ -127,8 +132,10 @@ def summarise(queryset, start, end, intent_for_agent):
         .values("bucket", "agent")
         .annotate(total=Sum("count"))
     )
+    agents = Counter()
     for row in aggregates:
         counts[row["bucket"]][intent_for_agent(row["agent"])] += row["total"]
+        agents[row["agent"]] += row["total"]
     series = [[counts[day][intent] for day in dates] for intent in INTENT_CATEGORIES]
     total = [sum(counts[day].values()) for day in dates]
     maximum = max(2, math.ceil(max(total) / 2) * 2)
@@ -170,7 +177,6 @@ def summarise(queryset, start, end, intent_for_agent):
                 "count": sum(values),
                 "trend": trend,
                 "correlation": None if r is None else f"{r:.2f}",
-                "points": points(values, max(values), width=160, height=32),
             }
         )
     return {
@@ -183,6 +189,25 @@ def summarise(queryset, start, end, intent_for_agent):
         "bars": bars,
         "series": [{"key": key, "label": INTENT_LABELS[key]} for key in INTENT_CATEGORIES],
         "buckets": [{"date": day, "counts": list(counts[day].values())} for day in dates],
+        "agents": agents,
+    }
+
+
+def leader(counts, *, empty, label_for=None, eligible=lambda key: True):
+    """Describe a leader and its ties without discarding tied counts."""
+    candidates = {key: value for key, value in counts.items() if eligible(key) and value}
+    if not candidates:
+        return {"empty": empty}
+    maximum = max(candidates.values())
+    winners = [key for key, value in candidates.items() if value == maximum]
+    # Labels, rather than database IDs, determine display order for page ties.
+    winners.sort(key=lambda key: str(label_for(key) if label_for else key).casefold())
+    return {
+        "count": maximum,
+        "tied": len(winners) > 1,
+        "winner_count": len(winners),
+        "names": [(label_for(key) if label_for else key, key) for key in winners[:3]],
+        "more": max(0, len(winners) - 3),
     }
 
 
@@ -241,6 +266,21 @@ class AgentAccessReportView(ReportView):
             self.agent_intents[agent] = categorise_agent(agent, categories=self.category_map)
         return self.agent_intents[agent]
 
+    def filter_url(self, **changes):
+        params = self.request.GET.copy()
+        params.pop("p", None)
+        # A conflicting agent may have been dropped when the operator was selected.
+        # Do not resurrect that stale query value in card and clear-filter links.
+        if self.report_form.is_valid() and not self.report_form.cleaned_data["agent"]:
+            params.pop("agent", None)
+        for key, value in changes.items():
+            if value:
+                params[key] = value
+            else:
+                params.pop(key, None)
+        query = urlencode(params, doseq=True)
+        return f"{self.request.path}?{query}" if query else self.request.path
+
     def get_queryset(self):
         queryset = AgentAccess.objects.all()
         if not self.report_form.is_valid():
@@ -251,6 +291,14 @@ class AgentAccessReportView(ReportView):
             queryset = queryset.filter(page_id=int(data["page_id"]))
         if data["agent"]:
             queryset = queryset.filter(agent=data["agent"][len("label:") :])
+        if data["operator"]:
+            queryset = queryset.filter(
+                agent__in=[
+                    agent
+                    for agent in self.dimensions[2]
+                    if operator_for_agent(agent) == data["operator"]
+                ]
+            )
         if data["method"]:
             queryset = queryset.filter(access_method=data["method"])
         if data["intent"]:
@@ -276,6 +324,82 @@ class AgentAccessReportView(ReportView):
         if self.report_form.is_valid():
             data = self.report_form.cleaned_data
             summary = summarise(self.object_list, data["start"], data["end"], self.intent_for_agent)
+            agent_counts = summary.pop("agents")
+            operator_counts = Counter()
+            operator_agents = defaultdict(Counter)
+            for agent, count in agent_counts.items():
+                key = operator_for_agent(agent)
+                operator_counts[key] += count
+                operator_agents[key][agent] += count
+            cards = []
+            keys = sorted(
+                (key for key in operator_counts if key != "unattributed"),
+                key=lambda key: (-operator_counts[key], OPERATOR_NAMES[key].casefold()),
+            )
+            if operator_counts["unattributed"]:
+                keys.append("unattributed")
+            for key in keys:
+                agents = sorted(
+                    operator_agents[key].items(), key=lambda item: (-item[1], item[0].casefold())
+                )
+                active = data["operator"] == key
+                cards.append(
+                    {
+                        "key": key,
+                        "name": OPERATOR_NAMES.get(key, _("Unattributed")),
+                        "count": operator_counts[key],
+                        "agents": agents[:5],
+                        "more": max(0, len(agents) - 5),
+                        "active": active,
+                        "url": self.filter_url(
+                            operator="" if active else key,
+                            agent=""
+                            if not active
+                            and data["agent"]
+                            and operator_for_agent(data["agent"][6:]) != key
+                            else data["agent"],
+                        ),
+                    }
+                )
+            summary["operator_cards"] = cards
+            summary["agent_leader"] = leader(
+                agent_counts,
+                empty=_("No identified agents in this range"),
+                eligible=lambda agent: (
+                    bool(agent.strip()) and agent.casefold() not in ACCESS_METHODS
+                ),
+            )
+            summary["operator_leader"] = leader(
+                operator_counts,
+                empty=_("No attributed operators in this range"),
+                label_for=lambda key: OPERATOR_NAMES[key],
+                eligible=lambda key: key != "unattributed",
+            )
+            page_rows = list(
+                self.object_list.order_by()
+                .values("page_id")
+                .annotate(total=Sum("count"))
+                .order_by("-total", "page_id")[:50]
+            )
+            page_counts = {row["page_id"]: row["total"] for row in page_rows}
+            summary["page_leader"] = leader(
+                page_counts,
+                empty=_("No pages requested in this range"),
+                label_for=lambda pk: page_label(pk, self.dimensions[1]),
+            )
+            if len(page_rows) == 50 and page_rows[-1]["total"] == page_rows[0]["total"]:
+                summary["page_leader"]["truncated"] = True
+            for name, key in summary["page_leader"].get("names", []):
+                summary.setdefault("page_links", []).append((name, self.filter_url(page_id=key)))
+            for name, key in summary["agent_leader"].get("names", []):
+                summary.setdefault("agent_links", []).append(
+                    (name, self.filter_url(agent=f"label:{key}"))
+                )
+            for name, key in summary["operator_leader"].get("names", []):
+                summary.setdefault("operator_links", []).append(
+                    (name, self.filter_url(operator=key))
+                )
+            summary["clear_operator_url"] = self.filter_url(operator="")
         context.update(
             report_form=self.report_form, summary=summary, has_history=bool(self.dimensions[0])
         )

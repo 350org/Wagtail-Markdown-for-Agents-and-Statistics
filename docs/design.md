@@ -645,8 +645,9 @@ remain for retired labels. Purpose corrections are explicit read-time changes,
 not rewrites of stored counters. Robots.txt-only controls are not HTTP identities.
 Generate CDN bypass rules from the serving subset. **Implemented in #35:**
 the native Wagtail report combines page/agent/method/intent/date filters, 50-row
-pagination, six tiles and accessible intent charts. It defaults to 30 inclusive
-UTC dates; grain is daily through 92 dates, monthly through 1,827, yearly thereafter.
+pagination, headline leaders, operator cards, six tiles and accessible intent charts.
+It defaults to 7 inclusive UTC dates; grain is daily through 92 dates, monthly
+through 1,827, yearly thereafter.
 One hook snapshot supplies all classification within a request. Trends are Pearson
 correlation with neutral flat/insufficient series; on-demand is labelled an estimate.
 The existing `view_agentaccess` permission plus Wagtail admin access grants site-wide
