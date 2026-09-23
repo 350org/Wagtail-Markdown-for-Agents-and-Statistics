@@ -9,7 +9,12 @@ records the separate loopback HTTP run and its counter comparison.
 The [23 September bounded deployed run](../verification/2026-09-23-bounded-deployed-run.md)
 passed all twelve fixture GET/HEAD checks and reconciled 472 expected and observed
 counter increments at zero tolerance. Cold-cache, multi-day and genuine vendor
-checks remain separate.
+checks use separate procedures. The [bounded cold-cache run](../verification/2026-09-23-cold-cache-run.md)
+established cold state for one selected ordinary URL at the observed LHR edge;
+multi-day and genuine vendor checks remain open. The
+[remaining-checks review](../verification/2026-09-23-remaining-checks-review.md)
+records the reduced multi-day check: its initial sample passed and two further
+samples are scheduled. Paid vendor verification is deferred by the owner.
 
 1. Given a manifest and canonical page locations, planning with the same seed
    produces the same bounded request sequence. IDs and direct URLs come from the

@@ -1,0 +1,102 @@
+{
+  "artifacts": {
+    "a1-agent.body": {
+      "bytes": 2042,
+      "sha256": "34f5d8d5b97b669dae130c14d01c1500b70935d4dc13b352dfc8ac951e4f53e9"
+    },
+    "a2-browser.body": {
+      "bytes": 17001,
+      "sha256": "40f52d02663941ff185b5c2a81d196687ad5dc67d0225d35273790d5432774af"
+    },
+    "a3-browser.body": {
+      "bytes": 17001,
+      "sha256": "40f52d02663941ff185b5c2a81d196687ad5dc67d0225d35273790d5432774af"
+    },
+    "after.json": {
+      "bytes": 101005,
+      "sha256": "11fc04be79b154d6b53294f54b8e0f3deb168dafa49cbb43f5f862bbb8efa945"
+    },
+    "b1-browser.body": {
+      "bytes": 17001,
+      "sha256": "40f52d02663941ff185b5c2a81d196687ad5dc67d0225d35273790d5432774af"
+    },
+    "b2-browser.body": {
+      "bytes": 17001,
+      "sha256": "40f52d02663941ff185b5c2a81d196687ad5dc67d0225d35273790d5432774af"
+    },
+    "b3-agent.body": {
+      "bytes": 17001,
+      "sha256": "40f52d02663941ff185b5c2a81d196687ad5dc67d0225d35273790d5432774af"
+    },
+    "before-approved.json": {
+      "bytes": 100900,
+      "sha256": "008c50067150aa762ae9ffabc89792d82a92e3b77c6c538e1d527a5e5223094b"
+    },
+    "origin-access-redacted.log": {
+      "bytes": 460,
+      "sha256": "f6d3f18da3e27fdd7a0116a8f33c374c5c2206ed6c39941ea2430253942b29b7"
+    },
+    "origin-window-summary.json": {
+      "bytes": 160,
+      "sha256": "5d560f8c62f6d413e5b058da9ef38c6b3c3d5a9102b62895904d9ddc816dbd44"
+    },
+    "purges.json": {
+      "bytes": 715,
+      "sha256": "b6671231a80983a146201d5dfe6803261ffc5ceeda9439d40a6e0ee035119e80"
+    },
+    "receipts.jsonl": {
+      "bytes": 9430,
+      "sha256": "886000b417e47414f56520102b88d731b040204d9f09a87128423066c47b0d80"
+    },
+    "report-private.json": {
+      "bytes": 765,
+      "sha256": "1e95c05ff0ae23491984939d8e8bff6ab4a607b608891be99b86e2b6a110c371"
+    },
+    "wmfa-cold-correlation.body": {
+      "bytes": 2042,
+      "sha256": "34f5d8d5b97b669dae130c14d01c1500b70935d4dc13b352dfc8ac951e4f53e9"
+    },
+    "wmfa-cold-correlation.headers": {
+      "bytes": 963,
+      "sha256": "381bc7099f01cc5086e2c30ee9e73d427dc0207647bf953cadd3192a19c83e17"
+    },
+    "wmfa-cold-readiness.body": {
+      "bytes": 33446,
+      "sha256": "718cd5c44d03bf770b8ce882fa5ddbb39ec21d269c1273ac556552069d8f5baf"
+    },
+    "wmfa-cold-readiness.headers": {
+      "bytes": 1017,
+      "sha256": "5c78bd5231d3324f407195bffa5425cefccfade13095391480b5753712f02ee4"
+    },
+    "wmfa-markdown-readiness.body": {
+      "bytes": 2042,
+      "sha256": "34f5d8d5b97b669dae130c14d01c1500b70935d4dc13b352dfc8ac951e4f53e9"
+    },
+    "wmfa-markdown-readiness.headers": {
+      "bytes": 965,
+      "sha256": "ec852fd01847c7bc696935e3a65031d76f2057a50b68e6f1b5725afe2db6114e"
+    },
+    "wmfa_cold_probe.py": {
+      "bytes": 4298,
+      "sha256": "d63afa6ecd57a3bab3443b616fb1557760b5fb35e7dc62ef926a8c3f74a9f684"
+    }
+  },
+  "cold_browser_misses": 2,
+  "counter_expected": 1,
+  "counter_observed": 1,
+  "counter_residual": 0,
+  "date": "2026-09-23",
+  "measured_requests": 6,
+  "origin_matches": 3,
+  "private_archive": {
+    "bytes": 34071,
+    "sha256": "fedc61a1055f6af59d5f704e5cf4c3058209903e37c89f65c0376bfd523bf853"
+  },
+  "purpose": "Integrity references for privately retained bounded cold-cache evidence; raw artifacts contain the deployment URL and are not committed.",
+  "readiness_requests": 3,
+  "schema_version": 1,
+  "scope": "selected ordinary URL at observed LHR edge",
+  "selected_page_id": 89,
+  "single_url_purges": 2,
+  "warm_browser_hits": 2
+}

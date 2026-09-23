@@ -361,7 +361,11 @@ The subsequent [bounded verification report](verification/2026-09-21-bounded-liv
 records 1,000 simulated requests: 964 passes, 36 expected Accept-only limitations,
 zero failures and 603 expected/observed counter selections. All 285 browser controls
 received HTML. Six fixtures, cold-cache proof, multi-day behaviour and genuine
-vendor fetches remain outstanding; the reconciler correctly returned `inconclusive`.
+vendor fetches were outstanding at that date; the reconciler correctly returned
+`inconclusive`. The later [fixture run](verification/2026-09-23-bounded-deployed-run.md)
+and [bounded cold-cache run](verification/2026-09-23-cold-cache-run.md) address
+the first two gaps for the controlled deployment. Multi-day and genuine vendor
+checks remain open.
 
 Use explicit export routes or query negotiation with verified query preservation
 or bypass. Keep private/no-store defaults and test every cache layer. Record the
