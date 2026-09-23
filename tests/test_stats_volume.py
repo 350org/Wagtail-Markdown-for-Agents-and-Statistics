@@ -142,7 +142,7 @@ def test_report_volume(seed, client, admin_user, pages):
         start = (
             date.fromisoformat(params["start"])
             if "start" in params
-            else (TODAY - timedelta(days=int(params.get("preset", "30")) - 1))
+            else (TODAY - timedelta(days=int(params.get("preset", "7")) - 1))
         )
         end = date.fromisoformat(params.get("end", str(TODAY)))
         expected = [
@@ -159,10 +159,10 @@ def test_report_volume(seed, client, admin_user, pages):
             response = client.get(url, params)
         elapsed = perf_counter() - started
         assert response.status_code == 200
-        # Five counter queries: page IDs, agents, count, 50 rows, grouped totals.
+        # Six counter queries: dimensions, count, rows, grouped totals and top pages.
         # Page queries include one title lookup and Wagtail admin navigation.
         data_queries = [q["sql"] for q in queries if TABLE in q["sql"]]
-        assert len(data_queries) <= 5, data_queries
+        assert len(data_queries) <= 6, data_queries
         page_queries = [q["sql"] for q in queries if "wagtailcore_page" in q["sql"]]
         assert len(page_queries) <= 4, page_queries
         # Bound the entire rendered/authenticated request too, allowing framework variation.

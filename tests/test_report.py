@@ -89,20 +89,21 @@ def test_trends_are_correlation(values, expected):
 
 
 @pytest.mark.parametrize("use_tz", [True, False])
-def test_default_is_30_inclusive_utc_days(report, settings, use_tz):
+def test_default_is_7_inclusive_utc_days(report, settings, use_tz):
     settings.USE_TZ = use_tz
     with timezone.override("America/Los_Angeles"):
-        counter(access_date=TODAY - timedelta(days=29), count=5)
-        counter(access_date=TODAY - timedelta(days=30), count=100)
+        counter(access_date=TODAY - timedelta(days=6), count=5)
+        counter(access_date=TODAY - timedelta(days=7), count=100)
         counter(access_date=TODAY + timedelta(days=1), count=100)
         counter(count=7)
         response = report()
     assert response.status_code == 200
     summary = response.context["summary"]
-    assert summary["start"] == date(2026, 8, 17)
+    assert summary["start"] == date(2026, 9, 9)
     assert summary["end"] == TODAY
     assert summary["tiles"][0]["count"] == 12
-    assert len(summary["buckets"]) == 30
+    assert len(summary["buckets"]) == 7
+    assert response.context["report_form"]["preset"].value() == "7"
 
 
 @pytest.mark.parametrize("preset,days", [("7", 7), ("30", 30), ("90", 90), ("365", 365)])
@@ -195,6 +196,8 @@ def test_pagination_preserves_filters_and_whole_report_totals(report):
     assert response.context["page_obj"].number == 2
     assert len(response.context["object_list"]) == 5
     assert response.context["summary"]["tiles"][0]["count"] == 110
+    assert response.context["summary"]["page_leader"]["truncated"]
+    assert "50+" in response.content.decode()
     assert (
         "method=ua" in response.content.decode() and "intent=training" in response.content.decode()
     )
@@ -213,6 +216,7 @@ def test_pagination_preserves_filters_and_whole_report_totals(report):
         {"method": "invalid"},
         {"page_id": "-1"},
         {"agent": "missing"},
+        {"operator": "missing"},
     ],
 )
 def test_invalid_filters_show_errors_not_unfiltered_data(report, params):
@@ -344,3 +348,87 @@ def test_mixed_purposes_filter_chart_and_totals_agree(report):
     assert {bar["key"] for bar in summary["bars"]} == {"mixed"}
     assert {row.intent for row in response.context["object_list"]} == {"mixed"}
     assert "Mixed purposes" in response.content.decode()
+
+
+def test_operator_cards_leaders_and_unattributed_reconcile(report):
+    for agent, count in [
+        ("GPTBot", 40),
+        ("ChatGPT-User", 7),
+        ("ClaudeBot", 12),
+        ("Mozilla", 5),
+        ("", 3),
+    ]:
+        counter(agent=agent, count=count)
+    summary = report().context["summary"]
+    assert summary["tiles"][0]["count"] == 67
+    assert [(card["key"], card["count"]) for card in summary["operator_cards"]] == [
+        ("openai", 47),
+        ("anthropic", 12),
+        ("unattributed", 8),
+    ]
+    assert summary["agent_leader"]["names"] == [("GPTBot", "GPTBot")]
+    assert summary["operator_leader"]["names"] == [("OpenAI", "openai")]
+    assert sum(bar["count"] for bar in summary["bars"]) == 67
+    html = report().content.decode()
+    assert "Recorded Markdown requests" in html
+    assert "Requests by purpose" in html
+    assert 'aria-label="Filter by OpenAI: 47 requests"' in html
+
+
+def test_operator_filter_drops_conflicting_agent_and_preserves_other_filters(report):
+    row = counter(agent="GPTBot", count=9)
+    counter(agent="ClaudeBot", count=3)
+    response = report(
+        operator="openai", agent="label:ClaudeBot", method="export-url", page_id=row.page_id, p=2
+    )
+    assert response.context["report_form"].cleaned_data["agent"] == ""
+    assert response.context["summary"]["tiles"][0]["count"] == 9
+    assert {r.agent for r in response.context["object_list"]} == {"GPTBot"}
+    assert [value for value, _ in response.context["report_form"].fields["agent"].choices] == [
+        "",
+        "label:GPTBot",
+    ]
+    card = response.context["summary"]["operator_cards"][0]
+    assert card["active"] and "operator=" not in card["url"]
+    assert 'aria-current="true"' in response.content.decode()
+    assert "Clear operator filter" in response.content.decode()
+    assert "method=export-url" in card["url"] and "page_id=" in card["url"]
+    assert "p=" not in card["url"]
+    assert (
+        report(operator="openai", agent="label:GPTBot").context["report_form"].cleaned_data["agent"]
+        == "label:GPTBot"
+    )
+
+
+def test_operator_ties_and_unattributed_only(report):
+    for agent in ("PerplexityBot", "GPTBot", "ClaudeBot", "Bytespider"):
+        counter(agent=agent, count=5)
+    counter(agent="CCBot", count=1)
+    summary = report().context["summary"]
+    assert summary["agent_leader"]["winner_count"] == 4
+    assert [name for name, _ in summary["agent_leader"]["names"]] == [
+        "Bytespider",
+        "ClaudeBot",
+        "GPTBot",
+    ]
+    assert summary["agent_leader"]["more"] == 1
+    AgentAccess.objects.all().delete()
+    counter(agent="curl", count=9)
+    summary = report().context["summary"]
+    assert summary["agent_leader"]["names"] == [("curl", "curl")]
+    assert summary["operator_leader"]["empty"] == "No attributed operators in this range"
+    assert [(card["key"], card["count"]) for card in summary["operator_cards"]] == [
+        ("unattributed", 9)
+    ]
+
+
+def test_historical_operator_labels_do_not_change_serving_or_purpose(report):
+    counter(agent="Bytespider", count=4)
+    counter(agent="GoogleOther", count=6)
+    summary = report().context["summary"]
+    assert [(card["key"], card["count"]) for card in summary["operator_cards"]] == [
+        ("google", 6),
+        ("bytedance", 4),
+    ]
+    # The independently reviewed Wagtail registry currently marks GoogleOther unknown.
+    assert summary["tiles"][-1]["count"] == 6

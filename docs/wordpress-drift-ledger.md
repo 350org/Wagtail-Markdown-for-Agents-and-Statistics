@@ -47,12 +47,13 @@ matrix or differences register; legacy issue references are not current issue UR
 
 | ID / WordPress source | Disposition | Wagtail evidence and action |
 | --- | --- | --- |
-| U01 Card border colours: original local commit `e469b61`; rewritten branch commit `7f1d96f29581fff3e5895a6be154058c3b278730` | **Already covered** | [Report CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css) shares `--agentmd-series` across border, sparkline, bars and legend. [Template](../src/wagtail_markdown_agents/templates/wagtail_markdown_agents/report_results.html) applies category classes. Source inspection; no new browser verification. The two WP file versions were compared and match. Track merge/release status at the next review; do not call this released. P16/D08. |
+| U01 Card border colours: original local commit `e469b61`; rewritten branch commit `7f1d96f29581fff3e5895a6be154058c3b278730` | **Already covered** | [Report CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css) shares `--agentmd-series` across purpose-tile borders, bars and legend. [Template](../src/wagtail_markdown_agents/templates/wagtail_markdown_agents/report_results.html) applies category classes. The earlier sparklines were removed after the 7-day dashboard made flat lines visually unhelpful; correlation labels remain. The two WP file versions were compared and match. Track merge/release status at the next review; do not call this released. P16/D08. |
 | U02 GET-only counters and cache guidance: `041beeac189917733bb830067bd674e88fcb96f4` | **Already covered** | [Statistics tests](../tests/test_stats.py) exclude HEAD/HTML/errors/aggregates; [middleware tests](../tests/test_middleware.py) check HEAD headers without body/count. [Cache guide](cdn-caching.md#wordpress-cache-parity) already records this WP follow-up and the direct-export difference D04. Deployment evidence remains separate. |
 | U03 Preserve colliding dotted frontmatter paths: `4e5622924ac0b7a9c83e0cdc94b2d15131496c8a` (WP #20) | **Already covered for current input model** | [Frontmatter](../src/wagtail_markdown_agents/rendering/frontmatter.py) preserves explicit keys rather than deriving leaf names; protected identity-key collisions are logged. [Tests](../tests/test_frontmatter.py) cover source precedence and key preservation. No ACF resolver exists. Carry the collision case into P05's v0.2 declarative-mapping acceptance; D05. |
 | U04 Normalise taxonomy/post values in scalar and list positions: `e27b7d75f033d5460693aff8d784e77f03096f78` (WP #21) | **Already covered for supported Wagtail values** | One recursive [normaliser](../src/wagtail_markdown_agents/rendering/frontmatter.py) handles supported values; arbitrary objects fail explicitly. [Tests](../tests/test_frontmatter.py) include model-in-list round trips and unsupported objects. Wagtail Page values include title/permalink; this is not WP title-only output. D06. General taxonomy extraction remains P05/P20. |
 | U05 LiteSpeed documentation: `41ea6be`, rewrap `e595b49` (WP #22) | **Already covered at contract level** | [Cache guide](cdn-caching.md) documents origin bypass, variation, optional LiteSpeed headers and verification in both request orders. WordPress-specific plugin settings and `.htaccess` snippets are not Wagtail defaults. No claim of equivalent live LiteSpeed verification. |
 | U06 1.7.1 version/changelog `da2d63d`; WordPress tested-up-to metadata `e371ea3`; merge commits through local `fa59f16`; trailing-comma and documentation-ignore changes in the interval | **Intentional difference / metadata only** | Wagtail versions and supported frameworks are maintained independently in [pyproject.toml](../pyproject.toml) and [tox.ini](../tox.ini). Behaviour represented by these merges is tracked in U02–U05; formatting and PHP list trailing commas require no Python change. A WP tested-up-to edit is not evidence that Wagtail's support matrix passed. |
+| U07 Dashboard, WordPress [#29](https://github.com/chancery-lane-project/wp-mfa-plugin/pull/29), reviewed in Wagtail [#20](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues/20) on 23 September 2026 | **Implemented with deliberate differences** | [Wagtail report](../src/wagtail_markdown_agents/reports.py), [operator map](../src/wagtail_markdown_agents/data/operators.py) and [tests](../tests/test_report.py) implement the 7-day default, filtered leaders and operator cards. Wagtail retains mixed purposes and `export-url`; its independent registry also permits an attributed operator with Unknown purpose. Wagtail has custom dates but no separate All time preset. Maps remain separately maintained. Native Wagtail styling uses the 350.org palette. Merge and release status remain open. |
 
 ## Intentional differences register
 
@@ -72,12 +73,8 @@ ledger. Reconsidering one requires an explicit contract/design change and tests.
 
 ## Adding and closing entries
 
-Prospective shared work:
-[dashboard proposal #20](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues/20)
-tracks summaries, operator cards/filtering, retained intent reporting and daily
-records. It is awaiting product/WordPress review, with no implementation or release
-commitment. Link the WordPress counterpart when scheduled and record the agreed
-behaviour/differences here; this proposal is not a reviewed upstream change.
+The dashboard relationship and intentional differences are recorded in U07. Keep
+both operator maps under separate review when either platform adds a label.
 
 For each new entry record: stable ID, review date/reviewer, exact upstream commit
 or version, behaviour, disposition, Wagtail evidence, linked task/milestone where

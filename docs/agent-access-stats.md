@@ -143,14 +143,18 @@ permissions. Grant it only to groups intended to see that reporting scope.
 Menu visibility and the report URL enforce the same access; staff status alone
 does not grant access. No counter edit/delete interface is registered.
 
-Date presets are the last 7, 30, 90 or 365 days; the default is **30 inclusive UTC
-dates**, today and the preceding 29 dates, independent of Django's active timezone.
+Date presets are the last 7, 30, 90 or 365 days; the default is **7 inclusive UTC
+dates**, today and the preceding 6 dates, independent of Django's active timezone.
 Choose **Custom dates** to apply From/To; preset selection takes precedence over
 those fields. A URL supplying dates without a preset also selects custom dates.
 Invalid filters show field errors and no report, rather than silently widening it.
 
-Page, agent, access method, intent and date filters are combined with AND. Page
+Page, agent, operator, access method, intent and date filters are combined with AND. Page
 and agent choices include retained history outside the selected date range.
+The operator dropdown narrows agent choices to that operator. Selecting an operator
+with an incompatible agent selected clears the agent filter; clicking the active
+operator card or Clear operator filter removes the operator filter. Cards and leader
+links retain other applicable filters and start at the first records page.
 Unknown/empty agent labels are selectable. All four methods are available:
 `query-param`, `accept-header`, `ua`, `export-url`. Existing pages show current
 titles and numeric IDs; missing pages show **Deleted page #ID**. Rows retain their
@@ -159,9 +163,20 @@ original numeric identities and counts after deletion.
 The daily-record table has 50 rows per page, newest date first and stable dimension
 ordering within a date (page ID, agent, method, then row ID). A repeat request
 increments its daily counter without moving the row; no last-access timestamp is
-stored. Pagination preserves filters. The six tiles and chart
-cover **all matching rows**, independently of the current results page. There are
+stored. Pagination preserves filters. The headline, operator cards, six purpose
+tiles and chart cover **all matching rows**, independently of the current results page. There are
 separate empty states for no recorded history and no matching records.
+
+The headline shows total recorded requests and leading page, agent and attributed
+operator. Tied leaders are labelled and list up to three names alphabetically;
+page ties scan at most 50 pages and show 50+ when that cap is reached. Empty and
+method-name labels cannot lead as agents; Unattributed cannot lead as an operator.
+Operator cards show each represented operator's total and top five agents, ordered
+by total then name. Unattributed is last and only appears when nonzero. The reviewed
+operator map is applied to stored agent labels at read time, including retired labels;
+it never authenticates a client or widens automatic Markdown serving. An unmatched
+label is Unattributed even if its purpose is known. Conversely, Wagtail can attribute
+a known operator while its independently reviewed purpose is Unknown.
 
 ### Buckets, charts and trends
 
@@ -173,7 +188,7 @@ counts by bucket and agent before Python applies the shared category snapshot;
 the report does not load each daily record to draw charts or issue per-page queries.
 
 Total plus on-demand, search, training, mixed purposes and unknown tiles show
-counts, sparklines and Pearson correlation **r** against successive time buckets. Positive/negative
+counts and Pearson correlation **r** against successive time buckets. Positive/negative
 values indicate rising/falling association with time, never percentage change or
 statistical significance. Undefined correlation (flat or fewer than two buckets)
 is neutral; values rounding to zero at two decimal places are also neutral.

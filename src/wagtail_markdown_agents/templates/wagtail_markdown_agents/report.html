@@ -3,13 +3,13 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'wagtail_markdown_agents/report.css' %}">
+    <link rel="stylesheet" href="{% static 'wagtail_markdown_agents/report.css' %}?v=4">
 {% endblock %}
 
 {% block listing %}
     <div class="nice-padding agentmd-report">
         <h1>{% trans "Agent access" %}</h1>
-        <p>{% trans "Recorded page Markdown requests, grouped by estimated intent." %}</p>
+        <p>{% trans "Recorded page Markdown requests, grouped by estimated purpose." %}</p>
         <form method="get" action="{{ index_url }}" class="agentmd-filters" aria-label="{% trans 'Report filters' %}">
             {% for field in report_form %}
                 {% include "wagtailadmin/shared/field.html" with field=field %}

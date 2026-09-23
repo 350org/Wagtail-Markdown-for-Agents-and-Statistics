@@ -1,9 +1,48 @@
 {% load wagtailadmin_tags i18n %}
 {% if summary %}
-    <h2>{% trans "Summary" %} <span class="agentmd-range">{{ summary.start|date:"j M Y" }} – {{ summary.end|date:"j M Y" }} (UTC)</span></h2>
+    <h2>{% trans "Summary" %} · <span class="agentmd-range">{{ summary.start|date:"j M Y" }} – {{ summary.end|date:"j M Y" }} (UTC)</span></h2>
+    <p class="help">{% trans "Recorded page Markdown GET selections at the origin. CDN and static-cache requests that bypass Django are not counted." %}</p>
+    <div class="agentmd-headlines">
+        <section class="agentmd-headline"><h3>{% trans "Recorded Markdown requests" %}</h3><p class="agentmd-count">{{ summary.tiles.0.count|intcomma }}</p></section>
+        <section class="agentmd-headline"><h3>{% trans "Most requested page" %}</h3>
+            {% if summary.page_leader.empty %}<p>{{ summary.page_leader.empty }}</p>{% else %}
+                <p class="agentmd-count">{{ summary.page_leader.count|intcomma }}</p>
+                {% if summary.page_leader.tied %}<p>{% trans "Tied:" %} {% if summary.page_leader.truncated %}50+{% else %}{{ summary.page_leader.winner_count }}{% endif %} {% trans "pages" %} · {% trans "requests each" %}</p>{% endif %}
+                <p>{% for name, url in summary.page_links %}<a href="{{ url }}">{{ name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% if summary.page_leader.more %} {% if summary.page_leader.truncated %}{% blocktrans with count=summary.page_leader.more %}and at least {{ count }} more{% endblocktrans %}{% else %}{% blocktrans with count=summary.page_leader.more %}and {{ count }} more{% endblocktrans %}{% endif %}{% endif %}</p>
+            {% endif %}
+        </section>
+        <section class="agentmd-headline"><h3>{% trans "Leading agent" %}</h3>
+            {% if summary.agent_leader.empty %}<p>{{ summary.agent_leader.empty }}</p>{% else %}
+                <p class="agentmd-count">{{ summary.agent_leader.count|intcomma }}</p>
+                {% if summary.agent_leader.tied %}<p>{% trans "Tied:" %} {{ summary.agent_leader.winner_count }} {% trans "agents" %} · {% trans "requests each" %}</p>{% endif %}
+                <p>{% for name, url in summary.agent_links %}<a href="{{ url }}">{{ name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% if summary.agent_leader.more %} {% blocktrans with count=summary.agent_leader.more %}and {{ count }} more{% endblocktrans %}{% endif %}</p>
+            {% endif %}
+        </section>
+        <section class="agentmd-headline"><h3>{% trans "Leading operator" %}</h3>
+            {% if summary.operator_leader.empty %}<p>{{ summary.operator_leader.empty }}</p>{% else %}
+                <p class="agentmd-count">{{ summary.operator_leader.count|intcomma }}</p>
+                {% if summary.operator_leader.tied %}<p>{% trans "Tied:" %} {{ summary.operator_leader.winner_count }} {% trans "operators" %} · {% trans "requests each" %}</p>{% endif %}
+                <p>{% for name, url in summary.operator_links %}<a href="{{ url }}">{{ name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% if summary.operator_leader.more %} {% blocktrans with count=summary.operator_leader.more %}and {{ count }} more{% endblocktrans %}{% endif %}</p>
+            {% endif %}
+        </section>
+    </div>
+    <h2>{% trans "Operators" %}</h2>
+    <p>{% trans "Select an operator to filter the whole report. Unattributed means agents whose operator we haven't identified." %}</p>
+    {% if report_form.cleaned_data.operator %}<p><a href="{{ summary.clear_operator_url }}">{% trans "Clear operator filter" %}</a></p>{% endif %}
+    <div class="agentmd-operators">
+        {% for card in summary.operator_cards %}
+            <a class="agentmd-operator{% if card.active %} agentmd-operator-active{% endif %}" href="{{ card.url }}" aria-label="{% if card.active %}{% trans 'Clear filter for' %}{% else %}{% trans 'Filter by' %}{% endif %} {{ card.name }}: {{ card.count|intcomma }} {% trans 'requests' %}"{% if card.active %} aria-current="true"{% endif %}>
+                <strong>{{ card.name }}</strong>{% if card.active %}<span class="agentmd-filtered">{% trans "Filtered" %}</span>{% endif %}
+                <span class="agentmd-operator-count">{{ card.count|intcomma }} {% trans "requests" %}</span>
+                <span class="agentmd-operator-agents">{% for agent, count in card.agents %}{{ agent|default:_("unknown") }}: {{ count|intcomma }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if card.more %} · +{{ card.more }} {% trans "more agents" %}{% endif %}</span>
+            </a>
+        {% endfor %}
+    </div>
+    <h2>{% trans "Purpose" %}</h2>
     {% if object_list %}
         <section class="agentmd-chart" aria-labelledby="agentmd-chart-title">
-            <h2 id="agentmd-chart-title">{% trans "Requests by intent" %}</h2>
+            <h2 id="agentmd-chart-title">{% trans "Requests by purpose" %}</h2>
+            <p>{% trans "On-demand is the best estimate of human reads; Search means indexing for answers and citations; Training means collecting content for models; Mixed has several known purposes; Unknown means the purpose cannot be identified." %}</p>
             <p>{% if summary.grain == "daily" %}{% trans "Daily buckets" %}{% elif summary.grain == "monthly" %}{% trans "Monthly buckets" %}{% else %}{% trans "Yearly buckets" %}{% endif %} · UTC</p>
             <ul class="agentmd-legend" aria-label="{% trans 'Chart legend' %}">
                 {% for series in summary.series %}<li class="agentmd-{{ series.key }}"><span aria-hidden="true"></span>{{ series.label }}</li>{% endfor %}
@@ -12,7 +51,7 @@
                 <span class="agentmd-axis-max">{{ summary.maximum|intcomma }}</span>
                 <span class="agentmd-axis-mid">{{ summary.midpoint|intcomma }}</span>
                 <svg viewBox="-5 -5 910 230" role="img" aria-labelledby="agentmd-chart-description" preserveAspectRatio="none">
-                    <title id="agentmd-chart-description">{% trans "Request counts by intent over time. Exact counts are available in the time bucket table below." %}</title>
+                    <title id="agentmd-chart-description">{% trans "Request counts by purpose over time. Exact counts are available in the time bucket table below." %}</title>
                     <path class="agentmd-grid" d="M0 0H900 M0 110H900 M0 220H900" />
                     {% for bar in summary.bars %}
                         <rect class="agentmd-{{ bar.key }}" x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}"><title>{{ bar.date|date:"Y-m-d" }} · {{ bar.label }}: {{ bar.count|intcomma }}</title></rect>
@@ -38,7 +77,6 @@
             <section class="agentmd-tile agentmd-{{ tile.key }}" aria-label="{{ tile.label }}">
                 <h3>{{ tile.label }}</h3>
                 <p class="agentmd-count">{{ tile.count|intcomma }}</p>
-                <svg class="agentmd-sparkline" viewBox="0 -2 160 36" aria-hidden="true"><polyline points="{{ tile.points }}" /></svg>
                 <p>{{ tile.trend }}{% if tile.correlation != None %} · r = {{ tile.correlation }}{% endif %}</p>
             </section>
         {% endfor %}
