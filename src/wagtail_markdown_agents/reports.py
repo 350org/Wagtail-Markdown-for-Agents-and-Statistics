@@ -1,6 +1,7 @@
 """Read-only Wagtail reporting over the daily access counters."""
 
 import math
+import re
 from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, timedelta
 
@@ -34,6 +35,56 @@ def page_label(page_id, titles):
     return _("Deleted page #%(id)s") % {"id": page_id}
 
 
+class PageInput(forms.TextInput):
+    """A free-text page box with suggestions from every page that has history."""
+
+    template_name = "wagtail_markdown_agents/widgets/page_input.html"
+    options = ()
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        widget = context["widget"]
+        widget["list_id"] = f"{widget['attrs'].get('id', name)}-options"
+        widget["attrs"]["list"] = widget["list_id"]
+        widget["options"] = self.options
+        return context
+
+
+class PageField(forms.CharField):
+    """Accept a page ID, a suggested "Title (#ID)" label or one exact title."""
+
+    widget = PageInput(attrs={"autocomplete": "off", "spellcheck": "false"})
+    reference = re.compile(r"^#?(\d+)$|\(#(\d+)\)$")
+
+    def __init__(self, **kwargs):
+        super().__init__(required=False, **kwargs)
+        self.pages = {}
+
+    def set_pages(self, pages):
+        self.pages = dict(pages)
+        self.widget.options = [str(label) for label in self.pages.values()]
+
+    def lookup(self, value):
+        match = self.reference.search(value)
+        if match and (pk := match.group(1) or match.group(2)) in self.pages:
+            return pk
+        titles = [
+            pk
+            for pk, label in self.pages.items()
+            if str(label).rsplit(" (#", 1)[0].casefold() == value.casefold()
+        ]
+        return titles[0] if len(titles) == 1 else None
+
+    def clean(self, value):
+        value = super().clean(value)
+        if not value:
+            return ""
+        pk = self.lookup(value)
+        if pk is None:
+            raise forms.ValidationError(_("Choose a page from the suggestions or enter its ID."))
+        return pk
+
+
 class ReportFilterForm(forms.Form):
     preset = forms.ChoiceField(
         label=_("Date range"),
@@ -47,7 +98,10 @@ class ReportFilterForm(forms.Form):
     )
     start = forms.DateField(label=_("From (UTC)"), widget=forms.DateInput(attrs={"type": "date"}))
     end = forms.DateField(label=_("To (UTC)"), widget=forms.DateInput(attrs={"type": "date"}))
-    page_id = forms.ChoiceField(label=_("Page"), required=False)
+    page_id = PageField(
+        label=_("Page"),
+        help_text=_("Start typing a page title, or enter a page ID. Leave blank for all pages."),
+    )
     agent = forms.ChoiceField(label=_("Agent"), required=False)
     operator = forms.ChoiceField(label=_("Operator"), required=False)
     method = forms.ChoiceField(
@@ -73,7 +127,11 @@ class ReportFilterForm(forms.Form):
             if selected_agent.startswith("label:") and selected_agent[6:] not in agents:
                 data["agent"] = ""
         super().__init__(data)
-        self.fields["page_id"].choices = [("", _("All pages")), *pages]
+        self.fields["page_id"].set_pages(pages)
+        # Links filter by bare ID; show the readable label in the box instead.
+        page = self.fields["page_id"].lookup(data.get("page_id", "").strip())
+        if page is not None:
+            self.data["page_id"] = self.fields["page_id"].pages[page]
         self.fields["operator"].choices = [
             ("", _("All operators")),
             *((key, name) for key, name in OPERATOR_NAMES.items()),

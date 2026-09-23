@@ -160,6 +160,12 @@ Unknown/empty agent labels are selectable. All four methods are available:
 titles and numeric IDs; missing pages show **Deleted page #ID**. Rows retain their
 original numeric identities and counts after deletion.
 
+The page filter is a text box with datalist suggestions rather than a dropdown, so
+it stays usable as page history grows. It accepts a suggested **Title (#ID)** label,
+a bare or `#`-prefixed page ID, or an exact title (case-insensitive) that matches
+exactly one page. Anything else is a field error. The `page_id` URL parameter still
+accepts a numeric ID, and the box then shows that page's label.
+
 The daily-record table has 50 rows per page, newest date first and stable dimension
 ordering within a date (page ID, agent, method, then row ID). A repeat request
 increments its daily counter without moving the row; no last-access timestamp is
