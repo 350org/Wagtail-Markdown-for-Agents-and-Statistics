@@ -1,6 +1,13 @@
-# Next bounded deployed verification — prepared 22 September 2026
+# Bounded deployed verification plan — prepared 22 September 2026
 
-Status: prepared, not executed. The fixture implementation and local evidence are
+Status: executed on 23 September 2026. The bounded run matched at zero tolerance,
+all twelve fixture checks passed, and the temporary deployment changes were
+restored. See the [deployed result](2026-09-23-bounded-deployed-run.md). The plan
+below is retained as the pre-run contract, including its unverified cold-cache and
+separate multi-day/vendor boundaries. The deployment preflight and private change
+bundle were prepared/tested on 22 September; see the
+[change-review summary](2026-09-22-deployed-change-review.md).
+The fixture implementation and local evidence are
 already committed in `7f18b9c57590056e80d034a90483a4aaa563f78a`. The working tree
 was clean when review began. The [local report](2026-09-22-local-fixtures.md)
 does not replace the [21 September deployed evidence](2026-09-21-bounded-live-run.md).
@@ -23,13 +30,49 @@ the selected ordinary URL; otherwise report it as unverified.
 The previous run's deployment and permissions are historical evidence, not a
 confirmed configuration for this session.
 
-The owner identified `a89dab59a7c517ed619bcb26ab2ede1fd5e2deff` as the likely
-deployed revision; confirm it on the application host. This commit exists locally
-and contains the independent registry update. Its `src/` package tree is unchanged
-through reviewed fixture commit `7f18b9c`; the later simulator change corrects
-GET/HEAD fixture coverage and the sandbox additions are local-only. If the running
-package is confirmed to match, this fixture review alone requires no package
-upgrade. The target URL and operator/access route are still unspecified.
+Read-only host inspection confirmed installed package revision
+`a89dab59a7c517ed619bcb26ab2ede1fd5e2deff` through its installation metadata.
+All 68 installed package files match the reviewed local `src/` files by SHA-256,
+with no missing or extra files (excluding bytecode). The separate package source
+checkout on the host is still at `52e9022`; it is not the installed package.
+The running Gunicorn processes started after the inspected registry file was
+installed. No package upgrade is indicated by this fixture review.
+
+The owner supplied SSH access to the application host and an authenticated
+Cloudflare dashboard in Chrome. The public origin, `/markdown/manifest.json`
+route, application directory, service and settings module have been identified
+and recorded privately. Local simulator checkout remains `6825cd9`.
+
+### Read-only preflight findings — 22 September 2026
+
+No public target requests, fixture writes, deployments, service reloads, cache
+changes or purges were performed. These findings establish configuration and
+inventory only; they are not HTTP acceptance evidence.
+
+| Area | Observed configuration / remaining work |
+| --- | --- |
+| Runtime | Python 3.12.3, Django 6.0.8, Wagtail 7.4.3, Gunicorn 23.0.0; Supervisor-managed Gunicorn as the application owner, nginx proxy to the loopback Django upstream |
+| Application state | Existing host-specific URL/settings changes are present and must be preserved; SQLite database and process-local Django cache |
+| Package settings | All three negotiation triggers and automatic generation enabled; default export storage, default-site scope, 60-second discovery cache, 90-day statistics retention |
+| Registry | `2026-09-22.1`: 23 recognised labels and 12 automatic Markdown-serving tokens |
+| Export inventory | Manifest read from origin storage contains 18 documents and no recorded errors; four navigation indexes have no page owner |
+| Fixture gaps | No page restriction or exclusion records exist. No safe public preview adapter was identified in the inspected routes/middleware. Existing unexported demo content and ownerless indexes are candidates, pending complete readiness checks and a stable window |
+| Cloudflare | Free plan; two active host-scoped cache rules: cache-everything first, current 12-token/query bypass second; no cache response rules. Edge TTL respects cache-control when present, otherwise uses the status default; browser TTL respects origin TTL in the host rule |
+| Other inspected edge settings | Standard caching; Development Mode, Always Online, Crawler Hints, Speed Brain, Early Hints and Rocket Loader off. Search/agent/training bot policies allow traffic; Bot Fight Mode, Browser Integrity Check and Bot Preference Sync off. No settings were changed |
+| Origin caching | No proxy cache configured in the inspected site/global nginx configuration; live response behaviour still needs probes |
+| Correlation log | Dedicated JSONL format and 32-hex-character ID filters are present. Its allowlist covers existing routes but needs review for new fixture paths and preview queries. A fresh actual matched record is still required |
+| Retention and timing | Dedicated JSONL file is owner-only and is not covered by the inspected `*.log` rotation rule. Host reports UTC and NTP synchronisation; client/host skew and complete window retention still need verification |
+| Background work | No matching export/pruning jobs found in inspected local cron entries or systemd timers; external schedules and a quiet content window remain unconfirmed |
+
+The private review bundle proposed an isolated five-page fixture branch,
+published-only preview adapter, exact settings/logging patches and guarded rollback.
+Local tests and an isolated host nginx syntax check passed. At the 22 September
+preflight, none of those changes had been applied; the window, cleanup, limits and
+retention still needed agreement. The 23 September run applied and restored them,
+then established the HTTP evidence linked above. No cold-state method or purge
+scope was agreed, so cold-cache acceptance remains unverified.
+
+### Session information to complete
 
 Record the following privately:
 

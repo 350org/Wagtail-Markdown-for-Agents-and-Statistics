@@ -6,6 +6,10 @@ verification is a separate activity. The [repeatable local corpus](../agent-simu
 creates all six explicit fixtures using isolated sandbox settings.
 The [22 September local verification](../verification/2026-09-22-local-fixtures.md)
 records the separate loopback HTTP run and its counter comparison.
+The [23 September bounded deployed run](../verification/2026-09-23-bounded-deployed-run.md)
+passed all twelve fixture GET/HEAD checks and reconciled 472 expected and observed
+counter increments at zero tolerance. Cold-cache, multi-day and genuine vendor
+checks remain separate.
 
 1. Given a manifest and canonical page locations, planning with the same seed
    produces the same bounded request sequence. IDs and direct URLs come from the
