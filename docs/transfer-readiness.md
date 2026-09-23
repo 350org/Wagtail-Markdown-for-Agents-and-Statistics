@@ -5,6 +5,13 @@ aligned with the original WordPress plugin, with copyright held by 350.org.
 BSD references below describe the historical review and artifacts, not the
 current licence; rebuild distribution artifacts before handover.
 
+Verification update, 23 September 2026: the
+[bounded deployed fixture run](verification/2026-09-23-bounded-deployed-run.md)
+passed all twelve fixture GET/HEAD checks and matched 472 expected/observed
+counter increments at zero tolerance. The 21 September gaps described below are
+historical; cold-cache, multi-day and genuine vendor-origin evidence remain open,
+as do D6/D9/D12 and client presentation decisions.
+
 **Verdict: conditionally ready for repository handover as a development preview;
 not fully accepted v0.1 delivery.** The accompanying fixes should be reviewed and
 merged before choosing a transfer revision. Receiving ownership/access and a
@@ -129,10 +136,11 @@ The [existing live report](verification/2026-09-21-bounded-live-run.md) records
 zero assertion/transport failures, and exactly 603 expected/observed counter
 increments. The reconciler still returned **inconclusive (exit 2)**.
 
-Remaining evidence is explicit:
+Remaining evidence at the 21 September review was explicit. Item 1 was completed
+by the 23 September bounded run; items 2–4 remain open:
 
 1. Six fixtures: fallback, excluded pages, previews, missing exports, private
-   exports and navigation-only indexes.
+   exports and navigation-only indexes — completed 23 September 2026.
 2. Independently proven cold-cache state; warm browser controls alone do not prove it.
 3. Multi-day behaviour and reconciliation, within the agreed maintenance scope.
 4. Genuine vendor-origin fetches; simulated User-Agent strings cannot authenticate

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-23",
+  "purpose": "Integrity references for privately retained bounded deployed verification evidence; raw artifacts and host recovery copies are not committed.",
+  "simulator_revision": "6825cd96c7d95445cbe9c8c324e2b59e013ad6c6",
+  "origin_revision": "a89dab59a7c517ed619bcb26ab2ede1fd5e2deff",
+  "registry_version": "2026-09-22.1",
+  "preflight_requests": 34,
+  "simulator_requests": 1000,
+  "assertion_passes": 925,
+  "known_limitations": 75,
+  "assertion_failures": 0,
+  "counter_expected": 472,
+  "counter_observed": 472,
+  "counter_residual": 0,
+  "counter_tolerance": 0,
+  "reconciliation_status": "matched",
+  "reconciliation_warnings": [],
+  "artifacts": {
+    "review-bundle.tar.gz": {
+      "bytes": 22436,
+      "sha256": "6221d86fb9da13f575da0697bccf0becd472811ab45f27e254b9f26183057da2"
+    },
+    "fixtures.json": {
+      "bytes": 1418,
+      "sha256": "9dfa9b5b583345477e98c602a21be11dfdfb3d79cd942c644a9ce8aebc8ba4cb"
+    },
+    "fixture-state.json": {
+      "bytes": 4913,
+      "sha256": "50b062a0c8c86fe62a7aa183afa80c690e4550987c7db90079384aba48678cd6"
+    },
+    "seed-result.json": {
+      "bytes": 4859,
+      "sha256": "6a8ed600971fac9bee82c3f6d63f69ef09c14d9df1932c971937f19fe10c0f94"
+    },
+    "retire-result.json": {
+      "bytes": 4913,
+      "sha256": "50b062a0c8c86fe62a7aa183afa80c690e4550987c7db90079384aba48678cd6"
+    },
+    "after-seed-inventory.json": {
+      "bytes": 3903,
+      "sha256": "f27bcabc859fd6b0bedf24313232ee1fd37de78f9a28652eecd21f4605d9e870"
+    },
+    "readiness-probes.jsonl": {
+      "bytes": 7296,
+      "sha256": "8d905217dc80d510e6e62593fd3f5e5f714796252d865b7f1cbe3f71e3afc0aa"
+    },
+    "discovery-live.jsonl": {
+      "bytes": 29870,
+      "sha256": "0aae41e3124a70bc381175b791832c063ad2556be3f83586747ddbad18ac50e1"
+    },
+    "plan-live.json": {
+      "bytes": 651068,
+      "sha256": "7942fd2c5ea5c5781bf9544c545d300393d6b314bb81f7a5e4764e75e52c75d8"
+    },
+    "client-live.jsonl": {
+      "bytes": 1449758,
+      "sha256": "f6ee1f498970b1aa3ec3c15571abdf002f9cf221842082bc7db27ee7dfa99e89"
+    },
+    "origin.jsonl": {
+      "bytes": 576909,
+      "sha256": "278e20109098723d110bc23cc99271906d9e3f8ce55af3cb5df27b89c94edcf8"
+    },
+    "before.json": {
+      "bytes": 64587,
+      "sha256": "23510c3b7a843c7df96a84c49b4f84ceadaffc11813eb6bc86dd7d4118381fd9"
+    },
+    "after.json": {
+      "bytes": 100797,
+      "sha256": "a6ce23d4fe3ea9659dbe7423945d5c9557f6e2d416bea24d5885f79f2aed2b55"
+    },
+    "report-live.json": {
+      "bytes": 263892,
+      "sha256": "dc0424507e8dcead9055dd658dcba4b8d4d49e9d484568ad7636a041e2dd8c2f"
+    },
+    "before-exports.tar.gz": {
+      "bytes": 20601,
+      "sha256": "f1be2fc070f4a200916f647febeda492e91748210161b6414360c5d71152a9b5"
+    },
+    "before-fixtures.sqlite3": {
+      "bytes": 2138112,
+      "sha256": "ea9d2f6a1a7d932b4bc336063738aaa18fb23f2925f497f713e53edd3ae16c40"
+    },
+    "configuration-backup/records.json": {
+      "bytes": 1237,
+      "sha256": "357e9313ece04a7daeb8de8b7dba63520fbe972270a78ef8ca1c57f95e68956c"
+    },
+    "configuration-backup/sandbox.py": {
+      "bytes": 1815,
+      "sha256": "8d7b05222452fba9a34df31dd513847810707a9cf482d107fc2156804b40fd33"
+    },
+    "configuration-backup/wmfa-verification.conf": {
+      "bytes": 1909,
+      "sha256": "e24db019fb31e333377d7eb307d781f7b70f9fffbe26d82cd319861b12973ff8"
+    }
+  }
+}
