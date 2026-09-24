@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, timedelta
 
 from django import forms
-from django.db.models import F, Sum
+from django.db.models import Count, F, Sum
 from django.db.models.functions import TruncMonth, TruncYear
 from django.utils.functional import cached_property
 from django.utils.http import urlencode
@@ -269,6 +269,33 @@ def leader(counts, *, empty, label_for=None, eligible=lambda key: True):
     }
 
 
+def top_pages(page_rows, report_total):
+    """Rank filtered page totals with competition ties and whole-percent shares."""
+    if report_total <= 0:
+        return []
+    rows = sorted(
+        (row for row in page_rows if row["total"] > 0),
+        key=lambda row: (-row["total"], row["page_id"]),
+    )[:10]
+    ranked = []
+    previous_total = None
+    rank = 0
+    for position, row in enumerate(rows, 1):
+        if row["total"] != previous_total:
+            rank = position
+        previous_total = row["total"]
+        percent = (200 * row["total"] + report_total) // (2 * report_total)
+        ranked.append(
+            {
+                "page_id": row["page_id"],
+                "total": row["total"],
+                "rank": rank,
+                "share": f"{percent}%" if percent else "<1%",
+            }
+        )
+    return ranked
+
+
 class AccessPaginator(ReportView.paginator_class):
     verbose_name = _("daily record")
     verbose_name_plural = _("daily records")
@@ -440,6 +467,12 @@ class AgentAccessReportView(ReportView):
                 .order_by("-total", "page_id")[:50]
             )
             page_counts = {row["page_id"]: row["total"] for row in page_rows}
+            summary["top_pages"] = top_pages(page_rows, summary["tiles"][0]["count"])
+            for row in summary["top_pages"]:
+                row["title"] = self.dimensions[1].get(
+                    row["page_id"], page_label(row["page_id"], self.dimensions[1])
+                )
+                row["url"] = self.filter_url(page_id=row["page_id"], page_search="")
             summary["page_leader"] = leader(
                 page_counts,
                 empty=_("No pages requested in this range"),
@@ -448,7 +481,9 @@ class AgentAccessReportView(ReportView):
             if len(page_rows) == 50 and page_rows[-1]["total"] == page_rows[0]["total"]:
                 summary["page_leader"]["truncated"] = True
             for name, key in summary["page_leader"].get("names", []):
-                summary.setdefault("page_links", []).append((name, self.filter_url(page_id=key)))
+                summary.setdefault("page_links", []).append(
+                    (name, self.filter_url(page_id=key, page_search=""))
+                )
             for name, key in summary["agent_leader"].get("names", []):
                 summary.setdefault("agent_links", []).append(
                     (name, self.filter_url(agent=f"label:{key}"))
@@ -458,6 +493,19 @@ class AgentAccessReportView(ReportView):
                     (name, self.filter_url(operator=key))
                 )
             summary["clear_operator_url"] = self.filter_url(operator="")
+            summary["clear_page_url"] = self.filter_url(page_id="", page_search="")
+            if data["page_id"]:
+                page_id = int(data["page_id"])
+                summary["filtered_page_title"] = self.dimensions[1].get(
+                    page_id, page_label(page_id, self.dimensions[1])
+                )
+            if data["start"] and data["end"]:
+                summary["method_rows"] = list(
+                    self.object_list.order_by()
+                    .values("agent", "access_method")
+                    .annotate(requests=Sum("count"), unique_pages=Count("page_id", distinct=True))
+                    .order_by("-requests", "agent", "access_method")
+                )
         context.update(
             report_form=self.report_form, summary=summary, has_history=bool(self.dimensions[0])
         )

@@ -82,10 +82,37 @@
             </a>
         {% endfor %}
     </div>
+    <h2>{% trans "Top pages" %}</h2>
+    <p>{% trans "Select a page to filter the whole report." %}</p>
+    {% if report_form.cleaned_data.page_id %}
+        <p>{% blocktrans with title=summary.filtered_page_title %}Showing {{ title }} only.{% endblocktrans %} <a href="{{ summary.clear_page_url }}">{% trans "Clear page filter" %}</a></p>
+    {% elif summary.top_pages %}
+        <div class="agentmd-table-scroll">
+            <table class="listing agentmd-top-pages">
+                <thead><tr><th scope="col">#</th><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "Requests" %}</th><th scope="col">{% trans "Share" %}</th></tr></thead>
+                <tbody>{% for row in summary.top_pages %}
+                    <tr><td>{{ row.rank }}</td><th scope="row"><a href="{{ row.url }}">{{ row.title }}</a></th><td>{{ row.total|intcomma }}</td><td>{{ row.share }}</td></tr>
+                {% endfor %}</tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>{% trans "No pages requested in this range." %}</p>
+    {% endif %}
+    {% if summary.start and summary.end %}
+        <h2>{% trans "Agents by access method" %}</h2>
+        <div class="agentmd-table-scroll">
+            <table class="listing agentmd-methods">
+                <thead><tr><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Access method" %}</th><th scope="col">{% trans "Requests" %}</th><th scope="col">{% trans "Unique pages" %}</th></tr></thead>
+                <tbody>{% for row in summary.method_rows %}
+                    <tr><th scope="row">{{ row.agent|default:_("unknown") }}</th><td>{{ row.access_method }}</td><td>{{ row.requests|intcomma }}</td><td>{{ row.unique_pages|intcomma }}</td></tr>
+                {% endfor %}</tbody>
+            </table>
+        </div>
+    {% endif %}
+    <h2>{% trans "Daily records" %}</h2>
+    <p>{% trans "One row per page, agent, access method and day." %}</p>
 {% endif %}
 {% if object_list %}
-    <h2>{% trans "Daily records" %}</h2>
-    <p>{% trans "Each row is one page, agent, method and UTC day. Rows are ordered by day (newest first), then page ID, agent and method. Repeat visits increase the count without moving the row. Summary totals and charts include all matching records across every page of results." %}</p>
     <div class="agentmd-table-scroll">
         <table class="listing">
             <thead><tr><th scope="col">{% trans "Date (UTC)" %}</th><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Access method" %}</th><th scope="col">{% trans "Intent" %}</th><th scope="col">{% trans "Requests" %}</th></tr></thead>
