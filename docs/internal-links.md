@@ -63,7 +63,7 @@ A link changes only when its target has a current, readable managed export. Miss
 stale and ungenerated targets retain their original HTML URLs. The `link_unresolved`
 signal receives `url` and `reason`, once per parsed URL per rewrite run:
 
-- `ineligible`: the page exists but lacks an eligible published revision, is
+- `ineligible`: the page exists but is not live, is
   restricted/excluded, fails a policy hook, or belongs to another site scope.
 - `not_found`: no page was found, the current export is absent/stale/missing from
   storage, or a redirect cannot be resolved unambiguously.

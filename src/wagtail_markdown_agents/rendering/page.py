@@ -1,7 +1,8 @@
 """Published page assembly (#78); returns Markdown without writing an export.
 
 The caller must apply ExportPolicy and publish storage changes after commit.
-This function reloads the live revision, never the caller's draft instance.
+This function reloads the live revision (or, for a live page with no revision,
+its row), never the caller's draft instance.
 Final link rewriting runs after page hooks/navigation and before YAML is joined
 to the body; canonical metadata URLs remain unchanged.
 """
@@ -93,8 +94,13 @@ def _published_page(page):
     if page.pk is None:
         raise PageRenderError(page, "unpublished_page", "save and publish the page first")
     current = Page.objects.filter(pk=page.pk).select_related("live_revision").first()
-    if current is None or not current.live or current.live_revision_id is None:
-        raise PageRenderError(page, "unpublished_page", "no live published revision exists")
+    if current is None or not current.live:
+        raise PageRenderError(page, "unpublished_page", "the page is not live")
+    if current.live_revision_id is None:
+        # Programmatically created live pages (importers, add_child) have no
+        # revision. Saving a draft never changes a live row's content fields,
+        # so the row is exactly what Wagtail serves as HTML.
+        return current.specific
     published = current.with_content_json(current.live_revision.content)
     # Revision JSON predates the publish operation. Use the publication's actual
     # dates and identity, not the previous publication's values in that JSON.

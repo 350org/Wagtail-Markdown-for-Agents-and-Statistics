@@ -116,7 +116,7 @@ def inspect_page(page_id, writer):
     if page is None:
         return "missing_page", None, None
     policy = ExportPolicy()
-    if not page.live_revision_id or not policy.is_eligible(page):
+    if not policy.is_eligible(page):
         return "ineligible", page, None
     try:
         _require_supported_page(page)

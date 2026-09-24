@@ -132,8 +132,8 @@ navigation="")` reloads the current live revision, selects ordered fields, runs
 page hooks, appends supplied navigation, and serialises frontmatter plus body.
 The return value is a Markdown string, not a stored export. The caller must apply
 `ExportPolicy` and perform publication after commit, rechecking state when writing.
-A missing live revision is an error, even for a programmatically created live page;
-publish a revision first. Publication timestamps come from the current page record.
+A live page with no revision (created in code) renders from its current row, which
+is the content Wagtail serves. Publication timestamps come from the current page record.
 
 `PAGE_FIELDS` is validated as a mapping of Page model labels to lists/tuples of
 StreamField/RichTextField names. Unknown models/fields, other field types and

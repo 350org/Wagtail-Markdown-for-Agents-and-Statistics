@@ -12,8 +12,11 @@ if ExportPolicy().is_eligible(page):
 ```
 
 It reloads the page and reconstructs its live revision, including when the supplied
-instance is a draft or stale. A live page with no published revision is rejected:
-publish a revision first. The writer must run after commit and recheck current
+instance is a draft or stale. A live page with no revision at all (created in code
+with `add_child()`, as importers commonly do) renders from its current page row,
+which is what Wagtail serves as HTML; saving a draft never changes that row's
+content. Such pages send no publish signal, so run `agentmd_generate` after an
+import, and use `--force` after later row-only edits. The writer must run after commit and recheck current
 eligibility/publication state before publishing an artefact; rendering alone does
 not protect against concurrent restriction or unpublish operations.
 
@@ -40,7 +43,7 @@ a Wagtail form page are unsupported; a form's intro cannot stand in for its form
 
 | Reason | Meaning |
 | --- | --- |
-| `unpublished_page` | Unsaved/deleted/not live, or no live revision |
+| `unpublished_page` | Unsaved, deleted or not live |
 | `unsupported_page` | No StreamField, or a Wagtail form page |
 | `empty_body` | Selected fields, hooks and supplied navigation produced no content |
 

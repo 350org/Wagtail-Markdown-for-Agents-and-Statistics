@@ -16,8 +16,8 @@ class StaleBuild(ValueError):
 def page_state(page_id, site_id=None, *, snapshot=None):
     page = snapshot.pages.get(page_id) if snapshot else Page.objects.filter(pk=page_id).first()
     policy = ExportPolicy(snapshot)
-    if page is None or page.live_revision_id is None or not policy.is_eligible(page.specific):
-        raise StaleBuild(f"Page {page_id} no longer has an eligible published revision")
+    if page is None or not policy.is_eligible(page.specific):
+        raise StaleBuild(f"Page {page_id} is no longer live and eligible")
     site = policy.site_for_page(page)
     if site_id is not None and site.pk != site_id:
         raise StaleBuild(f"Page {page_id} moved to another site")
