@@ -93,13 +93,13 @@ golden file once D1–D11 are agreed; the scenarios below assert structure, not 
 | D3 | Hero image | Omitted. | HTML renders it as a background with `alt=""` and `role="presentation"`; it carries no content. A hero *video* is out of this fixture (see D8). |
 | D4 | Hero CTA with text but no link | Omitted. | The template renders the button only when a page or URL is set. |
 | D5 | Section block presentation fields | `background`, `padding`, `anchor_id` produce no output; the section's content renders in place, without an added heading. | Presentation only. Anchor preservation can be revisited if agents need fragment links. |
-| D6 | Internal link to an **ineligible** page (private, excluded, draft-only) | Keep the link text, drop the link. | Exporting the URL of a restricted page reveals it exists (design: "must not reveal restricted related pages"). |
+| D6 | Internal link to a **private** page (not live, or behind its own or an inherited view restriction) | **Agreed 24 September 2026:** keep the link text, drop the link. Links to public pages that are only outside the export (excluded, type disabled, hook veto, another site) keep their HTML URL. | Exporting the URL of a restricted page reveals it exists (design: "must not reveal restricted related pages"). A public page's URL reveals nothing, and agents keep a useful link. |
 | D7 | Internal link to an **eligible** page | Absolute export URL: canonical page URL with `?output_format=md` while query negotiation is enabled, otherwise the explicit Markdown route (#72). | Design §Storage & middleware. Keeps an agent on Markdown when it follows links. |
 | D8 | Hero video | Out of this scenario; covered with #65 blocks. | Keeps 01 to one path. |
 | D9 | Does `hide_from_search` exclude from Markdown? | **Proposed no.** It has no built-in export meaning; normal live/restriction/type checks and `PageAgentSettings.excluded` still apply. If 350.org wants it to exclude content, map it through the project `markdown_export_eligible` hook and reconcile existing exports. | A request-only serve gate does not remove stored exports, links or discovery listings. The core must not depend on `wtrx`. **Needs explicit 350.org sign-off.** |
 | D10 | Card link text | `Learn more`, as in the HTML, without the `→` arrow; the card's `### heading` immediately above gives it context. Card `image` renders as `![image title](url)` when set (not in this fixture); the decorative `icon` is omitted. | The HTML link label is a fixed "Learn more →" whatever the card. Linking the heading instead reads better for agents but departs from the page; propose staying faithful and revisiting with #65. |
 | D11 | Quote marks | A `quote` block becomes a Markdown blockquote without the curly quote marks the HTML adds; `attribution` becomes a final `— Attribution` line. | The blockquote already marks it as a quotation; the HTML `“…”` is presentation. |
-| D12 | Block dispatch precedence (#7/#11/#12) | **Proposed:** name override → specialised class renderer (nearest in MRO) → custom presentation template → generic container recursion → fallback. Inherited Wagtail default templates do not count as custom. | Restates the proposal on #63; **not yet agreed**. Generic StructBlock/StreamBlock registration remains deferred pending this decision. |
+| D12 | Block dispatch precedence (#7/#11/#12) | **Agreed 24 September 2026:** name override → specialised class renderer (nearest in MRO) → custom presentation template → generic container recursion → fallback. Inherited Wagtail default templates do not count as custom. | Agreed as proposed on #63. A custom template wins over recursion so presentation-only fields do not leak. Implementation follows in #1/#2. |
 
 ### Review of D9/D12 — 21 September 2026
 
@@ -116,9 +116,12 @@ versus generic containers, including the ListBlock exception, before changing
 dispatch and verifying the selected nested 350.org fixtures. Local generic tests
 do not constitute client presentation sign-off.
 
-D6 also remains a proposal: current link rewriting preserves unavailable targets'
-HTML links, as documented in [internal links](../internal-links.md). The proposed
-restricted-link removal in S6 is therefore not an implemented guarantee.
+### Decisions — 24 September 2026
+
+D6 and D12 were agreed by the package owner. D6 is implemented: link rewriting
+replaces a link to a private target with its label (see
+[internal links](../internal-links.md)). D12's dispatch change is tracked in #1/#2.
+D9 still needs 350.org sign-off.
 
 ## Scenarios
 

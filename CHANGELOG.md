@@ -6,6 +6,12 @@ versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Links to private pages (not live, or password/login/group restricted) keep their
+  text but lose the link, so an export never reveals the page (D6). Links to
+  public pages outside the export still keep their HTML URL.
+
 ### Fixed
 
 - Omit decorative images from converted HTML. An `<img alt="">` in rich text or a
