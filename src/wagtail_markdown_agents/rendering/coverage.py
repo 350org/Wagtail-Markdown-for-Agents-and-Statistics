@@ -16,6 +16,10 @@ the converted Markdown wrong or incomplete. They are hints, not proof: data
 fetched in ``get_context()`` or templates chosen at render time are only seen
 by rendering.
 
+:func:`render_blocks` renders one published page block by block instead, with
+the same offline context and dispatch as export, to catch what reading
+definitions and templates cannot.
+
 A report serialises to a JSON snapshot (:meth:`CoverageReport.as_json`) that a
 later run can be compared against (:func:`compare`). The snapshot also records
 the fields inside each container the walk does not enter, so a field added to a
@@ -250,11 +254,12 @@ def _visit(block, name, location, entries, ancestors):
             _visit(child, child_name, f"{location} > {child_name}", entries, ancestors)
 
 
-def _entry(block, name, renderer) -> BlockEntry:
+def _entry(block, name, renderer, value=None, context=None) -> BlockEntry:
     entry = BlockEntry(name, _dotted(type(block)), "", _dotted(renderer))
-    entry.template = _template_name(block)
+    entry.template = _template_name(block, value, context)
     if renderer is render_fallback:
-        entry.path = CUSTOM_TEMPLATE if has_custom_template(block) else DEFAULT_TEMPLATE
+        custom = has_custom_template(block, value, context)
+        entry.path = CUSTOM_TEMPLATE if custom else DEFAULT_TEMPLATE
         if entry.template and not entry.template.endswith(_NOT_FOUND):
             entry.hints = template_hints(entry.template)
     else:
@@ -281,8 +286,8 @@ def _fields(block, prefix, ancestors):
         yield from _fields(child, f"{prefix}{name} > ", ancestors)
 
 
-def _template_name(block) -> str:
-    template = block.get_template(None, context=None)
+def _template_name(block, value=None, context=None) -> str:
+    template = block.get_template(value, context=None if context is None else dict(context))
     if not template:
         return ""
     names = [template] if isinstance(template, str) else list(template)
@@ -375,3 +380,90 @@ def _is_hidden(element: str, attrs: str) -> bool:
     if _DISPLAY_NONE.search(attrs):
         return True
     return element not in _TEXTLESS and bool(_ARIA_HIDDEN.search(attrs))
+
+
+@dataclass
+class RenderedBlock:
+    """One block of a page as export renders it: its entry, and Markdown or an error."""
+
+    location: str
+    entry: BlockEntry
+    markdown: str = ""
+    error: str = ""
+
+
+def render_blocks(page) -> list[RenderedBlock]:
+    """Render ``page``'s published body fields block by block, as export does.
+
+    StructBlocks and StreamBlocks the built-in renderers recurse into are split
+    into their children, as are ListBlocks of such containers; each result is a
+    block that renders as a whole. A list of simple items stays one result, so
+    its bullets match export. Output is before page hooks and link rewriting,
+    which apply to the whole document. A block that raises is recorded and the
+    walk continues. Rendering has the same side effects as export, such as
+    template queries and embed fetches.
+    """
+    from .blocks import render_rich_text
+    from .context import render_context
+    from .page import _published_page, _require_supported_page
+
+    published = _published_page(page)
+    _require_supported_page(published)
+    context = render_context(published)
+    context["heading"] = published.title
+    results: list[RenderedBlock] = []
+    for model_field in selected_fields(type(published)):
+        value = getattr(published, model_field.name)
+        if isinstance(model_field, StreamField):
+            _render_stream(value, model_field.name, context, results)
+        else:
+            entry = BlockEntry(
+                None, _dotted(type(model_field)), BUILT_IN, _dotted(render_rich_text)
+            )
+            location = model_field.name
+            _render_leaf(render_rich_text, model_field, value, context, location, entry, results)
+    return results
+
+
+def _render_stream(value, location, context, results):
+    for index, child in enumerate(value):
+        name = child.block_type
+        _render(child.block, child.value, name, f"{location}[{index}] {name}", context, results)
+
+
+def _render(block, value, name, location, context, results):
+    try:
+        renderer = resolve(block, name, value, context)
+        entry = _entry(block, name, renderer, value, context)
+    except Exception as exc:
+        entry = BlockEntry(name, _dotted(type(block)), "", "")
+        results.append(RenderedBlock(location, entry, error=_error(exc)))
+        return
+    kind = _RECURSING.get(renderer)
+    if kind == "list" and _RECURSING.get(resolve(block.child_block)) not in {"struct", "stream"}:
+        kind = None  # Items render as a whole list, so bullets match export.
+    if kind == "struct":
+        for child_name, child in block.child_blocks.items():
+            child_location = f"{location} > {child_name}"
+            _render(child, value.get(child_name), child_name, child_location, context, results)
+    elif kind == "stream":
+        _render_stream(value, location, context, results)
+    elif kind == "list":
+        for index, item in enumerate(value):
+            _render(block.child_block, item, None, f"{location}[{index}]", context, results)
+    else:
+        _render_leaf(renderer, block, value, context, location, entry, results)
+
+
+def _render_leaf(renderer, block, value, context, location, entry, results):
+    try:
+        markdown = renderer(block, value, context)
+    except Exception as exc:
+        results.append(RenderedBlock(location, entry, error=_error(exc)))
+    else:
+        results.append(RenderedBlock(location, entry, markdown=markdown.strip("\n")))
+
+
+def _error(exc: Exception) -> str:
+    cause = exc.__cause__ or exc
+    return f"{type(cause).__name__}: {cause}"

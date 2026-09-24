@@ -16,7 +16,8 @@ versioning: [SemVer](https://semver.org/).
   `{% embed %}`, use of `request`, and `<noscript>`, `<dialog>`, `<template>` or
   hidden markup whose text would be exported. `--json` writes a snapshot, and
   `--compare` exits non-zero when blocks, their renderers, hints or the fields
-  inside templated blocks have changed since it (#18).
+  inside templated blocks have changed since it. `--page ID` renders one published
+  page block by block, showing each block's Markdown, hints and any error (#18).
 
 ### Changed
 
