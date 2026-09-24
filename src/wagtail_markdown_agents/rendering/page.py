@@ -59,7 +59,7 @@ def render_page(page: Page, site=None, *, navigation: str = "", root_index: bool
     frontmatter after its hooks. Output ends with a single newline.
     """
     published = _published_page(page)
-    fields = _selected_fields(published)
+    fields = selected_fields(type(published))
     _require_supported_page(published)
     if not isinstance(navigation, str):
         raise TypeError("navigation must be rendered Markdown (a string)")
@@ -111,18 +111,25 @@ def _published_page(page):
 
 
 def _require_supported_page(page):
+    reason = unsupported_reason(type(page))
+    if reason:
+        raise PageRenderError(page, "unsupported_page", reason)
+
+
+def unsupported_reason(model) -> str:
+    """Why pages of ``model`` cannot be rendered, or an empty string when they can."""
     if apps.is_installed("wagtail.contrib.forms"):
         from wagtail.contrib.forms.models import FormMixin
 
-        if isinstance(page, FormMixin):
-            raise PageRenderError(page, "unsupported_page", "form page extraction is not supported")
-    if not any(isinstance(field, StreamField) for field in page._meta.get_fields()):
-        raise PageRenderError(
-            page, "unsupported_page", "v0.1 requires a StreamField on the page type"
-        )
+        if issubclass(model, FormMixin):
+            return "form page extraction is not supported"
+    if not any(isinstance(field, StreamField) for field in model._meta.get_fields()):
+        return "v0.1 requires a StreamField on the page type"
+    return ""
 
 
-def _selected_fields(page):
+def selected_fields(page_model):
+    """The ordered body fields rendered for pages of ``page_model`` (``PAGE_FIELDS``, else auto)."""
     configured = get_setting("PAGE_FIELDS")
     if configured is None:
         configured = {}
@@ -163,10 +170,10 @@ def _selected_fields(page):
             fields.append(field)
         selection[model] = fields
     return selection.get(
-        type(page),
+        page_model,
         [
             field
-            for field in page._meta.get_fields()
+            for field in page_model._meta.get_fields()
             if isinstance(field, StreamField | RichTextField)
         ],
     )

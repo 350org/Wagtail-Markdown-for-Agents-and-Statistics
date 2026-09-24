@@ -137,11 +137,15 @@ class ExportPolicy:
 
     @staticmethod
     def _type_enabled(page: Page) -> bool:
-        page_types = get_setting("PAGE_TYPES")
-        if page_types is None:
-            return True
-        enabled = {label.lower() for label in page_types}
-        return page.specific_class._meta.label_lower in enabled
+        return page_type_enabled(page.specific_class)
+
+
+def page_type_enabled(model) -> bool:
+    """Whether ``PAGE_TYPES`` enables pages of ``model`` (all types when unset)."""
+    page_types = get_setting("PAGE_TYPES")
+    if page_types is None:
+        return True
+    return model._meta.label_lower in {label.lower() for label in page_types}
 
 
 def _segment(page: Page, snapshot=None) -> str:
