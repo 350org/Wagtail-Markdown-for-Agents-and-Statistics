@@ -100,7 +100,6 @@ class ReportFilterForm(forms.Form):
     end = forms.DateField(label=_("To (UTC)"), widget=forms.DateInput(attrs={"type": "date"}))
     page_id = PageField(
         label=_("Page"),
-        help_text=_("Start typing a page title, or enter a page ID. Leave blank for all pages."),
     )
     agent = forms.ChoiceField(label=_("Agent"), required=False)
     operator = forms.ChoiceField(label=_("Operator"), required=False)
