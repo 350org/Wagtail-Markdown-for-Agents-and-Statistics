@@ -184,7 +184,7 @@ def revoke_ineligible(*, using=DEFAULT_DB_ALIAS):
     eligible = {
         page.pk
         for page in Page.objects.using(using).filter(pk__in=owned).specific()
-        if page.live_revision_id and policy.is_eligible(page)
+        if policy.is_eligible(page)
     }
     revoked = tuple(sorted(owned - eligible))
     revoke_pages(revoked, using=using)
@@ -240,7 +240,7 @@ def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic
     policy = ExportPolicy()
     for page_id in page_ids:
         page = Page.objects.using(using).filter(pk=page_id).specific().first()
-        if page is None or not page.live_revision_id or not policy.is_eligible(page):
+        if page is None or not policy.is_eligible(page):
             for site_id in captured:
                 writer.delete_page(page_id, site_id=site_id)
             continue

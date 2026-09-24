@@ -104,9 +104,7 @@ class ManifestGenerator:
             eligible = {
                 page.pk
                 for page in snapshot.pages.values()
-                if page.live_revision_id
-                and policy.is_eligible(page)
-                and policy.site_for_page(page).pk == site_id
+                if policy.is_eligible(page) and policy.site_for_page(page).pk == site_id
             }
             records = {
                 record.page_id: record

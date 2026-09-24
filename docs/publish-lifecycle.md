@@ -108,7 +108,7 @@ apply. Group membership changes cannot make a group-restricted page exportable.
 Removing a restriction or changing it to `none` schedules subtree restoration with
 `transaction.on_commit(using=...)`. This callback runs **inline**, bypassing
 `tasks.enqueue`, even if a project replaces the task backend. Each page is re-fetched
-and must still exist, have an eligible published revision, and pass the full policy.
+and must still exist, be live, and pass the full policy.
 Cascaded deletion cannot recreate a deleted page/site; rollback discards restoration.
 The writer's publication guards also reject changes during rendering/upload.
 

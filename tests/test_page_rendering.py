@@ -143,6 +143,27 @@ def test_live_revision_wins_over_direct_model_edits(page):
     assert "UNPUBLISHED DATABASE EDIT" not in render_page(page)
 
 
+def test_live_page_without_a_revision_renders_its_row(home):
+    # Importers create live pages with add_child() and no revision; Wagtail
+    # serves the row, so the Markdown must match it rather than skip the page.
+    imported = home.add_child(
+        instance=ArticlePage(
+            title="Imported", slug="imported", body=[("paragraph", "<p>Imported body.</p>")]
+        )
+    )
+    imported.tags.add("Imported tag")
+    imported.save()
+    assert imported.live and imported.live_revision_id is None
+
+    metadata, body = split_document(render_page(Page.objects.get(pk=imported.pk)))
+    assert metadata["title"] == "Imported" and metadata["tags"] == ["Imported tag"]
+    assert "Imported body." in body
+
+    imported.body = [("paragraph", "<p>DRAFT BODY</p>")]
+    imported.save_revision()  # a draft leaves the live row's content unchanged
+    assert "DRAFT BODY" not in render_page(imported)
+
+
 def test_tags_are_from_the_published_revision(home):
     article = home.add_child(
         instance=ArticlePage(title="Tags", slug="tags", body=[("paragraph", "<p>Public</p>")])
@@ -293,7 +314,7 @@ def test_empty_page_does_not_succeed_with_only_title(page, settings):
     assert excinfo.value.reason == "empty_body"
 
 
-@pytest.mark.parametrize("state", ["unsaved", "deleted", "unpublished", "no_revision"])
+@pytest.mark.parametrize("state", ["unsaved", "deleted", "unpublished", "not_live"])
 def test_no_published_content_is_an_explicit_error(home, page, state):
     if state == "unsaved":
         page = ContentPage(title="Unsaved")
@@ -302,7 +323,9 @@ def test_no_published_content_is_an_explicit_error(home, page, state):
     elif state == "unpublished":
         ContentPage.objects.get(pk=page.pk).unpublish()
     else:
-        page = home.add_child(instance=ContentPage(title="No revision", slug="no-revision"))
+        page = home.add_child(
+            instance=ContentPage(title="Draft only", slug="draft-only", live=False)
+        )
     with pytest.raises(PageRenderError) as excinfo:
         render_page(page)
     assert excinfo.value.reason == "unpublished_page"

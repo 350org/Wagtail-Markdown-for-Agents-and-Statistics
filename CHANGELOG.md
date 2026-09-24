@@ -8,6 +8,12 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Export live pages that have no revision, such as pages created by importers with
+  `add_child()`. They were skipped as `ineligible`; they now render from the live
+  page row, which is what Wagtail serves as HTML. Pages with a published revision
+  still render from it. Run `agentmd_generate` after an import, because creating a
+  page in code sends no publish signal.
+
 - Simulator fixture coverage now requires both GET and HEAD to fit in the plan;
   supplying a fixture no longer hides its omission from a truncated request budget.
 

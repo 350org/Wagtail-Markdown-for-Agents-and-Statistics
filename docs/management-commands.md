@@ -45,7 +45,8 @@ are withdrawn along with their dependent discovery artefacts.
 Without `--force`, a selected export is skipped when its recorded source/dependency
 state still matches and its exact owned storage object can be opened. This is a
 publication-state check, not a new content-hash incremental mode. A changed live
-revision or a missing file causes a rebuild. `--force` bypasses that check, including
+revision or a missing file causes a rebuild. Pages without a revision are exported
+from their live row; editing that row in code does not change the recorded state. `--force` bypasses that check, including
 when project hooks or related content have changed without a new page revision.
 The general configuration-staleness workflow (#75) and hash-based incremental/delta
 commands (#41) remain separate work. No ignored flags or `--with-manifest` switch

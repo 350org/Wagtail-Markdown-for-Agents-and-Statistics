@@ -54,7 +54,7 @@ class IndexGenerator:
         excluded = set(exclude_page_ids)
         candidates = []
         for page in snapshot.pages.values():
-            if page.pk in excluded or not page.live_revision_id or not policy.is_eligible(page):
+            if page.pk in excluded or not policy.is_eligible(page):
                 continue
             owner = policy.site_for_page(page)
             if owner is None or owner.pk != site_id:

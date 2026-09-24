@@ -68,7 +68,7 @@ page/type-scoped caller does not discard other scopes or unchanged documents.
 Unexported CMS pages are not inferred to be successful exports.
 
 `summary` counts `new`, `modified`, `unchanged`, `removed` and `errors`. Removal
-means a previously manifested page no longer has an eligible published revision
+means a previously manifested page is no longer live and eligible
 in this site (including deletion, restriction, exclusion or a move to another
 site). Only the count is published: no old titles, paths or deletion tombstones
 remain. Delta records and incremental CLI/hash skipping belong to #41.

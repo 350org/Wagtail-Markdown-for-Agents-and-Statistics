@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import transaction
-from sandbox.testapp.models import ContentPage
+from sandbox.testapp.models import ArticlePage, ContentPage
 from wagtail import hooks
 from wagtail.models import Page, Site
 
@@ -59,6 +59,28 @@ def test_generate_scoped_pages_finalises_site_once_and_reports_counts(setup, mon
     assert writer.exists("example.org/second.md")
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert {entry["id"] for entry in manifest["documents"]} == {home.pk, first.pk, second.pk}
+
+
+def test_generate_exports_lists_and_serves_live_pages_without_a_revision(setup, client):
+    writer, site, home = setup
+    imported = home.add_child(
+        instance=ArticlePage(
+            title="Imported", slug="imported", body=[("paragraph", "<p>Imported body.</p>")]
+        )
+    )
+    assert imported.live_revision_id is None
+    output = run("agentmd_generate", "--site", site.hostname)
+    assert "failed=0" in output
+    assert "Imported body." in read(writer, "example.org/imported.md")
+    assert "imported.md" in read(writer, "example.org/index.md")
+    manifest = json.loads(read(writer, "example.org/manifest.json"))
+    assert imported.pk in {entry["id"] for entry in manifest["documents"]}
+    output = run("agentmd_generate", "--page-id", str(imported.pk))
+    assert "skipped=1" in output  # unchanged row state is current
+
+    imported.save_revision().publish()  # a first publication supersedes the row state
+    output = run("agentmd_generate", "--page-id", str(imported.pk))
+    assert "generated=1" in output
 
 
 def test_freshness_skip_force_and_missing_file_repair(setup):
