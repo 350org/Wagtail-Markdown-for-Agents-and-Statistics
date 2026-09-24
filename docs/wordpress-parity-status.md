@@ -57,7 +57,7 @@ matrix IDs below provide stable local tracking until that mapping is completed.
 | P21 Multi-site operations | **Partial / Wagtail addition:** site-aware paths, policy, explicit command selection and cross-site tests exist. Full multi-site product support remains **v0.2** in the roadmap. | [Policy](../src/wagtail_markdown_agents/export/policy.py), [command tests](../tests/test_commands.py); legacy #37. |
 | P22 Removal and operations | **Partial:** explicit managed deletion and installation/removal guidance exist. Worker/job cleanup follows P13; package removal does not trigger destructive cleanup. | [Installation/removal](../INSTALL.md), [commands](management-commands.md); audit A13. |
 | P23 Additional discovery and verification | **Addition:** `llms.txt`, deployment traffic simulator and Cloudflare expression generator. These do not establish WP parity. | [llms.txt](llms-txt.md), [simulator](agent-simulator.md), [Cloudflare tests](../tests/test_cloudflare.py). |
-| P24 Client and deployment acceptance | **Open v0.1 evidence/decisions:** D6 link policy, D9 `hide_from_search`, D12 renderer precedence, agreed client fixtures and remaining live/cache evidence. | [Transfer review](transfer-readiness.md), [scenario 01](acceptance/01-contentpage-end-to-end.md), [bounded live evidence](verification/2026-09-21-bounded-live-run.md). |
+| P24 Client and deployment acceptance | **Open v0.1 evidence/decisions:** D6 link policy, D9 `hide_from_search`, agreed client fixtures and remaining live/cache evidence. | [Transfer review](transfer-readiness.md), [scenario 01](acceptance/01-contentpage-end-to-end.md), [bounded live evidence](verification/2026-09-21-bounded-live-run.md). |
 
 ## Dashboard changes must preserve the reporting contract
 

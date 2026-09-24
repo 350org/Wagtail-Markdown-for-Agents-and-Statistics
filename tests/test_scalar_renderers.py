@@ -89,6 +89,8 @@ def render(block, value):
         (DocumentChooserBlock(), "render_chooser_link"),
         (SnippetChooserBlock("wagtailcore.Site"), "render_chooser_link"),
         (blocks.ListBlock(blocks.CharBlock()), "render_list"),
+        (blocks.StructBlock([("heading", blocks.CharBlock())]), "render_struct"),
+        (blocks.StreamBlock([("heading", blocks.CharBlock())]), "render_stream"),
     ],
     ids=lambda x: type(x).__name__ if isinstance(x, blocks.Block) else x,
 )
@@ -96,16 +98,27 @@ def test_built_ins_are_registered_at_startup(block, renderer):
     assert resolve(block) is getattr(built_ins, renderer)
 
 
-def test_struct_and_stream_blocks_still_reach_the_fallback():
-    # D12 pending on #63: a project's templated StructBlock must reach its template.
+def test_templated_containers_reach_the_fallback():
+    # D12: a project's own template beats generic recursion.
+    template = "testapp/blocks/promo_block.html"
+
     class CardBlock(blocks.StructBlock):
         heading = blocks.CharBlock()
+
+        class Meta:
+            template = "testapp/blocks/promo_block.html"
 
     class BodyBlock(blocks.StreamBlock):
         card = CardBlock()
 
+        class Meta:
+            template = "testapp/blocks/promo_block.html"
+
     assert resolve(CardBlock()) is registry.render_fallback
     assert resolve(BodyBlock()) is registry.render_fallback
+    assert resolve(blocks.ListBlock(blocks.CharBlock(), template=template)) is (
+        registry.render_fallback
+    )
 
 
 # Empty values render as nothing
