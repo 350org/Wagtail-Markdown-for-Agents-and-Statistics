@@ -11,7 +11,7 @@ passed all twelve fixture GET/HEAD checks and matched 472 expected/observed
 counter increments at zero tolerance. The 21 September gaps described below are
 historical. A separate [bounded cold-cache run](verification/2026-09-23-cold-cache-run.md)
 established the selected URL's cold state at the observed LHR edge. Multi-day
-and genuine vendor-origin evidence remain open, as do D6/D9/D12 and client
+and genuine vendor-origin evidence remain open, as do D6/D9 and client
 presentation decisions. The [remaining-checks review](verification/2026-09-23-remaining-checks-review.md)
 records the started 48-hour observation: one sample passed and two are scheduled.
 Paid vendor verification is deferred by the owner; neither remaining check is
@@ -20,7 +20,7 @@ claimed complete.
 **Verdict: conditionally ready for repository handover as a development preview;
 not fully accepted v0.1 delivery.** The accompanying fixes should be reviewed and
 merged before choosing a transfer revision. Receiving ownership/access and a
-usable private security contact still need confirmation. D9/D12 and the remaining
+usable private security contact still need confirmation. D9 and the remaining
 verification must travel with the repository as explicit open work, not as passed
 acceptance. No transfer, publication or hosted/deployment settings change was performed.
 
@@ -109,7 +109,7 @@ Additional checks:
 Test/build/audit scratch evidence is under `/tmp/agentmd-review-*` and `.tox/*/log/`; it is local
 and temporary, not a durable handover archive.
 
-## D9 and D12: explicitly unresolved
+## D9 unresolved; D12 implemented
 
 **D9 — `hide_from_search`:** the core currently gives this project field no export
 meaning. The proposed answer remains “no”, requiring explicit 350.org sign-off.
@@ -118,15 +118,13 @@ reconciliation so stored exports, listings and links are also withdrawn; a
 request-only serving veto is insufficient. Agree and test the field-change
 lifecycle before claiming that client policy is implemented.
 
-**D12 — renderer precedence:** the proposal is name override → specialised class
-MRO → custom template → generic container recursion → fallback, excluding
-inherited Wagtail default templates from “custom”. Current dispatch is name →
-registered class MRO → template/HTML fallback. ListBlock is registered;
-StructBlock/StreamBlock recursion helpers exist but are not default registrations.
-Settle the ListBlock exception and custom-container examples before changing
-behaviour. Generic fallback tests and bakerydemo traffic do not settle client
-presentation. See [scenario 01](acceptance/01-contentpage-end-to-end.md) and
-legacy #63.
+**D12 — renderer precedence:** agreed by the package owner and implemented on
+24 September 2026 (#1/#2): name override → specialised class MRO → custom template →
+generic container recursion → fallback, excluding templates shipped inside Wagtail
+from “custom”. StructBlock, StreamBlock and ListBlock recursion are default
+registrations below custom templates. Generic tests do not settle client
+presentation: 350.org's templated containers need their own renderers (#14). See
+[design](design.md) and [scenario 01](acceptance/01-contentpage-end-to-end.md).
 
 Also retain D6: the proposed restricted-target link removal differs from the
 implemented preservation of HTML links to unavailable targets. Do not claim
@@ -185,7 +183,7 @@ After an agreed transfer, update canonical repository/install/security links and
 verify recipient access, deploy-key access and private reporting. No destination
 has been guessed or hard-coded in this review.
 
-Before claiming release/client acceptance, resolve agreed D9/D12 and fixture/output
+Before claiming release/client acceptance, resolve D9 and agreed fixture/output
 criteria, record the release-time verification boundary and remaining live work,
 and complete the release/tag/TestPyPI actions in
 legacy #31 when

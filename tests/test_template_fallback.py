@@ -1,9 +1,8 @@
 """Template fallback, conversion hooks and offline render context (#12).
 
-Unregistered blocks render their own template to HTML, which is converted
-like rich text. Whether a custom-templated StructBlock reaches this fallback
-before generic container recursion is decision D12 on #63; containers are not
-registered yet, so every unregistered block falls back here.
+Blocks with a custom template and no specialised renderer render that template
+to HTML, which is converted like rich text. Custom templates rank above
+generic container recursion (D12), so a templated StructBlock arrives here.
 """
 
 import pytest
@@ -11,13 +10,14 @@ from django.apps import apps
 from wagtail import blocks, hooks
 from wagtail.models import Page, Site
 
+from wagtail_markdown_agents.rendering import registry
 from wagtail_markdown_agents.rendering.blocks import render_block
 from wagtail_markdown_agents.rendering.context import render_context
 from wagtail_markdown_agents.rendering.html import (
     CONVERTER_OPTIONS_HOOK,
     PRE_CONVERT_HOOK,
 )
-from wagtail_markdown_agents.rendering.registry import BlockRenderError
+from wagtail_markdown_agents.rendering.registry import BlockRenderError, register_renderer
 
 
 class PromoBlock(blocks.StructBlock):
@@ -46,6 +46,16 @@ class BrokenBlock(blocks.StructBlock):
 
     class Meta:
         template = "testapp/blocks/broken_block.html"
+
+
+class SectionBlock(blocks.StructBlock):
+    """Templated container whose template renders children with ``include_block``."""
+
+    background = blocks.ChoiceBlock(choices=[("dark", "Dark")])
+    content = blocks.StreamBlock([("text", blocks.CharBlock())])
+
+    class Meta:
+        template = "testapp/blocks/section_block.html"
 
 
 @pytest.fixture
@@ -86,7 +96,7 @@ def test_project_heading_block_keeps_its_level(size, expected):
     assert render_block(block, value, {}) == expected
 
 
-def test_template_less_struct_block_keeps_its_values_until_d12():
+def test_template_less_struct_block_renders_its_fields_in_order():
     class CardBlock(blocks.StructBlock):
         heading = blocks.CharBlock()
         body = blocks.CharBlock()
@@ -94,8 +104,44 @@ def test_template_less_struct_block_keeps_its_values_until_d12():
     block = CardBlock()
     output = render_block(block, block.to_python({"heading": "Divest", "body": "Move money"}), {})
 
-    assert "Divest" in output
-    assert "Move money" in output
+    assert output == "Divest\n\nMove money"
+
+
+def test_templated_container_renders_its_children_through_wagtail_only(monkeypatch):
+    # The fallback renders the whole template once; children reached through
+    # include_block never re-enter the registry or the fallback.
+    calls = []
+    real_fallback = registry.render_fallback
+    monkeypatch.setattr(
+        registry,
+        "render_fallback",
+        lambda b, v, c: calls.append(type(b)) or real_fallback(b, v, c),
+    )
+    monkeypatch.setattr(registry, "_name_renderers", {})
+    register_renderer(block_name="text")(lambda b, v, c: pytest.fail("child re-entered"))
+    block = SectionBlock()
+    value = block.to_python({"background": "dark", "content": [{"type": "text", "value": "Hi"}]})
+
+    assert render_block(block, value, {}) == "Hi"
+    assert calls == [SectionBlock]
+
+
+def test_template_error_inside_generic_recursion_is_not_swallowed():
+    class PlainSectionBlock(blocks.StructBlock):
+        content = blocks.StreamBlock([("broken", BrokenBlock())])
+
+    block = PlainSectionBlock()
+    value = block.to_python({"content": [{"type": "broken", "value": {"label": "x"}}]})
+
+    with pytest.raises(BlockRenderError, match="BrokenBlock"):
+        render_block(block, value, {})
+
+
+def test_missing_template_raises_block_render_error():
+    block = blocks.StructBlock([("heading", blocks.CharBlock())], template="missing.html")
+
+    with pytest.raises(BlockRenderError):
+        render_block(block, block.to_python({"heading": "x"}), {})
 
 
 def test_template_error_raises_block_render_error_naming_the_block():

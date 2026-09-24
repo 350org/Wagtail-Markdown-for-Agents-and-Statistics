@@ -1,10 +1,9 @@
 """Structural recursion for StructBlock, ListBlock and StreamBlock (#11).
 
 The container renderers are tested directly and registered explicitly where a
-test needs nesting. Registering them as defaults would send every custom
-templated StructBlock through generic recursion before template fallback —
-decision D12 in docs/acceptance/01-contentpage-end-to-end.md — so that waits
-until D12 is agreed.
+test needs nesting. How they rank against custom templates (D12) is tested in
+test_registry.py; nesting through the default registrations is tested in
+test_container_defaults.py.
 """
 
 import pytest

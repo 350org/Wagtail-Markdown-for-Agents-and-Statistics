@@ -99,7 +99,7 @@ golden file once D1–D11 are agreed; the scenarios below assert structure, not 
 | D9 | Does `hide_from_search` exclude from Markdown? | **Proposed no.** It has no built-in export meaning; normal live/restriction/type checks and `PageAgentSettings.excluded` still apply. If 350.org wants it to exclude content, map it through the project `markdown_export_eligible` hook and reconcile existing exports. | A request-only serve gate does not remove stored exports, links or discovery listings. The core must not depend on `wtrx`. **Needs explicit 350.org sign-off.** |
 | D10 | Card link text | `Learn more`, as in the HTML, without the `→` arrow; the card's `### heading` immediately above gives it context. Card `image` renders as `![image title](url)` when set (not in this fixture); the decorative `icon` is omitted. | The HTML link label is a fixed "Learn more →" whatever the card. Linking the heading instead reads better for agents but departs from the page; propose staying faithful and revisiting with #65. |
 | D11 | Quote marks | A `quote` block becomes a Markdown blockquote without the curly quote marks the HTML adds; `attribution` becomes a final `— Attribution` line. | The blockquote already marks it as a quotation; the HTML `“…”` is presentation. |
-| D12 | Block dispatch precedence (#7/#11/#12) | **Agreed 24 September 2026:** name override → specialised class renderer (nearest in MRO) → custom presentation template → generic container recursion → fallback. Inherited Wagtail default templates do not count as custom. | Agreed as proposed on #63. A custom template wins over recursion so presentation-only fields do not leak. Implementation follows in #1/#2. |
+| D12 | Block dispatch precedence (#7/#11/#12) | **Agreed 24 September 2026:** name override → specialised class renderer (nearest in MRO) → custom presentation template → generic container recursion → fallback. Inherited Wagtail default templates do not count as custom. | Agreed as proposed on #63. A custom template wins over recursion so presentation-only fields do not leak. Implemented in #1/#2; see [design](../design.md). |
 
 ### Review of D9/D12 — 21 September 2026
 
@@ -120,8 +120,11 @@ do not constitute client presentation sign-off.
 
 D6 and D12 were agreed by the package owner. D6 is implemented: link rewriting
 replaces a link to a private target with its label (see
-[internal links](../internal-links.md)). D12's dispatch change is tracked in #1/#2.
-D9 still needs 350.org sign-off.
+[internal links](../internal-links.md)). D12 is implemented (#1/#2): StructBlock
+and StreamBlock recursion are now default registrations alongside ListBlock, and
+all three rank below a custom template. A container with its own template, as every
+350.org container has, still renders through that template until a project renderer
+is registered for it. D9 still needs 350.org sign-off.
 
 ## Scenarios
 

@@ -5,14 +5,21 @@ key. Renderers are plain functions ``(block, value, context) -> str``,
 registered via the decorator below — typically in a per-app
 ``markdown_renderers.py`` module, autodiscovered like ``wagtail_hooks.py``.
 
+Renderers registered for Wagtail's generic containers (StructBlock, StreamBlock,
+ListBlock) rank below a block's custom template, so a project's templated
+container keeps its presentation; see :func:`resolve` (decision D12).
+
 Implementation tracked in epic E2 (Markdown rendering engine).
 """
 
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
+from django.template import TemplateDoesNotExist
+from django.template.loader import select_template
 from django.utils.module_loading import autodiscover_modules, import_string
 
 from ..settings import get_setting
@@ -87,20 +94,76 @@ def render_fallback(block, value, context) -> str:
     return convert_html(str(html), block, context)
 
 
-def resolve(block: object, block_name: str | None = None) -> RendererFunc:
+def resolve(block: object, block_name: str | None = None, value=None, context=None) -> RendererFunc:
     """Return the renderer for a block instance.
 
-    Precedence: a renderer registered for ``block_name``, then the nearest
-    registered class in ``type(block).__mro__``, then :func:`render_fallback`.
-    Where a custom block template sits relative to generic container renderers
-    is decision D12 in docs/acceptance/01-contentpage-end-to-end.md.
+    Precedence (D12, agreed 24 September 2026):
+
+    1. a renderer registered for ``block_name``;
+    2. the nearest registered class in ``type(block).__mro__``, other than
+       Wagtail's generic containers;
+    3. :func:`render_fallback` when the block has a custom template;
+    4. the nearest registered generic container (structural recursion);
+    5. :func:`render_fallback`.
+
+    ``value`` and ``context`` are passed to ``block.get_template()``, so a
+    template chosen per value is honoured, as Wagtail does when rendering.
     """
     if block_name is not None and block_name in _name_renderers:
         return _name_renderers[block_name]
-    for cls in type(block).__mro__:
+    mro = type(block).__mro__
+    for cls in mro:
+        if cls in _class_renderers and cls not in _generic_containers():
+            return _class_renderers[cls]
+    if has_custom_template(block, value, context):
+        return render_fallback
+    for cls in mro:
         if cls in _class_renderers:
             return _class_renderers[cls]
     return render_fallback
+
+
+def has_custom_template(block, value=None, context=None) -> bool:
+    """Whether the block renders through a template that is not Wagtail's own.
+
+    A template that resolves to a file shipped inside the ``wagtail`` package,
+    such as ``ImageBlock``'s default, is not custom. A project template, or a
+    project copy overriding a Wagtail template path, is. A template that cannot
+    be found counts as custom, so the fallback reports the error instead of
+    the block's content silently changing shape.
+    """
+    template = block.get_template(value, context=None if context is None else dict(context))
+    if not template:
+        return False
+    names = [template] if isinstance(template, str) else list(template)
+    try:
+        origin = select_template(names).origin.name
+    except TemplateDoesNotExist:
+        return True
+    return not _is_wagtail_file(origin)
+
+
+def _is_wagtail_file(path) -> bool:
+    import wagtail
+
+    try:
+        return Path(path).resolve().is_relative_to(Path(wagtail.__file__).resolve().parent)
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def _generic_containers() -> frozenset[type]:
+    from wagtail import blocks
+
+    return frozenset(
+        {
+            blocks.BaseStructBlock,
+            blocks.StructBlock,
+            blocks.BaseStreamBlock,
+            blocks.StreamBlock,
+            blocks.ListBlock,
+        }
+    )
 
 
 def autodiscover() -> None:
