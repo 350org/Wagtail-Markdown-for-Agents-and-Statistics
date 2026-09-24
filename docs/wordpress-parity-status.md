@@ -5,6 +5,10 @@ Reviewed 22 September 2026 against Wagtail commit
 when implementation changes. This is implementation coverage, not full product
 parity or client acceptance.
 
+The P16 dashboard row was updated on 24 September 2026 for the Top pages and
+access-method tables; the earlier full-suite evidence below remains tied to the
+22 September snapshot.
+
 The [historical audit](wordpress-parity-audit.md) pins WordPress 1.7.0 at
 `8ad646e826ccbc836863aca30745abe0c5198a53` and records the detailed behavioural
 requirements. Its original coverage column describes planning in September's
@@ -45,7 +49,7 @@ matrix IDs below provide stable local tracking until that mapping is completed.
 | P13 Background generation jobs | **Planned, v0.2:** only a synchronous enqueue seam exists. Durable bulk-job progress, locks, heartbeat, recovery, bounded errors and debouncing are not implemented. | [Current seam](../src/wagtail_markdown_agents/tasks.py); audit A05, legacy #40. |
 | P14 Runtime settings and rebuild notices | **Partial:** deployment settings and system checks implemented. Runtime editing, settings UI and configuration-staleness/regeneration workflow remain **v0.2**. | [Settings](../src/wagtail_markdown_agents/settings.py), [checks](system-checks.md); audit A03/A06, legacy #38/#75. |
 | P15 Daily access counters | **Implemented:** atomic UTC counters for successful page Markdown GET selection, bounded known/unknown labels, retained deleted-page history and explicit pruning. | [Contract](agent-access-stats.md), [tests](../tests/test_stats.py), [anonymisation tests](../tests/test_stats_anonymization.py); D01–D04. |
-| P16 Statistics report | **Implemented:** 7-day default, combined date/page/agent/operator/method/intent filters, headline leaders, operator cards, pagination, purpose chart, six trend tiles and daily records. Shared category colours drive purpose tiles, chart and legend. | [Report tests](../tests/test_report.py), [CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css); D03/D08 and U01/U07 in the ledger. |
+| P16 Statistics report | **Implemented:** 7-day default, combined date/page/agent/operator/method/intent filters, headline leaders, operator cards, ranked top pages, agents by access method, pagination, purpose chart, six trend tiles and daily records. Shared category colours drive purpose tiles, chart and legend. | [Report tests](../tests/test_report.py), [CSS](../src/wagtail_markdown_agents/static/wagtail_markdown_agents/report.css); D03/D08 and U01/U07 in the ledger. |
 | P17 ZIP/OKF bundle | **Planned, v1.0:** no bundle builder, download or bundle lifecycle implementation. An `okf_version` frontmatter value does not establish bundle support. | [Design](design.md#bundle--ard--okf-v10); audit A10, legacy #42/#43/#46. |
 | P18 ARD catalog | **Planned, v1.0:** no catalog generation, catalog hook or `.well-known` route. | [Design](design.md#bundle--ard--okf-v10); legacy #44. |
 | P19 Public extension surface | **Partial:** core policy/path, rendering/frontmatter, response/discovery, index/category hooks and generation/deletion/link signals exist. Full 22-point equivalence requires the **v1.0** audit; taxonomy, catalog and job-budget counterparts depend on their features. | [Historical hook inventory](wordpress-parity-audit.md#public-extension-surface), [signals](../src/wagtail_markdown_agents/signals.py); audit A08, legacy #47. |
@@ -84,6 +88,10 @@ desktop and 390px widths. The narrow view had no page-level horizontal overflow;
 selecting an OpenAI card changed the headline, purpose chart, agent choices and
 records to the same filtered set. This was a local visual check, not a production
 deployment check.
+
+On 24 September 2026 the Top pages, access-method and Daily records sections were
+rendered in the local sandbox at desktop and 390px widths. The three seeded pages
+showed 75%, 25% and <1% shares, and the narrow page had no horizontal overflow.
 
 ## Verification of this documentation review
 

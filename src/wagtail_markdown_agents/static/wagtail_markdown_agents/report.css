@@ -254,6 +254,10 @@
     overflow-wrap: anywhere;
 }
 
+.agentmd-top-pages th, .agentmd-top-pages td {
+    padding-block: .35rem;
+}
+
 .agentmd-limits {
     border-top: 1px solid var(--w-color-border-furniture);
     margin-top: 2rem;

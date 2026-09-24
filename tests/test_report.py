@@ -6,11 +6,12 @@ import pytest
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 from wagtail import hooks
 from wagtail.models import Page
 
 from wagtail_markdown_agents.models import AgentAccess
-from wagtail_markdown_agents.reports import bucket_dates, correlation
+from wagtail_markdown_agents.reports import bucket_dates, correlation, top_pages
 
 pytestmark = pytest.mark.django_db
 TODAY = date(2026, 9, 15)
@@ -86,6 +87,28 @@ def test_calendar_buckets_cover_leap_day_and_year_transition():
 def test_trends_are_correlation(values, expected):
     actual = correlation(values)
     assert actual is None if expected is None else actual == pytest.approx(expected)
+
+
+def test_top_pages_ranks_ties_and_uses_report_total():
+    rows = [
+        {"page_id": 4, "total": 5},
+        {"page_id": 3, "total": 5},
+        {"page_id": 2, "total": 10},
+        {"page_id": 1, "total": 0},
+    ]
+    assert top_pages(rows, 20) == [
+        {"page_id": 2, "total": 10, "rank": 1, "share": "50%"},
+        {"page_id": 3, "total": 5, "rank": 2, "share": "25%"},
+        {"page_id": 4, "total": 5, "rank": 2, "share": "25%"},
+    ]
+    assert top_pages([], 0) == []
+    assert top_pages([{"page_id": 1, "total": 0}], 0) == []
+
+
+def test_top_pages_stops_at_ten_and_marks_tiny_shares():
+    rows = [{"page_id": pk, "total": 1} for pk in range(12, 0, -1)]
+    assert [row["page_id"] for row in top_pages(rows, 400)] == list(range(1, 11))
+    assert all(row["rank"] == 1 and row["share"] == "<1%" for row in top_pages(rows, 400))
 
 
 @pytest.mark.parametrize("use_tz", [True, False])
@@ -260,6 +283,8 @@ def test_empty_states(report):
     counter(access_date=date(2020, 1, 1))
     response = report()
     assert "No page requests match these filters" in response.content.decode()
+    assert "No pages requested in this range." in response.content.decode()
+    assert response.context["summary"]["top_pages"] == []
     assert all(
         t["count"] == 0 and t["trend"] == "Neutral" for t in response.context["summary"]["tiles"]
     )
@@ -400,6 +425,81 @@ def test_operator_cards_leaders_and_unattributed_reconcile(report):
     assert "Recorded Markdown requests" in html
     assert "Requests by purpose" in html
     assert 'aria-label="Filter by OpenAI: 47 requests"' in html
+
+
+def test_top_pages_table_links_shares_filters_and_section_order(report):
+    root = Page.get_first_root_node()
+    pages = [
+        root.add_child(instance=Page(title=title, slug=slug))
+        for title, slug in [("First", "first"), ("Second", "second"), ("Third", "third")]
+    ]
+    for page, count in zip(pages, [300, 99, 1], strict=True):
+        counter(page_id=page.pk, count=count)
+    response = report(operator="openai", method="export-url", page_search="old", p=2)
+    summary = response.context["summary"]
+    assert summary["tiles"][0]["count"] == 400
+    assert sum(card["count"] for card in summary["operator_cards"]) == 400
+    assert sum(row["total"] for row in summary["top_pages"]) == 400
+    assert [(row["rank"], row["total"], row["share"]) for row in summary["top_pages"]] == [
+        (1, 300, "75%"),
+        (2, 99, "25%"),
+        (3, 1, "<1%"),
+    ]
+    html = response.content.decode()
+    headings = [
+        "<h2>Summary",
+        "<h2>Purposes</h2>",
+        "<h2>Operators</h2>",
+        "<h2>Top pages</h2>",
+        "<h2>Agents by access method</h2>",
+        "<h2>Daily records</h2>",
+    ]
+    positions = [html.index(heading) for heading in headings]
+    assert positions == sorted(positions)
+    for page, count, rank, share in zip(
+        pages, [300, 99, 1], [1, 2, 3], ["75%", "25%", "<1%"], strict=True
+    ):
+        row = next(row for row in summary["top_pages"] if row["page_id"] == page.pk)
+        if page == pages[0]:
+            assert row["url"] == summary["page_links"][0][1]
+        assert f"page_id={page.pk}" in row["url"]
+        assert "operator=openai" in row["url"] and "method=export-url" in row["url"]
+        assert "page_search=" not in row["url"] and "p=" not in row["url"]
+        rendered_row = (
+            f'<tr><td>{rank}</td><th scope="row"><a href="{escape(row["url"])}">'
+            f"{page.title}</a></th><td>{count}</td><td>{escape(share)}</td></tr>"
+        )
+        assert rendered_row in html
+    filtered = report(page_id=pages[0].pk, operator="openai", page_search="old", p=2)
+    filtered_html = filtered.content.decode()
+    assert f"Showing {pages[0].title} only." in filtered_html
+    assert '<table class="listing agentmd-top-pages">' not in filtered_html
+    assert "Clear page filter" in filtered_html
+    clear_url = filtered.context["summary"]["clear_page_url"]
+    assert "page_id=" not in clear_url and "page_search=" not in clear_url
+    assert "operator=openai" in clear_url and "p=" not in clear_url
+
+
+def test_access_method_rows_count_distinct_pages_for_current_filters(report):
+    counter(page_id=111, agent="GPTBot", access_method="ua", count=3)
+    counter(
+        page_id=111,
+        agent="GPTBot",
+        access_method="ua",
+        access_date=TODAY - timedelta(days=1),
+        count=2,
+    )
+    counter(page_id=222, agent="GPTBot", access_method="ua", count=4)
+    counter(page_id=333, agent="GPTBot", access_method="export-url", count=5)
+    counter(page_id=444, agent="ClaudeBot", access_method="ua", count=6)
+    summary = report(operator="openai").context["summary"]
+    assert [
+        (row["agent"], row["access_method"], row["requests"], row["unique_pages"])
+        for row in summary["method_rows"]
+    ] == [
+        ("GPTBot", "ua", 9, 2),
+        ("GPTBot", "export-url", 5, 1),
+    ]
 
 
 def test_operator_filter_drops_conflicting_agent_and_preserves_other_filters(report):
