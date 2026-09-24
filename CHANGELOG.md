@@ -8,6 +8,13 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Blocks are rendered in the agreed D12 order: name override, then a specialised
+  class renderer, then the block's custom template, then generic container
+  recursion, then the template fallback. A StructBlock or StreamBlock without its
+  own template now renders its fields through the built-in renderers instead of
+  Wagtail's basic HTML. A container with a custom template, including a templated
+  `ListBlock`, renders through that template. Templates shipped inside Wagtail do
+  not count as custom.
 - Links to private pages (not live, or password/login/group restricted) keep their
   text but lose the link, so an export never reveals the page (D6). Links to
   public pages outside the export still keep their HTML URL.
