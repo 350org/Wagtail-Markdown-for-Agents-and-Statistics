@@ -89,6 +89,25 @@ def test_external_and_protocol_relative_image_src_are_left_alone():
     assert rich(html) == "![A](//cdn.example/a.png) ![B](https://x.org/b.png)"
 
 
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        ('<p><img src="/icon.svg" alt=""></p>', ""),
+        ('<p><a href="https://350.org/"><img src="/icon.svg" alt=""></a></p>', ""),
+        (
+            '<p><a href="https://350.org/"><img src="/i.svg" alt=""> Act</a></p>',
+            "[Act](https://350.org/)",
+        ),
+        ('<figure><img src="/bg.jpg" alt=""><figcaption>Credit</figcaption></figure>', "Credit"),
+        ('<p><img src="/a.png"></p>', "![](http://localhost:8000/a.png)"),
+    ],
+    ids=["decorative", "decorative-only-link", "decorative-in-link", "caption", "missing-alt"],
+)
+def test_decorative_empty_alt_images_are_omitted(html, expected):
+    # alt="" marks an image decorative (WCAG); a missing alt is unknown, so kept.
+    assert rich(html) == expected
+
+
 def test_empty_rich_text_renders_empty():
     assert rich("") == ""
 
@@ -145,6 +164,15 @@ def test_image_embed_stays_site_relative_without_a_base_url(settings, tmp_path):
     output = rich(f'<embed embedtype="image" id="{image.pk}" format="fullwidth" alt="A rally"/>')
 
     assert output.startswith("![A rally](/media/images/")
+
+
+@pytest.mark.django_db
+def test_decorative_image_embed_is_omitted(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    image = get_image_model().objects.create(title="Rally", file=get_test_image_file())
+
+    embed = f'<embed embedtype="image" id="{image.pk}" format="fullwidth" alt=""/>'
+    assert rich(f"<p>Before</p>{embed}<p>After</p>") == "Before\n\nAfter"
 
 
 # CharBlock and TextBlock

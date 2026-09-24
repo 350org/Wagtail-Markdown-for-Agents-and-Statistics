@@ -8,6 +8,9 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Omit decorative images from converted HTML. An `<img alt="">` in rich text or a
+  block template (icons, backgrounds) was exported as `![](url)`; it now renders
+  nothing, like a decorative `ImageBlock`. Images with no `alt` attribute are kept.
 - Export live pages that have no revision, such as pages created by importers with
   `add_child()`. They were skipped as `ineligible`; they now render from the live
   page row, which is what Wagtail serves as HTML. Pages with a published revision

@@ -95,6 +95,10 @@ def _code_language(pre) -> str | None:
 
 class _Converter(MarkdownConverter):
     def convert_img(self, el, text, parent_tags):
+        # alt="" marks an image as decorative (WCAG), the HTML equivalent of a
+        # decorative ImageBlock. A missing alt says nothing, so it is kept.
+        if el.get("alt") == "":
+            return ""
         if el.get("src"):
             el["src"] = absolute_url(el["src"])
         markdown = super().convert_img(el, text, parent_tags)

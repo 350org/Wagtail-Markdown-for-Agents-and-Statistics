@@ -80,7 +80,9 @@ recursion for `StructBlock`/`ListBlock`/`StreamBlock`.
 MRO dispatch alone would route it into structural recursion — it is registered
 explicitly ahead of the `StructBlock` renderer (#10). Images render at their original
 size with Wagtail's alt-text rule (contextual alt text, else description, else title);
-a decorative `ImageBlock` image renders nothing. Every image URL in the output —
+a decorative `ImageBlock` image renders nothing. In converted HTML (rich text and
+the template fallback) an `<img alt="">`, WCAG's decorative marker, is omitted the
+same way, along with any link left empty; an image with no `alt` attribute is kept. Every image URL in the output —
 block images and rich-text images alike — is absolute when `WAGTAILADMIN_BASE_URL`
 is set, as `Rendition.full_url` is. `EmbedBlock` renders a link whose text is the
 title from Wagtail's embed cache when one exists, else an autolink; generation never
