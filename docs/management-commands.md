@@ -143,7 +143,8 @@ value are reported with the template chosen for an empty value.
 Rows under "Custom template" and "Wagtail default HTML" are the ones to check: the
 converted HTML may include presentation-only text, or content the template leaves
 out. To give a block its own Markdown, register a renderer in a
-`markdown_renderers.py` module, then run the report again.
+`markdown_renderers.py` module, then run the report again. The
+[custom blocks guide](custom-blocks.md) walks through this.
 
 ### Template hints
 

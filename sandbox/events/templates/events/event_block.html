@@ -1,0 +1,6 @@
+<article class="event event--{{ value.style }}">
+    <h3>{{ value.title }}</h3>
+    <p>{{ value.date|date:"j F Y" }}{% if value.location %} · {{ value.location }}{% endif %}</p>
+    {{ value.summary }}
+    <button type="button" data-add-to-calendar>Add to calendar</button>
+</article>

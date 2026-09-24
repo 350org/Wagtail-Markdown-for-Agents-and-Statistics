@@ -20,6 +20,10 @@ import, and use `--force` after later row-only edits. The writer must run after 
 eligibility/publication state before publishing an artefact; rendering alone does
 not protect against concurrent restriction or unpublish operations.
 
+Each StreamField block renders through a built-in renderer, a project's renderer or
+its template. See the [custom blocks guide](custom-blocks.md) for writing renderers
+for your own blocks.
+
 ## Field selection and errors
 
 By default every StreamField and RichTextField renders in model definition order.

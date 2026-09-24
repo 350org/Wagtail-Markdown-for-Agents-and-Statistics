@@ -18,6 +18,13 @@ versioning: [SemVer](https://semver.org/).
   `--compare` exits non-zero when blocks, their renderers, hints or the fields
   inside templated blocks have changed since it. `--page ID` renders one published
   page block by block, showing each block's Markdown, hints and any error (#18).
+- A guide to exporting a project's own StreamField blocks: when the template is
+  enough, the renderer contract, rendering child blocks, registration by class, name
+  and setting, overriding a reusable package's renderer, and failures
+  (`docs/custom-blocks.md`, #18).
+- `render_block` is now public (`from wagtail_markdown_agents.rendering import
+  render_block`), so a project renderer can render its child blocks exactly as export
+  does.
 
 ### Changed
 
