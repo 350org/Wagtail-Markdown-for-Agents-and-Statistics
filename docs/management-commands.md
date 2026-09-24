@@ -111,6 +111,7 @@ past job results or persist a configuration-staleness report.
 python manage.py agentmd_blocks
 python manage.py agentmd_blocks --json > blocks.json
 python manage.py agentmd_blocks --compare blocks.json
+python manage.py agentmd_blocks --page 42
 ```
 
 This lists every block that can appear in an exported StreamField and shows how
@@ -164,7 +165,27 @@ Template comments are ignored.
 Hints come from the source, so treat them as prompts to check the output, not
 proof of a problem. Some things only appear when the block is rendered: data a
 block fetches in `get_context()`, a template chosen at render time (reported as not
-checked), or behaviour inside a custom template tag.
+checked), or behaviour inside a custom template tag. Use `--page` to see those.
+
+### Render one page block by block
+
+`--page ID` renders a page's published content one block at a time, with the same
+offline context and renderers as export. For each block it prints the block's
+position (for example `body[1] section > content[0] callout > body`), how it was
+rendered, any template hints, and its Markdown. A block that renders nothing shows
+`(empty)`, and a block that fails shows its error. The command keeps going after a
+failure and exits non-zero at the end if any block failed.
+
+StructBlocks and StreamBlocks that the built-in renderers recurse into are split
+into their children. So are ListBlocks of such containers, by item (`cards[2]`). A
+list of simple items is shown as one block, with the bullets export gives it.
+
+This shows each block's Markdown before page hooks (`markdown_post_render`) and
+link rewriting, which apply to the whole document; `agentmd_generate` writes the
+full document. The page does not have to be exported under the current policy,
+but it must be live and of a supported type. Rendering has the same side effects
+as export: block templates run their queries, and `{% embed %}` fetches from the
+embed provider.
 
 ### Snapshots and drift
 
