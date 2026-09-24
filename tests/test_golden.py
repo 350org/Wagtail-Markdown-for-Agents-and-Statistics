@@ -7,8 +7,8 @@ calls on ledger #84 (angle brackets kept, media embeds as links, heading
 levels, decorative images omitted, table layout, embed titles from cache,
 frontmatter precedence) are pinned here.
 
-Only leaf built-ins are covered until D12 (#63) settles container dispatch;
-full-page goldens follow #78, and 350.org's blocks follow #65.
+Containers are covered by test_container_defaults.py; full-page goldens follow
+#78, and 350.org's blocks follow #65.
 """
 
 import datetime

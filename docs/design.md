@@ -106,19 +106,32 @@ nothing, because Wagtail's basic rendering would otherwise print `None` (#85);
 block's output may contain `None` or an object repr, alone or as a list item — a guard
 test enforces this (ledger #84, the wp-mfa-plugin #21 failure class).
 
-`ListBlock` is registered ahead of the D12 decision (#85): projects rarely give a plain
-list its own template, and without it list items would go through Wagtail's HTML rather
-than these renderers. A list whose items each render to one line becomes a `- ` bullet
-list; if any item spans several lines (cards, rich text, nested blocks) items are
-separated by blank lines. `StructBlock` and `StreamBlock` still wait for D12.
+A list whose items each render to one line becomes a `- ` bullet list; if any item
+spans several lines (cards, rich text, nested blocks) items are separated by blank
+lines.
 
-**Dispatch decision to resolve before implementation (#7/#11/#12, through #63):**
-a generic StructBlock MRO registration would otherwise capture unknown project
-StructBlock subclasses before template fallback. Define explicit precedence for
-custom templates versus generic containers, preserving name overrides and specialised
-class renderers. Test both a plain container and an unknown templated composite.
-Template fallback also needs deterministic page/site/locale context during command
-execution; stripping script/style nodes does not by itself omit hidden success UI.
+**Dispatch precedence (D12, agreed 24 September 2026, #1/#2):**
+
+1. a renderer registered for the block's name;
+2. the nearest registered class in the block's MRO, other than Wagtail's generic
+   containers (`StructBlock`, `StreamBlock`, `ListBlock` and their `Base*` classes);
+3. the block's custom template, through the fallback below;
+4. the nearest registered generic container: structural recursion;
+5. the fallback.
+
+A custom template is whatever `block.get_template(value, context)` returns, so
+templates set in `Meta`, passed to the block instance or chosen per value all count,
+unless the template resolves to a file shipped inside the `wagtail` package, such as
+`ImageBlock`'s default. A project copy of a Wagtail template path is custom. A
+template that cannot be found also counts, so the fallback raises `BlockRenderError`
+rather than the block's content quietly changing shape. A custom template beats
+recursion because a template decides which fields are content: recursion would print
+presentation fields such as a background choice. A template-less container recurses,
+and its presentation fields render unless the project maps them by name (D5). A
+project that registers a renderer for `StructBlock` itself replaces generic recursion;
+it still ranks below custom templates. Template rendering converts the resulting HTML
+once: children reached through `include_block` render with Wagtail, never back through
+the registry.
 
 Page body fields: `WAGTAIL_MARKDOWN_AGENTS["PAGE_FIELDS"]` map
 (`{"app.Model": ["body"]}`), defaulting to auto-detection of all
@@ -189,10 +202,10 @@ context: `page`, `site` (the page's own unless given), `locale`, and `settings` 
 that site when `wagtail.contrib.settings` is installed. There is no `request`. The page
 post-render hook is implemented in #78 as described above.
 
-A block whose class, or a base class, has a registered renderer uses that renderer
-even when it declares its own template — a `CharBlock` subclass with a template still
-renders as plain text. Only unregistered blocks reach the template fallback. This is
-the "specialised class renderer before custom template" order proposed as D12 on #63.
+A block whose class, or a base class other than a generic container, has a
+registered renderer uses that renderer even when it declares its own template — a
+`CharBlock` subclass with a template still renders as plain text. See the D12
+precedence above.
 
 ### Frontmatter
 

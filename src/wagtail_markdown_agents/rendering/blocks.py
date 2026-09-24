@@ -9,12 +9,10 @@ through the template fallback, which converts their HTML like rich text.
 
 The built-in renderers are registered when this module is imported, which
 ``registry.autodiscover()`` does before project ``markdown_renderers``
-modules, so projects override them. ListBlock is registered, so every list
-item goes through these renderers. The StructBlock and StreamBlock renderers
-are not registered yet: registering them would route custom templated
-blocks into generic recursion before template fallback.
-That precedence is decision D12 in
-docs/acceptance/01-contentpage-end-to-end.md.
+modules, so projects override them. The StructBlock, StreamBlock and ListBlock
+renderers are generic: a container with its own template renders through that
+template instead, so its presentation-only fields do not leak (decision D12,
+see ``registry.resolve``).
 """
 
 from collections.abc import Iterable
@@ -31,7 +29,7 @@ from .registry import register_renderer, resolve
 
 def render_block(block, value, context, block_name: str | None = None) -> str:
     """Render one block value with the renderer :func:`resolve` selects."""
-    return resolve(block, block_name)(block, value, context)
+    return resolve(block, block_name, value, context)(block, value, context)
 
 
 def _join(parts: Iterable[str]) -> str:
@@ -289,6 +287,8 @@ for block_class, renderer in (
     (wagtail_blocks.ChoiceBlock, render_choice),
     (wagtail_blocks.MultipleChoiceBlock, render_multiple_choice),
     (wagtail_blocks.PageChooserBlock, render_chooser_link),
+    (wagtail_blocks.StructBlock, render_struct),
+    (wagtail_blocks.StreamBlock, render_stream),
     (wagtail_blocks.ListBlock, render_list),
     (TableBlock, render_table),
     (TypedTableBlock, render_typed_table),
@@ -296,8 +296,9 @@ for block_class, renderer in (
     register_renderer(block_class)(renderer)
 
 # Optional Wagtail apps: importing their blocks without the app installed fails.
-# ImageBlock subclasses StructBlock, so it is registered explicitly: MRO dispatch
-# would otherwise render its image, alt text and decorative flag as three fields.
+# ImageBlock subclasses StructBlock, so it is registered explicitly: generic
+# recursion would otherwise render its image, alt text and decorative flag as
+# three fields.
 if apps.is_installed("wagtail.images"):
     from wagtail.images.blocks import ImageBlock, ImageChooserBlock
 
