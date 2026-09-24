@@ -109,6 +109,8 @@ past job results or persist a configuration-staleness report.
 
 ```bash
 python manage.py agentmd_blocks
+python manage.py agentmd_blocks --json > blocks.json
+python manage.py agentmd_blocks --compare blocks.json
 ```
 
 This lists every block that can appear in an exported StreamField and shows how
@@ -141,6 +143,28 @@ Rows under "Custom template" and "Wagtail default HTML" are the ones to check: t
 converted HTML may include presentation-only text, or content the template leaves
 out. To give a block its own Markdown, register a renderer in a
 `markdown_renderers.py` module, then run the report again.
+
+### Snapshots and drift
+
+`--json` prints the report as a JSON snapshot. Each block records its resolved path,
+renderer, template and every place it is used. A block whose children the report
+does not list, because a template or a project renderer handles them, also records
+its nested fields in declared order. A field added to such a block is a field that
+its template or renderer may not show.
+
+`--compare blocks.json` runs the report again and prints each difference from the
+snapshot:
+
+- blocks added or removed;
+- a changed path, renderer or template;
+- nested fields added, removed or reordered;
+- a block used in new places or no longer used;
+- page types added or removed.
+
+It exits non-zero when anything differs, so a CI job can flag block changes that
+need a renderer reviewed. Blocks are matched by name and class. After reviewing the
+changes, write a new snapshot with `--json`. A snapshot records dotted class paths,
+so compare it only against the same project.
 
 ## Delete exports
 

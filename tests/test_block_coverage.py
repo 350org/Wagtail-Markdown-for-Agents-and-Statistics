@@ -5,10 +5,12 @@ Each entry must name the renderer export would use, so the walk goes through
 where the built-in container renderers do.
 """
 
+import json
 from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import override_settings
 from wagtail import blocks
 from wagtail.contrib.typed_table_block.blocks import TypedTableBlock
@@ -21,7 +23,9 @@ from wagtail_markdown_agents.rendering.coverage import (
     CUSTOM_TEMPLATE,
     DEFAULT_TEMPLATE,
     PROJECT,
+    CoverageReport,
     build_report,
+    compare,
     walk_streams,
 )
 from wagtail_markdown_agents.rendering.registry import register_renderer
@@ -85,6 +89,16 @@ def run(*args):
     output = StringIO()
     call_command("agentmd_blocks", *args, stdout=output)
     return output.getvalue()
+
+
+def snapshot(*streams):
+    """A JSON snapshot of BodyBlock-shaped streams, as ``--json`` writes one."""
+    report = CoverageReport(["test.Page"], {}, walk_streams(streams))
+    return json.loads(json.dumps(report.as_json()))
+
+
+def changes(before, *after):
+    return compare(before, CoverageReport(["test.Page"], {}, walk_streams(after)))
 
 
 def test_templated_blocks_are_custom_template_and_their_children_are_not_listed():
@@ -193,3 +207,121 @@ def test_command_groups_blocks_by_path_and_summarises():
     assert "    in testapp.ArticlePage.body > raw_html and 2 more\n" in output
     assert "-> render_rich_text\n" in output
     assert output.endswith("project=0 built_in=12 custom_template=0 default_html=1\n")
+
+
+def test_containers_the_walk_does_not_enter_record_their_fields(project_renderers):
+    found = entries()
+    assert found["promo", "PromoBlock"].fields == [
+        "heading: wagtail.blocks.field_block.CharBlock",
+        "text: wagtail.blocks.field_block.CharBlock",
+    ]
+    assert found["quote", "QuoteBlock"].fields == [
+        "quote: wagtail.blocks.field_block.TextBlock",
+        "attribution: wagtail.blocks.field_block.CharBlock",
+    ]
+    assert found["templated_list", "ListBlock"].fields == [
+        "item: wagtail.blocks.field_block.CharBlock"
+    ]
+    # Children of recursed containers are entries of their own.
+    assert found["cards", "ListBlock"].fields == []
+
+
+def test_compare_is_empty_for_an_unchanged_definition():
+    assert changes(snapshot(("test.Page.body", BodyBlock())), ("test.Page.body", BodyBlock())) == []
+
+
+def test_compare_reports_added_and_removed_blocks():
+    class Smaller(blocks.StreamBlock):
+        promo = PromoBlock()
+
+    class Larger(blocks.StreamBlock):
+        promo = PromoBlock()
+        raw = blocks.RawHTMLBlock()
+
+    before = snapshot(("test.Page.body", Smaller()))
+    assert changes(before, ("test.Page.body", Larger())) == [
+        "added: raw wagtail.blocks.field_block.RawHTMLBlock (Wagtail default HTML)"
+    ]
+    assert changes(snapshot(("test.Page.body", Larger())), ("test.Page.body", Smaller())) == [
+        "removed: raw wagtail.blocks.field_block.RawHTMLBlock"
+    ]
+
+
+def test_compare_reports_a_new_renderer_and_a_new_field_in_a_rendered_block(monkeypatch):
+    def stream():
+        class Body(blocks.StreamBlock):
+            promo = PromoBlock()
+
+        return ("test.Page.body", Body())
+
+    before = snapshot(stream())
+    monkeypatch.setattr(registry, "_class_renderers", dict(registry._class_renderers))
+    register_renderer(PromoBlock)(lambda block, value, context: "")
+    monkeypatch.setitem(PromoBlock.base_blocks, "cta", blocks.URLBlock())
+    assert changes(before, stream()) == [
+        "changed: promo tests.test_container_defaults.PromoBlock: "
+        "path Custom template -> Project renderer",
+        "changed: promo tests.test_container_defaults.PromoBlock: renderer "
+        "wagtail_markdown_agents.rendering.registry.render_fallback -> "
+        "tests.test_block_coverage.test_compare_reports_a_new_renderer_and_a_new_field_in_"
+        "a_rendered_block.<locals>.<lambda>",
+        "changed: promo tests.test_container_defaults.PromoBlock: "
+        "field added: cta: wagtail.blocks.field_block.URLBlock",
+    ]
+
+
+def test_compare_reports_moved_blocks_and_page_types():
+    lines = changes(snapshot(("test.Page.body", BodyBlock())), ("test.Page.sidebar", BodyBlock()))
+    assert (
+        "changed: raw wagtail.blocks.field_block.RawHTMLBlock: "
+        "location added: test.Page.sidebar > raw"
+    ) in lines
+    assert (
+        "changed: raw wagtail.blocks.field_block.RawHTMLBlock: "
+        "location removed: test.Page.body > raw"
+    ) in lines
+
+
+def test_compare_rejects_something_that_is_not_a_snapshot():
+    with pytest.raises(ValueError, match="not an agentmd_blocks snapshot"):
+        compare({"blocks": []}, build_report())
+
+
+def test_json_snapshot_round_trips_through_compare(tmp_path):
+    data = json.loads(run("--json"))
+    assert data["format"] == 1
+    assert data["page_types"][0] == "testapp.ArticlePage"
+    raw = next(block for block in data["blocks"] if block["name"] == "raw_html")
+    assert raw["path"] == DEFAULT_TEMPLATE and len(raw["locations"]) == 3
+    path = tmp_path / "blocks.json"
+    path.write_text(json.dumps(data))
+    assert run("--compare", str(path)) == f"Block coverage matches {path}.\n"
+
+
+def test_compare_prints_changes_and_fails(tmp_path):
+    data = json.loads(run("--json"))
+    data["blocks"] = [block for block in data["blocks"] if block["name"] != "raw_html"]
+    data["page_types"].append("testapp.RetiredPage")
+    path = tmp_path / "blocks.json"
+    path.write_text(json.dumps(data))
+    output = StringIO()
+    with pytest.raises(CommandError, match="changed since .*: 2 differences"):
+        call_command("agentmd_blocks", "--compare", str(path), stdout=output)
+    assert output.getvalue().splitlines() == [
+        "page type removed: testapp.RetiredPage",
+        "added: raw_html wagtail.blocks.field_block.RawHTMLBlock (Wagtail default HTML)",
+    ]
+
+
+@pytest.mark.parametrize("content", [None, "not json", '{"format": 99}'])
+def test_compare_fails_on_a_missing_or_invalid_snapshot(tmp_path, content):
+    path = tmp_path / "blocks.json"
+    if content is not None:
+        path.write_text(content)
+    with pytest.raises(CommandError, match="Cannot compare with"):
+        run("--compare", str(path))
+
+
+def test_json_and_compare_cannot_be_combined(tmp_path):
+    with pytest.raises(CommandError, match="not allowed with argument"):
+        run("--json", "--compare", str(tmp_path / "blocks.json"))

@@ -11,7 +11,9 @@ versioning: [SemVer](https://semver.org/).
 - `agentmd_blocks` management command, which reports how each block on exportable
   page types becomes Markdown: through a project renderer, a built-in renderer, the
   block's custom template, or Wagtail's default HTML. It reads block definitions
-  only and follows the same dispatch as export (#18).
+  only and follows the same dispatch as export. `--json` writes a snapshot, and
+  `--compare` exits non-zero when blocks, their renderers or the fields inside
+  templated blocks have changed since it (#18).
 
 ### Changed
 

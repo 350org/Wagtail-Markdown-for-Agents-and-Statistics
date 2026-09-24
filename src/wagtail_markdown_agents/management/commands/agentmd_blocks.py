@@ -1,21 +1,11 @@
-from django.core.management.base import BaseCommand
+import json
 
-from ...rendering.coverage import (
-    BUILT_IN,
-    CUSTOM_TEMPLATE,
-    DEFAULT_TEMPLATE,
-    PROJECT,
-    build_report,
-)
+from django.core.management.base import BaseCommand, CommandError
+
+from ...rendering.coverage import CUSTOM_TEMPLATE, DEFAULT_TEMPLATE, LABELS, build_report, compare
 from ..export_commands import report
 
 BUILT_IN_PREFIX = "wagtail_markdown_agents.rendering.blocks."
-SUMMARY_KEYS = {
-    PROJECT: "project",
-    BUILT_IN: "built_in",
-    CUSTOM_TEMPLATE: "custom_template",
-    DEFAULT_TEMPLATE: "default_html",
-}
 
 
 class Command(BaseCommand):
@@ -24,8 +14,27 @@ class Command(BaseCommand):
         "Reads block definitions only; renders and writes nothing."
     )
 
+    def add_arguments(self, parser):
+        output = parser.add_mutually_exclusive_group()
+        output.add_argument(
+            "--json", action="store_true", help="Print the report as a JSON snapshot."
+        )
+        output.add_argument(
+            "--compare",
+            metavar="SNAPSHOT",
+            help="Compare with a --json snapshot; exit non-zero if block coverage changed.",
+        )
+
     def handle(self, *args, **options) -> None:
         coverage = build_report()
+        if options["json"]:
+            self.stdout.write(json.dumps(coverage.as_json(), indent=2))
+        elif options["compare"]:
+            self._compare(options["compare"], coverage)
+        else:
+            self._report(coverage)
+
+    def _report(self, coverage) -> None:
         self.stdout.write(
             f"Block coverage for {len(coverage.page_types)} page types: "
             + (", ".join(coverage.page_types) or "none")
@@ -36,12 +45,27 @@ class Command(BaseCommand):
         for path, entries in grouped.items():
             if not entries:
                 continue
-            self.stdout.write(f"\n{path[0].upper()}{path[1:]} ({len(entries)})")
+            self.stdout.write(f"\n{LABELS[path]} ({len(entries)})")
             for entry in entries:
                 self.stdout.write("  " + _describe(entry))
                 self.stdout.write("    " + _locations(entry.locations))
         self.stdout.write("")
-        report(self, {SUMMARY_KEYS[path]: len(entries) for path, entries in grouped.items()})
+        report(self, {path: len(entries) for path, entries in grouped.items()})
+
+    def _compare(self, path, coverage) -> None:
+        try:
+            with open(path, encoding="utf-8") as snapshot_file:
+                snapshot = json.load(snapshot_file)
+            changes = compare(snapshot, coverage)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise CommandError(f"Cannot compare with {path}: {exc}") from exc
+        if not changes:
+            self.stdout.write(f"Block coverage matches {path}.")
+            return
+        for line in changes:
+            self.stdout.write(line)
+        self.stdout.flush()  # Keep the changes ahead of the error when piped (CI logs).
+        raise CommandError(f"Block coverage changed since {path}: {len(changes)} differences.")
 
 
 def _describe(entry) -> str:

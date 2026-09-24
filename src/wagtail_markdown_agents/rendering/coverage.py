@@ -9,9 +9,14 @@ rendered by its template, so they are not listed under it.
 
 Templates chosen per value (``get_template(value)``) are reported for an empty
 value; a block that switches templates by value can resolve differently in export.
+
+A report serialises to a JSON snapshot (:meth:`CoverageReport.as_json`) that a
+later run can be compared against (:func:`compare`). The snapshot also records
+the fields inside each container the walk does not enter, so a field added to a
+templated or project-rendered block shows up as a change.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from django.template import TemplateDoesNotExist
 from django.template.loader import select_template
@@ -24,12 +29,19 @@ from . import registry
 from .page import selected_fields, unsupported_reason
 from .registry import _dotted, _is_built_in, has_custom_template, render_fallback, resolve
 
-#: Resolved paths, in report order.
-BUILT_IN = "built-in renderer"
-PROJECT = "project renderer"
-CUSTOM_TEMPLATE = "custom template"
-DEFAULT_TEMPLATE = "Wagtail default HTML"
-PATHS = (PROJECT, BUILT_IN, CUSTOM_TEMPLATE, DEFAULT_TEMPLATE)
+#: Resolved paths, in report order, with their display labels.
+PROJECT = "project"
+BUILT_IN = "built_in"
+CUSTOM_TEMPLATE = "custom_template"
+DEFAULT_TEMPLATE = "default_html"
+LABELS = {
+    PROJECT: "Project renderer",
+    BUILT_IN: "Built-in renderer",
+    CUSTOM_TEMPLATE: "Custom template",
+    DEFAULT_TEMPLATE: "Wagtail default HTML",
+}
+
+SNAPSHOT_FORMAT = 1
 
 _RECURSING = {
     built_ins.render_struct: "struct",
@@ -44,7 +56,9 @@ class BlockEntry:
     """One distinct block definition, merged across every place it is used.
 
     ``name`` is the name export dispatches with: the child's name in a
-    StreamBlock or StructBlock, ``None`` for a ListBlock item.
+    StreamBlock or StructBlock, ``None`` for a ListBlock item or table cell.
+    ``fields`` lists the nested fields of a container the walk does not enter,
+    as ``"parent > child: dotted.Class"`` lines in declared order.
     """
 
     name: str | None
@@ -53,11 +67,12 @@ class BlockEntry:
     renderer: str
     by_name: bool = False
     template: str = ""
+    fields: list[str] = field(default_factory=list)
     locations: list[str] = field(default_factory=list)
 
     @property
     def key(self) -> tuple:
-        return (self.name, self.block_class, self.renderer, self.template)
+        return (self.name, self.block_class, self.renderer, self.template, tuple(self.fields))
 
 
 @dataclass
@@ -67,10 +82,71 @@ class CoverageReport:
     entries: list[BlockEntry]
 
     def by_path(self) -> dict[str, list[BlockEntry]]:
-        grouped = {path: [] for path in PATHS}
+        grouped = {path: [] for path in LABELS}
         for entry in self.entries:
             grouped[entry.path].append(entry)
         return grouped
+
+    def as_json(self) -> dict:
+        return {
+            "format": SNAPSHOT_FORMAT,
+            "page_types": self.page_types,
+            "skipped": self.skipped,
+            "blocks": [asdict(entry) for entry in self.entries],
+        }
+
+
+def compare(snapshot: dict, report: CoverageReport) -> list[str]:
+    """Describe how ``report`` differs from an earlier :meth:`~CoverageReport.as_json`.
+
+    Blocks are matched by name and class. Returns one line per difference, so
+    an empty list means the coverage is unchanged.
+    """
+    if not isinstance(snapshot, dict) or snapshot.get("format") != SNAPSHOT_FORMAT:
+        raise ValueError(f"not an agentmd_blocks snapshot (format {SNAPSHOT_FORMAT})")
+    current = report.as_json()
+    changes = _set_changes("page type", snapshot["page_types"], current["page_types"])
+    before, after = _by_identity(snapshot["blocks"]), _by_identity(current["blocks"])
+    for identity in sorted(before.keys() | after.keys(), key=lambda i: (i[0] or "", i[1])):
+        label = f"{identity[0] or '(list item)'} {identity[1]}"
+        old, new = before.get(identity, []), after.get(identity, [])
+        if not old:
+            changes.append(f"added: {label} ({LABELS[new[0]['path']]})")
+        elif not new:
+            changes.append(f"removed: {label}")
+        elif len(old) == len(new) == 1:
+            changes.extend(f"changed: {label}: {line}" for line in _entry_changes(old[0], new[0]))
+        elif sorted(old, key=repr) != sorted(new, key=repr):
+            changes.append(f"changed: {label}: {len(old)} definitions -> {len(new)}")
+    return changes
+
+
+def _by_identity(blocks) -> dict[tuple, list[dict]]:
+    grouped = {}
+    for block in blocks:
+        grouped.setdefault((block["name"], block["block_class"]), []).append(block)
+    return grouped
+
+
+def _entry_changes(old: dict, new: dict) -> list[str]:
+    lines = []
+    for key in ("path", "renderer", "by_name", "template"):
+        if old[key] != new[key]:
+            before, after = old[key], new[key]
+            if key == "path":
+                before, after = LABELS[before], LABELS[after]
+            lines.append(f"{key} {before!s} -> {after!s}")
+    lines.extend(_set_changes("field", old["fields"], new["fields"]))
+    if old["fields"] != new["fields"] and sorted(old["fields"]) == sorted(new["fields"]):
+        lines.append("fields reordered")
+    lines.extend(_set_changes("location", old["locations"], new["locations"]))
+    return lines
+
+
+def _set_changes(noun: str, before, after) -> list[str]:
+    return [f"{noun} added: {item}" for item in after if item not in before] + [
+        f"{noun} removed: {item}" for item in before if item not in after
+    ]
 
 
 def page_models() -> tuple[list, dict[str, str]]:
@@ -138,13 +214,31 @@ def _visit(block, name, location, entries, ancestors):
 
 def _entry(block, name, renderer) -> BlockEntry:
     entry = BlockEntry(name, _dotted(type(block)), "", _dotted(renderer))
+    entry.template = _template_name(block)
     if renderer is render_fallback:
-        entry.template = _template_name(block)
         entry.path = CUSTOM_TEMPLATE if has_custom_template(block) else DEFAULT_TEMPLATE
     else:
         entry.by_name = name is not None and registry._name_renderers.get(name) is renderer
         entry.path = BUILT_IN if _is_built_in(renderer) else PROJECT
+    if renderer not in _RECURSING:
+        entry.fields = list(_fields(block, "", ()))
     return entry
+
+
+def _fields(block, prefix, ancestors):
+    """Yield ``"a > b: dotted.Class"`` for every block nested inside ``block``."""
+    if id(block) in ancestors:
+        return
+    ancestors = (*ancestors, id(block))
+    if hasattr(block, "child_blocks"):
+        children = block.child_blocks.items()
+    elif hasattr(block, "child_block"):
+        children = [("item", block.child_block)]
+    else:
+        return
+    for name, child in children:
+        yield f"{prefix}{name}: {_dotted(type(child))}"
+        yield from _fields(child, f"{prefix}{name} > ", ancestors)
 
 
 def _template_name(block) -> str:
