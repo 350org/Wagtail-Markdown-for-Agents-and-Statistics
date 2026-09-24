@@ -1,0 +1,16 @@
+{% load wagtailcore_tags wagtailembeds_tags %}
+{# Rendered directly rather than via {% include_block %} or {% embed %}. #}
+{% comment %}request.user is not used: {{ request.user }}{% endcomment %}
+<!-- <dialog>An old modal</dialog> -->
+<section class="signup overflow-hidden">
+    <h2>{{ value.heading }}</h2>
+    <form action="{{ request.path }}">
+        <input type="hidden" name="source" value="page">
+        <svg aria-hidden="true"><path d="M0 0"/></svg>
+    </form>
+    <div class="thank-you {% if not value.done %}hidden{% endif %}">Thanks for signing up!</div>
+    <script>track("signup");</script>
+    {% include "testapp/blocks/coverage/_video.html" with url=value.video %}
+    {% include template_name %}
+    {% include "testapp/blocks/coverage/signup_block.html" %}
+</section>

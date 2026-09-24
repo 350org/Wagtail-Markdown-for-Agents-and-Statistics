@@ -105,6 +105,90 @@ inventory information, not command failures. Unexpected database, policy or stor
 errors are reported and cause a nonzero exit. Status does not render pages, infer
 past job results or persist a configuration-staleness report.
 
+## Report block coverage
+
+```bash
+python manage.py agentmd_blocks
+python manage.py agentmd_blocks --json > blocks.json
+python manage.py agentmd_blocks --compare blocks.json
+```
+
+This lists every block that can appear in an exported StreamField and shows how
+each one becomes Markdown. It reads block definitions only. It needs no pages,
+renders nothing and writes nothing. It covers the page types that `PAGE_TYPES`
+enables and the fields that `PAGE_FIELDS` selects. Form page types that have a
+StreamField are listed as skipped.
+
+Each block's path comes from the renderer that export itself resolves, so the
+report always matches export:
+
+- **Project renderer**: a renderer your project registered, by class or by name
+  (`(by name)` marks a name registration).
+- **Built-in renderer**: one of this package's renderers.
+- **Custom template**: no renderer applies, and the block has its own template. The
+  template is rendered and its HTML is converted. The template also renders the
+  block's children, so they are not listed under it and their renderers are never
+  used.
+- **Wagtail default HTML**: no renderer and no custom template. Wagtail's basic HTML
+  for the block is converted.
+
+Children are listed only where export reaches them: inside StructBlocks,
+StreamBlocks, ListBlocks and TypedTableBlocks that render through the built-in
+renderers. A ListBlock item or a table cell has no name of its own, so it is listed
+as `(list item)`. The same block used in several places is listed once, with the
+first place it appears and a count of the others. Blocks that choose a template per
+value are reported with the template chosen for an empty value.
+
+Rows under "Custom template" and "Wagtail default HTML" are the ones to check: the
+converted HTML may include presentation-only text, or content the template leaves
+out. To give a block its own Markdown, register a renderer in a
+`markdown_renderers.py` module, then run the report again.
+
+### Template hints
+
+A block exported through a template gets hints, marked `!`, from reading the
+template's source. Templates it includes by name (`{% include "..." %}` or
+`{% extends %}`) are read too, and their hints name the included file:
+
+| Hint | Why it matters |
+| --- | --- |
+| `{% include_block %}` | Child blocks render through their own templates. A renderer registered for a child is never used. |
+| `{% embed %}` | Export calls the embed provider over the network. |
+| `request` | There is no request during export. Output that depends on it will differ from the HTML page. |
+| `<noscript>`, `<dialog>`, `<template>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
+| Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
+
+`<script>` and `<style>` are not hints: conversion drops them with their contents.
+Template comments are ignored.
+
+Hints come from the source, so treat them as prompts to check the output, not
+proof of a problem. Some things only appear when the block is rendered: data a
+block fetches in `get_context()`, a template chosen at render time (reported as not
+checked), or behaviour inside a custom template tag.
+
+### Snapshots and drift
+
+`--json` prints the report as a JSON snapshot. Each block records its resolved path,
+renderer, template, hints and every place it is used. A block whose children the report
+does not list, because a template or a project renderer handles them, also records
+its nested fields in declared order. A field added to such a block is a field that
+its template or renderer may not show.
+
+`--compare blocks.json` runs the report again and prints each difference from the
+snapshot:
+
+- blocks added or removed;
+- a changed path, renderer or template;
+- nested fields added, removed or reordered;
+- template hints added or removed;
+- a block used in new places or no longer used;
+- page types added or removed.
+
+It exits non-zero when anything differs, so a CI job can flag block changes that
+need a renderer reviewed. Blocks are matched by name and class. After reviewing the
+changes, write a new snapshot with `--json`. A snapshot records dotted class paths,
+so compare it only against the same project.
+
 ## Delete exports
 
 ```bash
