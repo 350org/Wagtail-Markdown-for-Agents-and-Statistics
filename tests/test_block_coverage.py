@@ -22,10 +22,18 @@ from wagtail_markdown_agents.rendering.coverage import (
     BUILT_IN,
     CUSTOM_TEMPLATE,
     DEFAULT_TEMPLATE,
+    HINT_DYNAMIC_INCLUDE,
+    HINT_ELEMENTS,
+    HINT_EMBED,
+    HINT_HIDDEN,
+    HINT_INCLUDE_BLOCK,
+    HINT_REQUEST,
     PROJECT,
     CoverageReport,
+    _scan,
     build_report,
     compare,
+    template_hints,
     walk_streams,
 )
 from wagtail_markdown_agents.rendering.registry import register_renderer
@@ -48,8 +56,16 @@ class MissingTemplateBlock(blocks.StructBlock):
         template = "testapp/blocks/no_such_template.html"
 
 
+class SignupBlock(blocks.StructBlock):
+    heading = blocks.CharBlock()
+
+    class Meta:
+        template = "testapp/blocks/coverage/signup_block.html"
+
+
 class BodyBlock(blocks.StreamBlock):
     promo = PromoBlock()
+    signup = SignupBlock()
     divider = DividerBlock()
     quote = QuoteBlock()
     cards = blocks.ListBlock(CardBlock())
@@ -206,7 +222,7 @@ def test_command_groups_blocks_by_path_and_summarises():
     assert "  raw_html  wagtail.blocks.field_block.RawHTMLBlock  -> no template\n" in output
     assert "    in testapp.ArticlePage.body > raw_html and 2 more\n" in output
     assert "-> render_rich_text\n" in output
-    assert output.endswith("project=0 built_in=12 custom_template=0 default_html=1\n")
+    assert output.endswith("project=0 built_in=12 custom_template=0 default_html=1 with_hints=0\n")
 
 
 def test_containers_the_walk_does_not_enter_record_their_fields(project_renderers):
@@ -325,3 +341,69 @@ def test_compare_fails_on_a_missing_or_invalid_snapshot(tmp_path, content):
 def test_json_and_compare_cannot_be_combined(tmp_path):
     with pytest.raises(CommandError, match="not allowed with argument"):
         run("--json", "--compare", str(tmp_path / "blocks.json"))
+
+
+VIDEO = "testapp/blocks/coverage/_video.html"
+
+
+def test_template_hints_follow_literal_includes_and_skip_comments():
+    # The fixture's comments mention include_block, embed, request and <dialog>,
+    # and its <script> is dropped by the converter: none of those are hints.
+    assert template_hints("testapp/blocks/coverage/signup_block.html") == [
+        HINT_REQUEST,
+        HINT_HIDDEN,
+        f"{HINT_EMBED} (in {VIDEO})",
+        f"{HINT_ELEMENTS['noscript']} (in {VIDEO})",
+        "{% include %} of testapp/blocks/coverage/_missing.html: "
+        f"template not found (in {VIDEO})",
+        HINT_DYNAMIC_INCLUDE,
+    ]
+
+
+def test_templates_without_problems_have_no_hints():
+    # promo_block.html has a <script> and {% pageurl %}; both are fine offline.
+    assert template_hints("testapp/blocks/promo_block.html") == []
+
+
+@pytest.mark.parametrize(
+    ("source", "hints"),
+    [
+        ("{% for c in value %}{% include_block c %}{% endfor %}", [HINT_INCLUDE_BLOCK]),
+        ("{% embed value.url max_width=800 %}", [HINT_EMBED]),
+        ("{% if request.user.is_authenticated %}Hi{% endif %}", [HINT_REQUEST]),
+        ("<p>{{ request }}</p>", [HINT_REQUEST]),
+        ("<p>We received your request.</p>", []),
+        ("<dialog open>Bio</dialog>", [HINT_ELEMENTS["dialog"]]),
+        ("<template><li>Row</li></template>", [HINT_ELEMENTS["template"]]),
+        ("<div hidden>Thanks</div>", [HINT_HIDDEN]),
+        ('<div class="msg hidden">Thanks</div>', [HINT_HIDDEN]),
+        ('<div class="{% if x %}hidden{% endif %} msg">Thanks</div>', [HINT_HIDDEN]),
+        ('<div style="display: none">Thanks</div>', [HINT_HIDDEN]),
+        ('<span aria-hidden="true">&rarr;</span>', [HINT_HIDDEN]),
+        ('<svg aria-hidden="true"></svg><img src="x" alt="" aria-hidden="true">', []),
+        ('<div class="overflow-hidden md:hidden visually-hidden">Text</div>', []),
+        ('<input type="hidden" name="a" value="b">', []),
+        ("{# {% embed x %} #}{% comment %}<dialog>{% endcomment %}<!-- <noscript> -->", []),
+    ],
+)
+def test_template_source_hints(source, hints):
+    assert _scan(source)[0] == hints
+
+
+def test_only_blocks_exported_through_a_template_get_hints(project_renderers):
+    found = entries()
+    assert found["templated_list", "ListBlock"].hints == [HINT_INCLUDE_BLOCK]
+    assert HINT_REQUEST in found["signup", "SignupBlock"].hints
+    assert found["promo", "PromoBlock"].hints == []
+    assert found["broken", "MissingTemplateBlock"].hints == []
+    register_renderer(SignupBlock)(lambda block, value, context: "")
+    assert entries()["signup", "SignupBlock"].hints == []
+
+
+def test_compare_reports_changed_hints():
+    before = snapshot(("test.Page.body", BodyBlock()))
+    signup = next(block for block in before["blocks"] if block["name"] == "signup")
+    signup["hints"].remove(HINT_REQUEST)
+    assert changes(before, ("test.Page.body", BodyBlock())) == [
+        f"changed: signup tests.test_block_coverage.SignupBlock: hint added: {HINT_REQUEST}"
+    ]

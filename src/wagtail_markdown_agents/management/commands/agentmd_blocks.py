@@ -49,8 +49,12 @@ class Command(BaseCommand):
             for entry in entries:
                 self.stdout.write("  " + _describe(entry))
                 self.stdout.write("    " + _locations(entry.locations))
+                for hint in entry.hints:
+                    self.stdout.write("    ! " + hint)
         self.stdout.write("")
-        report(self, {path: len(entries) for path, entries in grouped.items()})
+        counts = {path: len(entries) for path, entries in grouped.items()}
+        counts["with_hints"] = sum(1 for entry in coverage.entries if entry.hints)
+        report(self, counts)
 
     def _compare(self, path, coverage) -> None:
         try:

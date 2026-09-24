@@ -10,16 +10,24 @@ rendered by its template, so they are not listed under it.
 Templates chosen per value (``get_template(value)``) are reported for an empty
 value; a block that switches templates by value can resolve differently in export.
 
+Blocks exported through a template get hints from reading its source, and the
+source of any template it includes by literal name: tags and markup that make
+the converted Markdown wrong or incomplete. They are hints, not proof: data
+fetched in ``get_context()`` or templates chosen at render time are only seen
+by rendering.
+
 A report serialises to a JSON snapshot (:meth:`CoverageReport.as_json`) that a
 later run can be compared against (:func:`compare`). The snapshot also records
 the fields inside each container the walk does not enter, so a field added to a
 templated or project-rendered block shows up as a change.
 """
 
+import re
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 from django.template import TemplateDoesNotExist
-from django.template.loader import select_template
+from django.template.loader import get_template, select_template
 from wagtail.fields import StreamField
 from wagtail.models import get_page_models
 
@@ -42,6 +50,34 @@ LABELS = {
 }
 
 SNAPSHOT_FORMAT = 1
+_NOT_FOUND = " (not found)"
+
+HINT_INCLUDE_BLOCK = (
+    "{% include_block %}: child blocks render through their templates, never their "
+    "Markdown renderers"
+)
+HINT_EMBED = "{% embed %}: fetches from the embed provider during export"
+HINT_REQUEST = "uses request, which is absent during export"
+HINT_HIDDEN = "hidden markup (hidden, class hidden, aria-hidden, display: none): text is exported"
+HINT_ELEMENTS = {
+    "noscript": "<noscript>: its fallback text is exported",
+    "dialog": "<dialog>: its content is exported where it appears, often duplicating the page",
+    "template": "<template>: its inert markup is exported",
+}
+HINT_DYNAMIC_INCLUDE = "includes a template chosen at render time, which is not checked"
+
+_DJANGO_COMMENT = re.compile(r"\{#[^\n]*?#\}|\{%\s*comment\b.*?%\}.*?\{%\s*endcomment\s*%\}", re.S)
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
+_TAG = re.compile(r"\{\{(.*?)\}\}|\{%(.*?)%\}", re.S)
+_INCLUDE = re.compile(r"^\s*(?:include|extends)\s+(\S+)")
+_START_TAG = re.compile(r"<([a-zA-Z][\w-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>")
+_CLASS = re.compile(r"\bclass\s*=\s*([\"'])(.*?)\1", re.S)
+_QUOTED = re.compile(r"\"[^\"]*\"|'[^']*'")
+_HIDDEN_ATTR = re.compile(r"(?<![\w-])hidden(?![\w-])")
+_ARIA_HIDDEN = re.compile(r"\baria-hidden\s*=\s*[\"']?true", re.I)
+_DISPLAY_NONE = re.compile(r"display\s*:\s*none", re.I)
+#: Elements that carry no text, so hiding them from assistive technology leaks nothing.
+_TEXTLESS = {"svg", "img", "path", "use", "i", "picture", "source"}
 
 _RECURSING = {
     built_ins.render_struct: "struct",
@@ -68,6 +104,7 @@ class BlockEntry:
     by_name: bool = False
     template: str = ""
     fields: list[str] = field(default_factory=list)
+    hints: list[str] = field(default_factory=list)
     locations: list[str] = field(default_factory=list)
 
     @property
@@ -137,6 +174,7 @@ def _entry_changes(old: dict, new: dict) -> list[str]:
                 before, after = LABELS[before], LABELS[after]
             lines.append(f"{key} {before!s} -> {after!s}")
     lines.extend(_set_changes("field", old["fields"], new["fields"]))
+    lines.extend(_set_changes("hint", old["hints"], new["hints"]))
     if old["fields"] != new["fields"] and sorted(old["fields"]) == sorted(new["fields"]):
         lines.append("fields reordered")
     lines.extend(_set_changes("location", old["locations"], new["locations"]))
@@ -217,6 +255,8 @@ def _entry(block, name, renderer) -> BlockEntry:
     entry.template = _template_name(block)
     if renderer is render_fallback:
         entry.path = CUSTOM_TEMPLATE if has_custom_template(block) else DEFAULT_TEMPLATE
+        if entry.template and not entry.template.endswith(_NOT_FOUND):
+            entry.hints = template_hints(entry.template)
     else:
         entry.by_name = name is not None and registry._name_renderers.get(name) is renderer
         entry.path = BUILT_IN if _is_built_in(renderer) else PROJECT
@@ -249,4 +289,89 @@ def _template_name(block) -> str:
     try:
         return select_template(names).origin.template_name
     except TemplateDoesNotExist:
-        return f"{names[0]} (not found)"
+        return f"{names[0]}{_NOT_FOUND}"
+
+
+def template_hints(template_name: str) -> list[str]:
+    """Hints from a template's source and the templates it includes by literal name.
+
+    A hint found in an included template names that template.
+    """
+    hints: list[str] = []
+    seen: set[str] = set()
+
+    def scan(name, via):
+        if name in seen:
+            return
+        seen.add(name)
+        source = _source(name)
+        if source is None:
+            _add(hints, f"{{% include %}} of {name}: template not found (in {via})")
+            return
+        suffix = f" (in {name})" if via else ""
+        found, includes = _scan(source)
+        for hint in found:
+            _add(hints, hint + suffix)
+        for included in includes:
+            if included is None:
+                _add(hints, HINT_DYNAMIC_INCLUDE + suffix)
+            else:
+                scan(included, name)
+
+    scan(template_name, None)
+    return hints
+
+
+def _add(hints, hint):
+    if hint not in hints:
+        hints.append(hint)
+
+
+def _source(name) -> str | None:
+    try:
+        origin = get_template(name).origin
+    except TemplateDoesNotExist:
+        return None
+    loader = getattr(origin, "loader", None)
+    if loader is not None:
+        return loader.get_contents(origin)
+    return Path(origin.name).read_text(encoding="utf-8")
+
+
+def _scan(source: str) -> tuple[list[str], list[str | None]]:
+    """Hints in one template's source, and the names it includes (``None`` if dynamic)."""
+    source = _DJANGO_COMMENT.sub("", source)
+    hints, includes = [], []
+    for match in _TAG.finditer(source):
+        variable, tag = match.groups()
+        content = variable if variable is not None else tag
+        if tag is not None:
+            words = tag.split()
+            if words and words[0] == "include_block":
+                _add(hints, HINT_INCLUDE_BLOCK)
+            elif words and words[0] == "embed":
+                _add(hints, HINT_EMBED)
+            include = _INCLUDE.match(tag)
+            if include:
+                target = include.group(1)
+                literal = target[0] in "\"'" and target[-1] == target[0] and len(target) > 1
+                includes.append(target[1:-1] if literal else None)
+        if re.search(r"\brequest\b", content):
+            _add(hints, HINT_REQUEST)
+    markup = _TAG.sub(" ", _HTML_COMMENT.sub("", source))
+    for match in _START_TAG.finditer(markup):
+        element, attrs = match.group(1).lower(), match.group(2)
+        if element in HINT_ELEMENTS:
+            _add(hints, HINT_ELEMENTS[element])
+        if _is_hidden(element, attrs):
+            _add(hints, HINT_HIDDEN)
+    return hints, includes
+
+
+def _is_hidden(element: str, attrs: str) -> bool:
+    classes = {token for m in _CLASS.finditer(attrs) for token in m.group(2).split()}
+    if "hidden" in classes or _HIDDEN_ATTR.search(_QUOTED.sub("", attrs)):
+        return True
+    if _DISPLAY_NONE.search(attrs):
+        return True
+    return element not in _TEXTLESS and bool(_ARIA_HIDDEN.search(attrs))
