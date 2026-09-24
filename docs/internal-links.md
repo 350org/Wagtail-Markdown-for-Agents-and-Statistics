@@ -60,11 +60,21 @@ HTML has already been converted to Markdown by the page renderer.
 ## Missing targets and generation order
 
 A link changes only when its target has a current, readable managed export. Missing,
-stale and ungenerated targets retain their original HTML URLs. The `link_unresolved`
-signal receives `url` and `reason`, once per parsed URL per rewrite run:
+stale and ungenerated targets retain their original HTML URLs, as do public pages
+outside the export (excluded, type disabled, vetoed by a hook, or on another site).
 
-- `ineligible`: the page exists but is not live, is
-  restricted/excluded, fails a policy hook, or belongs to another site scope.
+A link to a **private** page, one that is not live or has its own or an inherited
+view restriction, is replaced by its label so the export does not reveal the page
+(D6): `[members area](/members/)` becomes `members area`. Label formatting and
+images in the label are kept; an autolink to a private page is removed. Reference
+definitions are never edited, so a project that emits `[label]: /private/` lines
+must not point them at private pages.
+
+The `link_unresolved` signal receives `url` and `reason`, once per parsed URL per
+rewrite run:
+
+- `ineligible`: the page exists but is not live or is restricted (link removed), or
+  is excluded, fails a policy hook, or belongs to another site scope (URL kept).
 - `not_found`: no page was found, the current export is absent/stale/missing from
   storage, or a redirect cannot be resolved unambiguously.
 

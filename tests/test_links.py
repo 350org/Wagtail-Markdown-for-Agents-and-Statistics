@@ -182,7 +182,9 @@ def test_unavailable_target_is_reported_once_per_run(corpus, events, change, rea
         target.body = [("paragraph", "<p>New content</p>")]
         target.save_revision().publish()
     text = "[One](/target/) [Two](/target/)"
-    assert rewrite_links(text, source) == text
+    # D6: a private target's links lose their URL; public ones keep the HTML URL.
+    private = change in {"private", "ancestor", "unpublished"}
+    assert rewrite_links(text, source) == ("One Two" if private else text)
     assert events == [("/target/", reason)]
     rewrite_links(text, source)
     assert events == [("/target/", reason)] * 2
@@ -309,8 +311,44 @@ def test_private_redirect_target_is_ineligible(corpus, events):
     writer, storage, site, source, target = corpus
     Redirect.add_redirect("/old/", target, site=site)
     PageViewRestriction.objects.create(page=target, restriction_type="login")
-    assert rewrite_links("[Old](/old/)", source) == "[Old](/old/)"
+    assert rewrite_links("[Old](/old/)", source) == "Old"
     assert events == [("/old/", "ineligible")]
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("See [the **members** area](/target/#join).", "See the **members** area."),
+        ('- [One](/target/ "Title")\n- [Two](</target/>)', "- One\n- Two"),
+        # A reference use loses its link; definitions are never edited (documented).
+        ("[Ref][members]\n\n[members]: /target/", "Ref\n\n[members]: /target/"),
+        ("[![Logo](/media/logo.png)](/target/)", "![Logo](/media/logo.png)"),
+        ("[](/target/)", ""),
+        ("Visit <http://example.org/target/> now", "Visit  now"),
+        ("`[Code](/target/)`", "`[Code](/target/)`"),
+    ],
+    ids=[
+        "formatted-label",
+        "titles-and-angles",
+        "reference",
+        "image-label",
+        "empty",
+        "autolink",
+        "code",
+    ],
+)
+def test_links_to_private_pages_keep_only_their_label(corpus, events, text, expected):
+    writer, storage, site, source, target = corpus
+    PageViewRestriction.objects.create(page=target, restriction_type="password", password="x")
+    assert rewrite_links(text, source) == expected
+
+
+@pytest.mark.django_db(transaction=True)
+def test_link_to_public_page_outside_the_export_keeps_its_html_url(corpus, settings):
+    writer, storage, site, source, target = corpus
+    PageAgentSettings.objects.create(page=target, excluded=True)
+    assert rewrite_links("[Target](/target/)", source) == "[Target](/target/)"
 
 
 @pytest.mark.django_db(transaction=True)

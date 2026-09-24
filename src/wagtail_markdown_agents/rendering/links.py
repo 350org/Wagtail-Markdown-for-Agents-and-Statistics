@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.urls import Resolver404, resolve
 from markdown_it import MarkdownIt
 from markdown_it.rules_inline import autolink, image, link
-from wagtail.models import Page
+from wagtail.models import Page, PageViewRestriction
 
 from ..export.paths import ExportPathError
 from ..export.state import StaleBuild, page_state
@@ -21,6 +21,18 @@ from ..signals import link_unresolved
 from .context import render_context
 
 logger = logging.getLogger(__name__)
+
+#: Resolution result for a link to a page that is not publicly viewable: the
+#: link is removed and its label kept, so the export does not reveal it (D6).
+PRIVATE = object()
+
+
+def _private(page):
+    """Not live, or behind its own or an inherited view restriction."""
+    return (
+        not page.live
+        or page.get_view_restrictions().exclude(restriction_type=PageViewRestriction.NONE).exists()
+    )
 
 
 class LinkResolver:
@@ -98,6 +110,8 @@ class LinkResolver:
                     return None, None
                 if route and "wagtail_markdown_agents" in route.app_names:
                     target, reason = self._direct(route.kwargs["export_path"])
+                    if target is PRIVATE:
+                        return PRIVATE, reason
                     if target:
                         return urlunsplit(urlsplit(target)._replace(fragment=fragment)), None
                     return None, reason
@@ -112,6 +126,8 @@ class LinkResolver:
                     ) != path.rstrip("/"):
                         return None, None
                     target, reason = self._export(page)
+                    if target is PRIVATE:
+                        return PRIVATE, reason
                     if target:
                         return urlunsplit(urlsplit(target)._replace(fragment=fragment)), None
                     return None, reason
@@ -150,7 +166,9 @@ class LinkResolver:
         try:
             current, _, path, _ = page_state(page.pk, self.site.pk)
         except (StaleBuild, ExportPathError):
-            result = (None, "ineligible")
+            # Public pages outside the export keep their HTML URL; private ones
+            # would be revealed by it.
+            result = (PRIVATE if _private(page) else None, "ineligible")
         else:
             record = (
                 ExportArtifact.objects.filter(
@@ -221,7 +239,8 @@ def rewrite_links(markdown, page, context=None):
     """Edit recognised destinations, preserving surrounding Markdown bytes.
 
     Reference uses become inline links; definitions and images stay untouched.
-    Code/HTML blocks and inline code are excluded by the Markdown parser.
+    Code/HTML blocks and inline code are excluded by the Markdown parser. A link
+    to a private page is replaced by its label, and an autolink to one removed.
     """
     context = context if context is not None else render_context(page)
     resolver = LinkResolver(page, context)
@@ -251,11 +270,11 @@ def rewrite_links(markdown, page, context=None):
                 left, right = destination, parsed.pos
                 if state.src[left : left + 1] == "<":
                     left, right = left + 1, right - 1
-                state.env["link_spans"].append((left, right, token.attrGet("href"), None))
+                title = None
             else:
-                state.env["link_spans"].append(
-                    (end_label + 1, end, token.attrGet("href"), token.attrGet("title") or "")
-                )
+                left, right, title = end_label + 1, end, token.attrGet("title") or ""
+            label = (start + 1, end_label, start, end)
+            state.env["link_spans"].append((left, right, token.attrGet("href"), title, label))
         return accepted
 
     def capture_autolink(state, silent):
@@ -263,7 +282,10 @@ def rewrite_links(markdown, page, context=None):
         accepted = autolink(state, silent)
         if accepted and not silent and not state.env.get("ignore_links"):
             token = next(item for item in state.tokens[count:] if item.type == "link_open")
-            state.env["link_spans"].append((start + 1, state.pos - 1, token.attrGet("href"), None))
+            label = (start, start, start, state.pos)  # the label is the URL itself
+            state.env["link_spans"].append(
+                (start + 1, state.pos - 1, token.attrGet("href"), None, label)
+            )
         return accepted
 
     def skip_image(state, silent):
@@ -283,9 +305,16 @@ def rewrite_links(markdown, page, context=None):
                 continue
             state.env["link_spans"] = []
             state.md.inline.parse(token.content, state.md, state.env, [])
-            for left, right, href, title in state.env["link_spans"]:
+            for left, right, href, title, label in state.env["link_spans"]:
                 target = resolver.resolve(href)
                 if target is None:
+                    continue
+                if target is PRIVATE:
+                    text_start, text_end, link_start, link_end = label
+                    text = "".join(
+                        markdown[positions[index]] for index in range(text_start, text_end)
+                    )
+                    edits.append((positions[link_start], positions[link_end - 1] + 1, text))
                     continue
                 if title is not None:
                     escaped = title.replace("\\", "\\\\").replace('"', '\\"')
