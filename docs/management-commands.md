@@ -105,6 +105,43 @@ inventory information, not command failures. Unexpected database, policy or stor
 errors are reported and cause a nonzero exit. Status does not render pages, infer
 past job results or persist a configuration-staleness report.
 
+## Report block coverage
+
+```bash
+python manage.py agentmd_blocks
+```
+
+This lists every block that can appear in an exported StreamField and shows how
+each one becomes Markdown. It reads block definitions only. It needs no pages,
+renders nothing and writes nothing. It covers the page types that `PAGE_TYPES`
+enables and the fields that `PAGE_FIELDS` selects. Form page types that have a
+StreamField are listed as skipped.
+
+Each block's path comes from the renderer that export itself resolves, so the
+report always matches export:
+
+- **Project renderer**: a renderer your project registered, by class or by name
+  (`(by name)` marks a name registration).
+- **Built-in renderer**: one of this package's renderers.
+- **Custom template**: no renderer applies, and the block has its own template. The
+  template is rendered and its HTML is converted. The template also renders the
+  block's children, so they are not listed under it and their renderers are never
+  used.
+- **Wagtail default HTML**: no renderer and no custom template. Wagtail's basic HTML
+  for the block is converted.
+
+Children are listed only where export reaches them: inside StructBlocks,
+StreamBlocks, ListBlocks and TypedTableBlocks that render through the built-in
+renderers. A ListBlock item or a table cell has no name of its own, so it is listed
+as `(list item)`. The same block used in several places is listed once, with the
+first place it appears and a count of the others. Blocks that choose a template per
+value are reported with the template chosen for an empty value.
+
+Rows under "Custom template" and "Wagtail default HTML" are the ones to check: the
+converted HTML may include presentation-only text, or content the template leaves
+out. To give a block its own Markdown, register a renderer in a
+`markdown_renderers.py` module, then run the report again.
+
 ## Delete exports
 
 ```bash
