@@ -65,7 +65,9 @@ def render_quote(block, value, context) -> str: ...
 
 Renderers live in a per-app `markdown_renderers.py`, autodiscovered like
 `wagtail_hooks.py`. A `WAGTAIL_MARKDOWN_AGENTS["RENDERERS"]` dotted-path map exists for
-settings-only overrides; the decorator is the documented path.
+settings-only overrides; the decorator is the documented path. A renderer renders
+its child blocks with the public `render_block`. The
+[custom blocks guide](custom-blocks.md) is the user-facing contract.
 
 Built-ins: `RichTextBlock` (expand `<a linktype="page">`/`<embed>` refs, then
 HTML→Markdown), `CharBlock`/`TextBlock`, heading conventions, `ImageBlock` and
