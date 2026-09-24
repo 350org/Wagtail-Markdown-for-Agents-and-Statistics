@@ -28,7 +28,13 @@ from .registry import register_renderer, resolve
 
 
 def render_block(block, value, context, block_name: str | None = None) -> str:
-    """Render one block value with the renderer :func:`resolve` selects."""
+    """Render one block value with the renderer :func:`resolve` selects.
+
+    Public: a project renderer calls this for its child blocks, so they render
+    exactly as export would render them. Pass the child's name as
+    ``block_name`` so name registrations apply, as the built-in StructBlock and
+    StreamBlock renderers do.
+    """
     return resolve(block, block_name, value, context)(block, value, context)
 
 

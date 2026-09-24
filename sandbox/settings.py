@@ -11,6 +11,7 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     "wagtail_markdown_agents",
     "sandbox.testapp",
+    "sandbox.events",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.contrib.table_block",
