@@ -12,12 +12,15 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
+from sandbox.testapp.models import ContentPage, FormPage
 from wagtail import blocks
 from wagtail.contrib.typed_table_block.blocks import TypedTableBlock
 from wagtail.images.blocks import ImageBlock
+from wagtail.models import Site
 
 from tests.test_container_defaults import DividerBlock, PromoBlock
 from wagtail_markdown_agents.rendering import registry
+from wagtail_markdown_agents.rendering.context import render_context
 from wagtail_markdown_agents.rendering.coverage import (
     BUILT_IN,
     CUSTOM_TEMPLATE,
@@ -30,9 +33,11 @@ from wagtail_markdown_agents.rendering.coverage import (
     HINT_REQUEST,
     PROJECT,
     CoverageReport,
+    _render_stream,
     _scan,
     build_report,
     compare,
+    render_blocks,
     template_hints,
     walk_streams,
 )
@@ -104,6 +109,13 @@ def entries(*streams):
 def run(*args):
     output = StringIO()
     call_command("agentmd_blocks", *args, stdout=output)
+    return output.getvalue()
+
+
+def run_failing(*args, match):
+    output = StringIO()
+    with pytest.raises(CommandError, match=match):
+        call_command("agentmd_blocks", *args, stdout=output)
     return output.getvalue()
 
 
@@ -320,10 +332,8 @@ def test_compare_prints_changes_and_fails(tmp_path):
     data["page_types"].append("testapp.RetiredPage")
     path = tmp_path / "blocks.json"
     path.write_text(json.dumps(data))
-    output = StringIO()
-    with pytest.raises(CommandError, match="changed since .*: 2 differences"):
-        call_command("agentmd_blocks", "--compare", str(path), stdout=output)
-    assert output.getvalue().splitlines() == [
+    output = run_failing("--compare", str(path), match="changed since .*: 2 differences")
+    assert output.splitlines() == [
         "page type removed: testapp.RetiredPage",
         "added: raw_html wagtail.blocks.field_block.RawHTMLBlock (Wagtail default HTML)",
     ]
@@ -407,3 +417,160 @@ def test_compare_reports_changed_hints():
     assert changes(before, ("test.Page.body", BodyBlock())) == [
         f"changed: signup tests.test_block_coverage.SignupBlock: hint added: {HINT_REQUEST}"
     ]
+
+
+# --page: one published page, block by block, as export renders it.
+
+
+@pytest.fixture
+def home():
+    return Site.objects.get(is_default_site=True).root_page
+
+
+@pytest.fixture
+def content_page(home):
+    page = home.add_child(
+        instance=ContentPage(
+            title="Fossil Free Future",
+            slug="fossil-free-future",
+            intro="<p>An introduction.</p>",
+            body=[
+                ("paragraph", "<p>Published body.</p>"),
+                (
+                    "section",
+                    {
+                        "heading": "Why now",
+                        "content": [
+                            ("paragraph", "<p>Nested.</p>"),
+                            ("callout", {"title": "", "body": "<p>Act.</p>"}),
+                        ],
+                    },
+                ),
+                ("bullet_points", ["Divest", "Organise"]),
+                ("raw_html", "<p>Raw <b>HTML</b></p>"),
+            ],
+        )
+    )
+    page.save_revision().publish()
+    return page
+
+
+def rendered(page):
+    return [(block.location, block.markdown or block.error) for block in render_blocks(page)]
+
+
+@pytest.mark.django_db
+def test_page_blocks_render_as_export_does(content_page):
+    assert rendered(content_page) == [
+        ("hero_copy", ""),
+        ("intro", "An introduction."),
+        ("body[0] paragraph", "Published body."),
+        ("body[1] section > heading", "Why now"),
+        ("body[1] section > content[0] paragraph", "Nested."),
+        ("body[1] section > content[1] callout > title", ""),
+        ("body[1] section > content[1] callout > body", "Act."),
+        # A list of simple items stays whole, with export's bullets.
+        ("body[2] bullet_points", "- Divest\n- Organise"),
+        ("body[3] raw_html", "Raw **HTML**"),
+    ]
+
+
+@pytest.mark.django_db
+def test_page_blocks_are_the_published_revision(content_page):
+    content_page.body = [("paragraph", "<p>Draft only.</p>")]
+    content_page.save_revision()
+    assert ("body[0] paragraph", "Published body.") in rendered(content_page)
+
+
+@pytest.mark.django_db
+def test_a_failing_block_is_reported_and_the_rest_still_render(content_page, monkeypatch):
+    monkeypatch.setattr(registry, "_name_renderers", {})
+
+    @register_renderer(block_name="heading")
+    def broken(block, value, context):
+        raise RuntimeError("no heading today")
+
+    blocks_ = rendered(content_page)
+    assert ("body[1] section > heading", "RuntimeError: no heading today") in blocks_
+    assert blocks_[-1] == ("body[3] raw_html", "Raw **HTML**")
+    output = run_failing(
+        "--page", str(content_page.pk), match="1 blocks on page .* failed to render"
+    )
+    assert "\nbody[1] section > heading  -> " in output
+    assert "  error: RuntimeError: no heading today\n" in output
+    assert "blocks=9 empty=2 failed=1" in output
+
+
+def test_templated_blocks_show_hints_and_template_errors(db, home):
+    value = BodyBlock().to_python(
+        [
+            {"type": "promo", "value": {"heading": "Join", "text": "Now"}},
+            {"type": "signup", "value": {"heading": "Sign up"}},
+        ]
+    )
+    results = []
+    _render_stream(value, "body", render_context(home.specific), results)
+    promo, signup = results
+    assert promo.entry.path == CUSTOM_TEMPLATE and promo.entry.hints == []
+    assert promo.markdown.startswith("## Join\n\nNow")
+    assert signup.location == "body[1] signup"
+    assert HINT_REQUEST in signup.entry.hints
+    # The hint's missing include is a real failure once the block renders.
+    assert signup.error == "TemplateDoesNotExist: testapp/blocks/coverage/_missing.html"
+
+
+def test_the_template_chosen_for_the_value_is_reported(db, home):
+    class PickBlock(blocks.StructBlock):
+        text = blocks.CharBlock()
+
+        def get_template(self, value=None, context=None):
+            if value and value.get("text") == "section":
+                return "testapp/blocks/section_block.html"
+            return "testapp/blocks/promo_block.html"
+
+    class Stream(blocks.StreamBlock):
+        pick = PickBlock()
+
+    value = Stream().to_python([{"type": "pick", "value": {"text": "section"}}])
+    results = []
+    _render_stream(value, "body", render_context(home.specific), results)
+    assert results[0].entry.template == "testapp/blocks/section_block.html"
+    assert results[0].entry.hints == [HINT_INCLUDE_BLOCK]
+
+
+@pytest.mark.django_db
+def test_page_command_prints_each_block(content_page):
+    output = run("--page", str(content_page.pk))
+    assert output.startswith(
+        f'Page {content_page.pk} "Fossil Free Future" (testapp.ContentPage)\n'
+        "Block output is shown before page hooks and link rewriting.\n"
+    )
+    assert "\nhero_copy  -> render_rich_text\n  (empty)\n" in output
+    assert "\nbody[2] bullet_points  -> render_list\n  | - Divest\n  | - Organise\n" in output
+    assert "\nbody[3] raw_html  -> no template\n  | Raw **HTML**\n" in output
+    assert output.endswith("blocks=9 empty=2 failed=0\n")
+
+
+@pytest.mark.django_db
+def test_page_command_notes_pages_that_are_not_exported(content_page, settings):
+    settings.WAGTAIL_MARKDOWN_AGENTS = {"PAGE_TYPES": ["testapp.ArticlePage"]}
+    output = run("--page", str(content_page.pk))
+    assert "Not exported under the current policy; rendered for inspection only.\n" in output
+
+
+@pytest.mark.django_db
+def test_page_command_rejects_missing_unpublished_and_unsupported_pages(home, content_page):
+    with pytest.raises(CommandError, match="Page 999999 does not exist"):
+        run("--page", "999999")
+    content_page.unpublish()
+    with pytest.raises(CommandError, match="the page is not live"):
+        run("--page", str(content_page.pk))
+    form = home.add_child(instance=FormPage(title="Contact", slug="contact"))
+    form.save_revision().publish()
+    with pytest.raises(CommandError, match="form page extraction is not supported"):
+        run("--page", str(form.pk))
+
+
+def test_page_cannot_be_combined_with_json():
+    with pytest.raises(CommandError, match="not allowed with argument"):
+        run("--page", "1", "--json")
