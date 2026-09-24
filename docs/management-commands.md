@@ -144,10 +144,32 @@ converted HTML may include presentation-only text, or content the template leave
 out. To give a block its own Markdown, register a renderer in a
 `markdown_renderers.py` module, then run the report again.
 
+### Template hints
+
+A block exported through a template gets hints, marked `!`, from reading the
+template's source. Templates it includes by name (`{% include "..." %}` or
+`{% extends %}`) are read too, and their hints name the included file:
+
+| Hint | Why it matters |
+| --- | --- |
+| `{% include_block %}` | Child blocks render through their own templates. A renderer registered for a child is never used. |
+| `{% embed %}` | Export calls the embed provider over the network. |
+| `request` | There is no request during export. Output that depends on it will differ from the HTML page. |
+| `<noscript>`, `<dialog>`, `<template>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
+| Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
+
+`<script>` and `<style>` are not hints: conversion drops them with their contents.
+Template comments are ignored.
+
+Hints come from the source, so treat them as prompts to check the output, not
+proof of a problem. Some things only appear when the block is rendered: data a
+block fetches in `get_context()`, a template chosen at render time (reported as not
+checked), or behaviour inside a custom template tag.
+
 ### Snapshots and drift
 
 `--json` prints the report as a JSON snapshot. Each block records its resolved path,
-renderer, template and every place it is used. A block whose children the report
+renderer, template, hints and every place it is used. A block whose children the report
 does not list, because a template or a project renderer handles them, also records
 its nested fields in declared order. A field added to such a block is a field that
 its template or renderer may not show.
@@ -158,6 +180,7 @@ snapshot:
 - blocks added or removed;
 - a changed path, renderer or template;
 - nested fields added, removed or reordered;
+- template hints added or removed;
 - a block used in new places or no longer used;
 - page types added or removed.
 
