@@ -1,8 +1,18 @@
 import json
 
 from django.core.management.base import BaseCommand, CommandError
+from wagtail.models import Page
 
-from ...rendering.coverage import CUSTOM_TEMPLATE, DEFAULT_TEMPLATE, LABELS, build_report, compare
+from ...export.policy import ExportPolicy
+from ...rendering.coverage import (
+    CUSTOM_TEMPLATE,
+    DEFAULT_TEMPLATE,
+    LABELS,
+    build_report,
+    compare,
+    render_blocks,
+)
+from ...rendering.page import PageRenderError
 from ..export_commands import report
 
 BUILT_IN_PREFIX = "wagtail_markdown_agents.rendering.blocks."
@@ -24,8 +34,17 @@ class Command(BaseCommand):
             metavar="SNAPSHOT",
             help="Compare with a --json snapshot; exit non-zero if block coverage changed.",
         )
+        output.add_argument(
+            "--page",
+            type=int,
+            metavar="ID",
+            help="Render one published page block by block, with the same side effects as export.",
+        )
 
     def handle(self, *args, **options) -> None:
+        if options["page"] is not None:
+            self._page(options["page"])
+            return
         coverage = build_report()
         if options["json"]:
             self.stdout.write(json.dumps(coverage.as_json(), indent=2))
@@ -71,15 +90,51 @@ class Command(BaseCommand):
         self.stdout.flush()  # Keep the changes ahead of the error when piped (CI logs).
         raise CommandError(f"Block coverage changed since {path}: {len(changes)} differences.")
 
+    def _page(self, page_id) -> None:
+        page = Page.objects.filter(pk=page_id).first()
+        if page is None:
+            raise CommandError(f"Page {page_id} does not exist.")
+        try:
+            rendered = render_blocks(page)
+        except PageRenderError as exc:
+            raise CommandError(str(exc)) from exc
+        # A live row keeps its published title while a newer draft is pending.
+        self.stdout.write(f'Page {page_id} "{page.title}" ({page.specific_class._meta.label})')
+        if not ExportPolicy().is_eligible(page):
+            self.stdout.write(
+                "Not exported under the current policy; rendered for inspection only."
+            )
+        self.stdout.write("Block output is shown before page hooks and link rewriting.")
+        for block in rendered:
+            self.stdout.write(f"\n{block.location}  -> {_target(block.entry)}")
+            for hint in block.entry.hints:
+                self.stdout.write("  ! " + hint)
+            if block.error:
+                self.stdout.write("  error: " + block.error)
+            elif block.markdown.strip():
+                for line in block.markdown.splitlines():
+                    self.stdout.write(("  | " + line).rstrip())
+            else:
+                self.stdout.write("  (empty)")
+        failed = sum(1 for block in rendered if block.error)
+        empty = sum(1 for block in rendered if not block.error and not block.markdown.strip())
+        self.stdout.write("")
+        report(self, {"blocks": len(rendered), "empty": empty, "failed": failed})
+        if failed:
+            self.stdout.flush()
+            raise CommandError(f"{failed} blocks on page {page_id} failed to render.")
+
 
 def _describe(entry) -> str:
-    name = entry.name or "(list item)"
+    return f"{entry.name or '(list item)'}  {entry.block_class}  -> {_target(entry)}"
+
+
+def _target(entry) -> str:
+    if not entry.path:
+        return entry.block_class
     if entry.path in (CUSTOM_TEMPLATE, DEFAULT_TEMPLATE):
-        target = entry.template or "no template"
-    else:
-        target = entry.renderer.removeprefix(BUILT_IN_PREFIX)
-        target += " (by name)" if entry.by_name else ""
-    return f"{name}  {entry.block_class}  -> {target}"
+        return entry.template or "no template"
+    return entry.renderer.removeprefix(BUILT_IN_PREFIX) + (" (by name)" if entry.by_name else "")
 
 
 def _locations(locations) -> str:
