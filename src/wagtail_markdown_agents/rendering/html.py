@@ -3,8 +3,8 @@
 Every HTML path — rich text, plain text and the template fallback — goes
 through :func:`convert_html`, so all produce the same headings, lists, code
 fences and spacing, and the conversion hooks apply to each. markdownify drops
-``<script>`` and ``<style>`` elements together with their contents; the tests
-pin that behaviour.
+``<script>`` and ``<style>`` elements together with their contents, and
+``<template>`` is dropped the same way; the tests pin that behaviour.
 
 Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
@@ -94,6 +94,12 @@ def _code_language(pre) -> str | None:
 
 
 class _Converter(MarkdownConverter):
+    def convert_template(self, el, text, parent_tags):
+        # A browser never renders <template> content: it is inert markup for
+        # scripts to clone. Other hidden markup is kept, because the HTML alone
+        # can't tell a collapsed panel or a <noscript> link from noise.
+        return ""
+
     def convert_img(self, el, text, parent_tags):
         # alt="" marks an image as decorative (WCAG), the HTML equivalent of a
         # decorative ImageBlock. A missing alt says nothing, so it is kept.

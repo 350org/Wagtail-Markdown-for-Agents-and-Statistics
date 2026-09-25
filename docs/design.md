@@ -181,8 +181,10 @@ Current owned targets use absolute public export URLs; unavailable targets retai
 their HTML links. See the [link contract](internal-links.md) for syntax preservation,
 reference links, conservative query handling, redirects and generation order.
 
-All HTML conversion paths remove script/style nodes and their contents before
-conversion. Output fixtures cover code whitespace/language, table captions and empty
+All HTML conversion paths remove script/style/template nodes and their contents
+before conversion. Other hidden markup (`hidden`, `aria-hidden`, `<dialog>`,
+`<noscript>`) is kept: the HTML alone can't tell a collapsed accordion panel or a
+`<noscript>` signup link from a success message, so a block renderer decides. Output fixtures cover code whitespace/language, table captions and empty
 cells, escaped pipes, entities, Unicode and image/text spacing as well as block types.
 Expose pre-conversion, converter-options and page post-render hooks with documented
 ordering; see the audit's [extension inventory](wordpress-parity-audit.md#public-extension-surface).
