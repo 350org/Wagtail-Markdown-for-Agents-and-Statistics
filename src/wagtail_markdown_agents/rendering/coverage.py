@@ -60,7 +60,7 @@ HINT_INCLUDE_BLOCK = (
     "{% include_block %}: child blocks render through their templates, never their "
     "Markdown renderers"
 )
-HINT_EMBED = "{% embed %}: fetches from the embed provider during export"
+HINT_EMBED = "{% embed %}: export never fetches the embed, and a player converts to nothing"
 HINT_REQUEST = "uses request, which is absent during export"
 HINT_HIDDEN = "hidden markup (hidden, class hidden, aria-hidden, display: none): text is exported"
 HINT_ELEMENTS = {
