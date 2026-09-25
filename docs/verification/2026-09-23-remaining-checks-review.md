@@ -1,6 +1,6 @@
 # Remaining deployed checks — 23 September 2026
 
-Status: **reduced multi-day check started; paid vendor verification deferred**,
+Status: **bounded multi-day check passed; paid vendor verification deferred**,
 following the owner's go-ahead and request for a proportionate check. This replaces
 the earlier nine-checkpoint proposal. The existing
 [fixture evidence](2026-09-23-bounded-deployed-run.md) and
@@ -9,8 +9,8 @@ recorded scopes; neither needs repeating.
 
 ## Three small samples over 48 hours
 
-Use the existing public synthetic page 89, unchanged since the cold-cache run.
-Each sample makes five sequential GETs: browser, browser, listed synthetic UA,
+The run used the existing public synthetic page 89, unchanged since the cold-cache
+run. Each sample made five sequential GETs: browser, browser, listed synthetic UA,
 explicit Markdown query, browser. This checks browser isolation, warm HTML,
 Markdown content/cache policy and two daily counter increments. The ceiling is
 **15 public requests total**, zero retries, at most one start per second, 20-second
@@ -20,10 +20,10 @@ inspection and sent no additional public requests.
 | Sample | UTC | UK local time | Status |
 | --- | --- | --- | --- |
 | Initial | 23 September, 10:24:33–10:24:39 | 11:24am | Passed |
-| Day 2 | 24 September, 10:30 | 11:30am | Scheduled |
-| Day 3 | 25 September, 10:30 | 11:30am | Scheduled |
+| Day 2 | 24 September, 10:30:01–10:30:06 | 11:30am | Passed |
+| Day 3 | 25 September, 10:30:03–10:30:08 | 11:30am | Passed |
 
-The final scheduled sample is more than 48 hours after the initial baseline.
+The measured baseline-to-final window was 48 hours, 5 minutes, 34.766 seconds.
 These are three samples across three UTC dates, not continuous monitoring or an
 exact-midnight timing test. The full fixture suite, Accept-only limitation and
 independent cold-state proof already have separate evidence.
@@ -38,6 +38,41 @@ record; browser HIT markers had none. Page-scoped counter snapshots showed exact
 
 Every other page-89 bucket was unchanged. Residual was zero.
 
+## Final read-only review — 25 September
+
+The two one-off timers produced `sample-1/result.json` and `sample-2/result.json`.
+All three sample results passed; `whole-window.json` reports no residual. No
+`failure.json` or `STOP` was present in the retrieved directory. We copied the
+existing evidence for offline review without replaying a sample or sending any
+additional public requests.
+
+| UTC date | GETs / HTTP 200 | Browser HTML cache status | Markdown cache status | Page-89 counter delta | Origin records |
+| --- | --- | --- | --- | --- | --- |
+| 23 September | 5 / 5 | `HIT`, `HIT`, `HIT` | `DYNAMIC`, `DYNAMIC` | +2 | 2 Markdown |
+| 24 September | 5 / 5 | `EXPIRED`, `HIT`, `HIT` | `DYNAMIC`, `DYNAMIC` | +2 | 1 browser, 2 Markdown |
+| 25 September | 5 / 5 | `EXPIRED`, `HIT`, `HIT` | `DYNAMIC`, `DYNAMIC` | +2 | 1 browser, 2 Markdown |
+
+Every sample followed browser, browser, synthetic GPTBot UA, explicit Markdown
+query, browser, with GET starts at least one second apart. All nine browser
+responses were HTML; all six Markdown responses were `text/markdown` with
+`private, no-store, max-age=0`. All Markdown body SHA-256 values matched the
+[cold-cache export](2026-09-23-cold-cache-evidence.json). The browser body hash
+was also stable across the window. Unique client markers matched each of the
+eight origin records exactly once: six Markdown `DYNAMIC` requests and the two
+browser `EXPIRED` requests. The seven browser `HIT`s had no origin record.
+All matched origin responses were HTTP 200. The observed edge was LHR in all
+three samples.
+
+Each UTC date gained exactly one page-89 `GPTBot`/`ua` count and one unlabelled
+`query-param` count. The first sample's final counter rows equalled the second
+sample's initial rows, and likewise between the second and third samples. The
+whole-window baseline-to-final page-scoped delta was exactly +6, with no other
+page-89 bucket changing and zero residual. The available rotated origin logs
+contained only the eight marked requests to this page over the window. Thus the
+two extra origin records were expected browser cache refreshes, not unexplained
+Markdown selections. This does not establish absence of unobserved CDN-served
+traffic or requests to other pages.
+
 ## Execution and evidence
 
 The private script runs as the application owner and takes before/after snapshots
@@ -50,8 +85,8 @@ stop the sequence; later samples require previous samples to have passed.
 Two one-off systemd timers were created and their dates read back:
 `wmfa-soak-20260923-day1.timer` and `wmfa-soak-20260923-day2.timer`.
 Each service has a three-minute runtime limit. There is no recurring schedule.
-The timers are transient: a server reboot can lose a pending sample, which must
-be reported as missing rather than silently claimed as complete. The server,
+The timers were transient: a server reboot could have lost a pending sample,
+which would have been reported as missing. The server,
 not this chat session or the local laptop, runs the samples.
 
 The final sample also compares the complete page-scoped baseline/final delta
@@ -67,13 +102,13 @@ and script have integrity references in the
 [initial evidence manifest](2026-09-23-soak-evidence.json).
 No application deployment, nginx change, cache purge, counter reset or content
 change was made. Page 89 remains published through the observation; retirement is
-not part of this run. To cancel the remaining samples, stop the two named timers
-and any active matching services; preserve the evidence and counters.
+not part of this run.
 
-After 25 September, retrieve both remaining results and `whole-window.json`, check
-elapsed time, UTC buckets, response outcomes and zero residual, then record the
-final result. Until that review, **multi-day verification remains in progress**.
-The three samples cannot establish uninterrupted availability or every CDN edge.
+The final private host-evidence snapshot is retained outside version control;
+the adjacent [evidence manifest](2026-09-23-soak-evidence.json) records SHA-256
+and byte size for the archive and new artifacts. Raw responses, URLs, access
+records and addresses are not published. The three samples cannot establish
+uninterrupted availability or every CDN edge.
 
 ## Genuine vendor traffic: deferred
 
@@ -96,6 +131,7 @@ it does not authenticate them itself.
 ## Validation
 
 The preceding review's 16 focused reconciliation tests passed. The private sampler
-passed Python compilation and a read-only host preflight, then its first actual
-five-request sample passed all checks above. Later samples have not run yet.
+passed Python compilation and a read-only host preflight. Offline review of the
+15 recorded attempts, receipts, origin markers, counter snapshots, unchanged
+page/configuration state and whole-window evidence passed the checks above.
 D6/D9/D12, client presentation and release decisions remain separate.
