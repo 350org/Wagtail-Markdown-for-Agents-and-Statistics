@@ -3,12 +3,15 @@
 from types import SimpleNamespace
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from wagtail.embeds import embeds
 from wagtail.embeds.models import Embed
+from wagtail.images import get_image_model
+from wagtail.images.tests.utils import get_test_image_file
 from wagtail.models import Page, Site
 from wtrx import blocks as wtrx
 
-from wagtail_markdown_agents.rendering import render_block
+from wagtail_markdown_agents.rendering import render_block, render_page
 from wagtail_markdown_agents.rendering.context import render_context
 
 YOUTUBE = "https://www.youtube.com/watch?v=abc123"
@@ -44,6 +47,259 @@ def render(block_class, raw, context):
 
 def text(html):
     return {"type": "text", "value": html}
+
+
+@pytest.fixture
+def image(db, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    return get_image_model().objects.create(title="Rally", file=get_test_image_file())
+
+
+@pytest.fixture
+def actionkit_context(context):
+    integration = SimpleNamespace(
+        get_integration_config=lambda slug: {"hostname": "campaigns.example.org"}
+    )
+    return {**context, "settings": {"wtrx": {"IntegrationSettings": integration}}}
+
+
+def test_image_keeps_caption_and_local_alt_override(context, image):
+    raw = {"image": image.pk, "alt_text": "Marchers [together]", "caption": "Nairobi, 2026"}
+    output = render(wtrx.ImageBlock, raw, context)
+    assert output.startswith("![Marchers \\[together\\]](")
+    assert output.endswith("\n\nNairobi, 2026")
+    assert render(wtrx.ImageBlock, {"image": image.pk}, context).startswith("![Rally](")
+
+
+def test_page_cards_links_only_the_index_without_reading_children(context, form_page, monkeypatch):
+    def fail(*args, **kwargs):
+        raise AssertionError("page cards must not query children or render a template")
+
+    monkeypatch.setattr(Page, "get_children", fail)
+    monkeypatch.setattr(wtrx.PageCardsBlock, "render", fail)
+    output = render(
+        wtrx.PageCardsBlock,
+        {
+            "content": "<h2>Latest updates</h2><p>Our campaigns.</p>",
+            "index_page": form_page.pk,
+            "link_text": "All updates",
+        },
+        context,
+    )
+    assert output == "## Latest updates\n\nOur campaigns.\n\n[All updates](/join/)"
+    assert render(wtrx.PageCardsBlock, {"index_page": form_page.pk, "link_text": ""}, context) == (
+        "[Read more](/join/)"
+    )
+
+
+def test_body_hero_has_h2_copy_and_caption(context):
+    assert (
+        render(
+            wtrx.HeroBlock,
+            {
+                "headline": "People power",
+                "content": "<p>Act together.</p>",
+                "image_caption": "Photo: Ada",
+            },
+            context,
+        )
+        == "## People power\n\nAct together.\n\nPhoto: Ada"
+    )
+
+
+def test_fundraiseup_keeps_content_image_and_caption_only(context, image):
+    output = render(
+        wtrx.DonateFundraiseUpBlock,
+        {
+            "content": "<h2>Support the campaign</h2>",
+            "image": image.pk,
+            "image_caption": "Photo: Ada",
+            "designation_id": "DO-NOT-EXPORT",
+            "advanced_settings": {"element_id_default": "DO-NOT-EXPORT"},
+        },
+        context,
+    )
+    assert output.startswith("## Support the campaign\n\n![Rally](")
+    assert output.endswith("\n\nPhoto: Ada")
+    assert "DO-NOT-EXPORT" not in output
+
+
+@pytest.mark.parametrize("shortname", ["climate-action", "join_kenya"])
+def test_actionkit_links_each_campaign_offline(actionkit_context, shortname, monkeypatch):
+    def fail(*args, **kwargs):
+        raise AssertionError("must not render or fetch the ActionKit form")
+
+    monkeypatch.setattr(wtrx.SignupActionKitBlock, "render", fail)
+    raw = {
+        "eyebrow": "Campaign",
+        "content": "<h2>Act now</h2>",
+        "short_form_id": shortname,
+        "image_caption": "Photo: Ada",
+        "success_message": [text("<p>SUCCESS MUST NOT LEAK</p>")],
+    }
+    assert render(wtrx.SignupActionKitBlock, raw, actionkit_context) == (
+        "Campaign\n\n## Act now\n\nPhoto: Ada\n\n"
+        f"[Take action](https://campaigns.example.org/act/{shortname}/)"
+    )
+    assert render(wtrx.HeroSignupActionKitBlock, raw, actionkit_context) == (
+        f"[Take action](https://campaigns.example.org/act/{shortname}/)"
+    )
+
+
+@pytest.mark.parametrize(
+    "hostname", ["act.example.org", "https://act.example.org/", "http://act.example.org"]
+)
+def test_actionkit_uses_the_page_sites_settings(context, hostname):
+    context["settings"] = {
+        "wtrx": {
+            "IntegrationSettings": SimpleNamespace(
+                get_integration_config=lambda slug: {"hostname": hostname}
+            )
+        }
+    }
+    expected = hostname.rstrip("/")
+    if "://" not in expected:
+        expected = "https://" + expected
+    assert render(wtrx.HeroSignupActionKitBlock, {"short_form_id": "join"}, context) == (
+        f"[Take action]({expected}/act/join/)"
+    )
+
+
+@pytest.mark.parametrize("config", [None, {}, {"hostname": ""}])
+def test_actionkit_unconfigured_keeps_prose_without_fake_link(context, config):
+    context["settings"] = {
+        "wtrx": {"IntegrationSettings": SimpleNamespace(get_integration_config=lambda slug: config)}
+    }
+    assert (
+        render(
+            wtrx.SignupActionKitBlock,
+            {"short_form_id": "join", "content": "<p>Join us.</p>"},
+            context,
+        )
+        == "Join us."
+    )
+
+
+def test_actionkit_rejects_credentials_in_hostname(context):
+    context["settings"] = {
+        "wtrx": {
+            "IntegrationSettings": SimpleNamespace(
+                get_integration_config=lambda slug: {
+                    "hostname": "https://user:secret@act.example.org"
+                }
+            )
+        }
+    }
+    with pytest.raises(ImproperlyConfigured, match="ActionKit requires"):
+        render(wtrx.SignupActionKitBlock, {"short_form_id": "join"}, context)
+
+
+@pytest.fixture
+def hero_page(home):
+    from wtrx.models import ContentPage
+
+    page = home.add_child(
+        instance=ContentPage(
+            title="Document title",
+            slug="hero-page",
+            hero_headline="Hero headline",
+            hero_pre_header="Our campaign",
+            hero_copy="<p>Hero copy.</p>",
+            hero_image_caption="Hero caption",
+            hero_cta=[("button", {"text": "Join", "link_url": "https://example.org/join"})],
+            body=[
+                ("text", "<p>Body content.</p>"),
+                ("hero", {"headline": "Body hero", "image_caption": "Body caption"}),
+            ],
+        )
+    )
+    page.save_revision().publish()
+    return page
+
+
+def body_of(page):
+    return render_page(page).split("---\n", 2)[2].strip()
+
+
+def test_page_hero_is_assembled_once_before_body(hero_page):
+    assert body_of(hero_page) == (
+        "# Hero headline\n\nOur campaign\n\nHero copy.\n\n[Join](https://example.org/join)"
+        "\n\nHero caption\n\nBody content.\n\n## Body hero\n\nBody caption"
+    )
+
+
+def test_hide_hero_uses_published_state_and_omits_entire_page_hero(hero_page):
+    hero_page.hide_hero = True
+    hero_page.save_revision()
+    assert "Hero copy." in body_of(hero_page)  # A newer draft cannot hide the live hero.
+    hero_page.save_revision().publish()
+    assert body_of(hero_page) == (
+        "# Document title\n\nBody content.\n\n## Body hero\n\nBody caption"
+    )
+
+
+def test_explicit_hero_fields_fail_instead_of_duplicating_or_leaking(hero_page, settings):
+    settings.WAGTAIL_MARKDOWN_AGENTS = {"PAGE_FIELDS": {"wtrx.ContentPage": ["hero_copy", "body"]}}
+    with pytest.raises(ImproperlyConfigured, match="omit them from PAGE_FIELDS"):
+        render_page(hero_page)
+
+
+def test_homepage_actionkit_hero_uses_offline_context(home, actionkit_context, monkeypatch):
+    from wtrx.models import HomePage
+
+    page = home.add_child(
+        instance=HomePage(
+            title="Home",
+            slug="campaign-home",
+            hero_cta=[("signup", {"short_form_id": "campaign-one"})],
+            body=[("text", "<p>Campaign body.</p>")],
+        )
+    )
+    page.save_revision().publish()
+    original = render_context
+
+    def with_settings(page, site=None):
+        return {**original(page, site), "settings": actionkit_context["settings"]}
+
+    monkeypatch.setattr("wagtail_markdown_agents.rendering.page.render_context", with_settings)
+    assert body_of(page) == (
+        "# Home\n\n[Take action](https://campaigns.example.org/act/campaign-one/)\n\nCampaign body."
+    )
+
+
+@pytest.mark.parametrize(
+    "model_name,expected",
+    [
+        ("HomePage", ["body"]),
+        ("ContentPage", ["body"]),
+        ("IndexPage", ["intro", "body"]),
+        ("Post", ["body"]),
+        ("Blogs", []),
+    ],
+)
+def test_page_type_field_defaults(model_name, expected):
+    from wtrx import models
+
+    from wagtail_markdown_agents.rendering.page import selected_fields
+
+    assert [field.name for field in selected_fields(getattr(models, model_name))] == expected
+
+
+def test_index_hero_precedes_intro_body_and_generated_navigation(home):
+    from wtrx.models import IndexPage
+
+    page = home.add_child(
+        instance=IndexPage(
+            title="Index",
+            slug="campaign-index",
+            hero_copy="<p>Hero copy.</p>",
+            intro="<p>Introduction.</p>",
+            body=[("text", "<p>Body.</p>")],
+        )
+    )
+    page.save_revision().publish()
+    output = render_page(page, navigation="- [Child](/child/)").split("---\n", 2)[2].strip()
+    assert output == "# Index\n\nHero copy.\n\nIntroduction.\n\nBody.\n\n- [Child](/child/)"
 
 
 # Leaves

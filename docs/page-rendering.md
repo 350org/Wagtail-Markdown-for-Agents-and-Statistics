@@ -41,6 +41,15 @@ not automatically to its subclasses. Invalid model labels, missing or duplicate
 names, and fields of other types raise `ImproperlyConfigured`. Scalar fields,
 relationships and arbitrary properties are never extracted automatically.
 
+Reusable integrations can register `markdown_page_fields(page_model)` in their
+`wagtail_hooks.py` to supply an ordered list of default field names, or `None` for
+models they do not handle. Explicit `PAGE_FIELDS` entries take precedence,
+including empty lists. Otherwise the first hook returning a list supplies the
+selection, validated by the same rules as `PAGE_FIELDS`; if every hook returns
+`None`, automatic detection applies. The hook is model-level, so commands and
+block coverage reports see the same selection as page rendering. Do not query
+page content or mutate host settings in this hook.
+
 v0.1 requires a StreamField somewhere on the page model. A rich-text-only page and
 a Wagtail form page are unsupported; a form's intro cannot stand in for its form.
 `PageRenderError` exposes `page_id` and `reason` for command diagnostics:

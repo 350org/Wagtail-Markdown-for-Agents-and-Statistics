@@ -8,6 +8,13 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Complete the next 350.org rendering batch (#14): campaign-specific ActionKit
+  links (including hero signups), index-only page cards, images with authored
+  captions, body heroes and FundraiseUp content. Page hooks assemble visible
+  heroes once and omit the entire page hero when `hide_hero` is set. New
+  `markdown_page_fields` hooks provide validated integration defaults while
+  explicit `PAGE_FIELDS` retains precedence. Separate image credits remain an
+  open choice; no ActionKit form is fetched during export.
 - `wagtail_markdown_agents.contrib.wtrx`, an optional app with Markdown renderers
   for 14 of the 350.org site's blocks (#14): video, button, button group, quote,
   card, person card, card grid, person card grid, card carousel, accordion,
