@@ -67,6 +67,7 @@ verification, and the cache configuration a live site needs.
 | Let agents discover the Markdown from HTML | [Discovery headers and template tag](docs/discovery-headers.md) |
 | Serve the export tree, `llms.txt` and the manifest over HTTP | [Public export routes](docs/public-export-routes.md), [llms.txt](docs/llms-txt.md), [manifest](docs/manifest.md), [indexes](docs/indexes.md) |
 | Export your own StreamField blocks, or override a package's | [Custom blocks guide](docs/custom-blocks.md) |
+| Export the 350.org site's blocks | [350.org blocks add-on](docs/350org-addon.md) |
 | Generate, inspect, delete and prune from the command line, and report block coverage | [Management commands](docs/management-commands.md) |
 | Know what happens on publish, unpublish, move, restrict and exclude | [Publication and eligibility lifecycle](docs/publish-lifecycle.md) |
 | Read the agent access report and understand its limits | [Agent access statistics](docs/agent-access-stats.md), [benchmarks](docs/agent-stats-benchmarks.md) |

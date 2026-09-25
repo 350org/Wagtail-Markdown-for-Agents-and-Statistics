@@ -8,6 +8,14 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- `wagtail_markdown_agents.contrib.wtrx`, an optional app with Markdown renderers
+  for 14 of the 350.org site's blocks (#14): video, button, button group, quote,
+  card, person card, card grid, person card grid, card carousel, accordion,
+  section, timeline and the Wagtail Forms and Action Network signups. Containers
+  now reach their children's renderers, and success messages, "JavaScript is
+  required" text, the person card's bio dialog, anchor-only links and oEmbed
+  fetches are gone from the export. The core never imports it
+  (`docs/350org-addon.md`).
 - `agentmd_blocks` management command, which reports how each block on exportable
   page types becomes Markdown: through a project renderer, a built-in renderer, the
   block's custom template, or Wagtail's default HTML. It reads block definitions
