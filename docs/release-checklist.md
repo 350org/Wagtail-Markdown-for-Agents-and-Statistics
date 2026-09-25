@@ -8,6 +8,11 @@ Current release coordination is tracked in
 repository review/CI policy remains
 [issue #16](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues/16).
 
+Latest local artifact evidence: the [25 September installed-package check](verification/2026-09-25-package-check.md)
+passed for `769aba8`, including a clean wheel installation, migrations,
+generation/retrieval and managed removal. This is evidence for that revision,
+not completion of the full release checklist.
+
 ## WordPress drift review
 
 - [ ] Read the [current matrix](wordpress-parity-status.md), [drift ledger](wordpress-drift-ledger.md)

@@ -1,0 +1,97 @@
+{
+  "date": "2026-09-25",
+  "revision": "769aba85c9f8d2093ae1a0a9db0429199bf4119e",
+  "result": "passed",
+  "scope": "Local installed-wheel verification; synthetic host, SQLite, Django test client; no deployed-site or client acceptance claim.",
+  "artifacts": {
+    "sha256": {
+      "wagtail_markdown_for_agents-0.1.0.dev0.tar.gz": "4ff3148c6ac45c2fe5a88984a38622be05cf0a2665e3d9a64ac39ee50e8e654b",
+      "wagtail_markdown_for_agents-0.1.0.dev0-py3-none-any.whl": "cd9785b12e0c10254bb91ace6e153d8d647f980408a04e5607a9c682bb9a41e2"
+    },
+    "package_files": 79,
+    "migrations": [
+      "wagtail_markdown_agents/migrations/0001_initial.py",
+      "wagtail_markdown_agents/migrations/0002_export_publication.py",
+      "wagtail_markdown_agents/migrations/0003_content_generation.py",
+      "wagtail_markdown_agents/migrations/0004_exportscope_manifest_state.py",
+      "wagtail_markdown_agents/migrations/0005_agentaccess.py",
+      "wagtail_markdown_agents/migrations/0006_anonymize_unknown_agents.py"
+    ],
+    "templates": [
+      "wagtail_markdown_agents/templates/wagtail_markdown_agents/page_settings.html",
+      "wagtail_markdown_agents/templates/wagtail_markdown_agents/report.html",
+      "wagtail_markdown_agents/templates/wagtail_markdown_agents/report_results.html",
+      "wagtail_markdown_agents/templates/wagtail_markdown_agents/widgets/page_input.html"
+    ],
+    "static": [
+      "wagtail_markdown_agents/static/wagtail_markdown_agents/report.css"
+    ]
+  },
+  "smoke": {
+    "checks": [
+      "Wheel import from isolated site-packages; optional add-on absent",
+      "Fresh migrations through 0006; system checks and migration drift",
+      "All four packaged templates and report CSS discoverable",
+      "Publishing creates a readable managed export",
+      "Installed generation and status commands",
+      "Query, Accept, agent and direct retrieval return identical Markdown",
+      "Browser HTML, HTTP discovery and frontend template tag",
+      "Four page GETs counted; HEAD and discovery documents excluded",
+      "Forced regeneration still serves published content over a newer draft",
+      "Restriction and unpublish withdraw direct exports",
+      "0005-to-0006 upgrade anonymizes legacy labels and retains all 26 hits",
+      "Managed cleanup and package migration reversal"
+    ],
+    "python": "3.13.5 (main, Jun 11 2025, 15:36:57) [Clang 17.0.0 (clang-1700.0.13.3)]",
+    "package_path": "/private/tmp/agentmd-rc-769aba8-95f87e/venv/lib/python3.13/site-packages/wagtail_markdown_agents/__init__.py",
+    "versions": {
+      "wagtail-markdown-for-agents": "0.1.0.dev0",
+      "Django": "5.2.17",
+      "wagtail": "7.4.3",
+      "markdownify": "1.2.3",
+      "markdown-it-py": "4.2.0",
+      "pyyaml": "6.0.3"
+    }
+  },
+  "installed_distributions": [
+    "anyascii==0.3.3",
+    "asgiref==3.12.1",
+    "beautifulsoup4==4.15.0",
+    "certifi==2026.7.22",
+    "charset-normalizer==3.5.1",
+    "defusedxml==0.7.1",
+    "django==5.2.17",
+    "django-filter==26.1",
+    "django-modelcluster==6.5",
+    "django-permissionedforms==0.1",
+    "django-stubs-ext==6.1.1",
+    "django-taggit==6.1.0",
+    "django-tasks==0.12.0",
+    "django-treebeard==5.3.1",
+    "djangorestframework==3.18.1",
+    "draftjs-exporter==5.2.0",
+    "et-xmlfile==2.0.0",
+    "filetype==1.2.0",
+    "idna==3.20",
+    "laces==0.1.2",
+    "markdown-it-py==4.2.0",
+    "markdownify==1.2.3",
+    "mdurl==0.1.2",
+    "modelsearch==1.3.2",
+    "openpyxl==3.1.5",
+    "pillow==12.3.0",
+    "pillow-heif==1.8.0",
+    "pyyaml==6.0.3",
+    "requests==2.34.2",
+    "six==1.17.0",
+    "soupsieve==2.10",
+    "sqlparse==0.6.0",
+    "telepath==0.3.1",
+    "typing-extensions==4.16.0",
+    "urllib3==2.8.0",
+    "wagtail==7.4.3",
+    "wagtail-markdown-for-agents==0.1.0.dev0",
+    "willow==1.12.0"
+  ],
+  "dependency_check": "uv pip check: all 38 installed packages compatible"
+}
