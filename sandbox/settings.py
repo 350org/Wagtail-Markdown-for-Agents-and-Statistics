@@ -13,6 +13,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
+    "wtrx",
     "wagtail_markdown_agents",
     "wagtail_markdown_agents.contrib.wtrx",
     "sandbox.testapp",

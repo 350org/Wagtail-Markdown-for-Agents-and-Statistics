@@ -10,6 +10,11 @@ omitted throughout, and a button that only jumps to an anchor on the page is
 left out, since the anchor doesn't exist in the Markdown.
 """
 
+import re
+from copy import copy
+from urllib.parse import urlsplit
+
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext
 from wtrx.blocks import (
     AccordionBlock,
@@ -18,10 +23,16 @@ from wtrx.blocks import (
     CardBlock,
     CardCarouselBlock,
     CardGridBlock,
+    DonateFundraiseUpBlock,
+    HeroBlock,
+    HeroSignupActionKitBlock,
+    ImageBlock,
+    PageCardsBlock,
     PersonCardBlock,
     PersonCardGridBlock,
     QuoteBlock,
     SectionBlock,
+    SignupActionKitBlock,
     SignupActionNetworkBlock,
     SignupWagtailFormsBlock,
     TimelineBlock,
@@ -72,6 +83,94 @@ def target(value, *fields):
             continue
         return chosen if isinstance(chosen, str) else getattr(chosen, "url", None)
     return None
+
+
+@register_renderer(ImageBlock)
+def render_image(block, value, context):
+    image = value.get("image")
+    if image and value.get("alt_text"):
+        # Keep the override local to this occurrence of a shared image.
+        image = copy(image)
+        image.contextual_alt_text = value["alt_text"]
+    return join(
+        render_block(block.child_blocks["image"], image, context),
+        child(block, value, "caption", context),
+    )
+
+
+@register_renderer(PageCardsBlock)
+def render_page_cards(block, value, context):
+    # A stable index link needs no child query or dependent rebuilds.
+    url = target(value, "index_page")
+    label = child(block, value, "link_text", context) or gettext("Read more")
+    return join(child(block, value, "content", context), link(label, url) if url else "")
+
+
+@register_renderer(HeroBlock)
+def render_hero(block, value, context):
+    # This is an authored body section; hide_hero applies to the page header.
+    return join(
+        heading(2, child(block, value, "headline", context)),
+        child(block, value, "content", context),
+        child(block, value, "image_caption", context),
+    )
+
+
+@register_renderer(DonateFundraiseUpBlock)
+def render_donate_fundraiseup(block, value, context):
+    # Checkout configuration is not a public donation URL.
+    return join(
+        child(block, value, "content", context),
+        child(block, value, "image", context),
+        child(block, value, "image_caption", context),
+    )
+
+
+def actionkit_url(value, context):
+    shortname = value.get("short_form_id")
+    settings = context.get("settings")
+    if not shortname or settings is None or context.get("site") is None:
+        return ""
+    config = settings["wtrx"]["IntegrationSettings"].get_integration_config("actionkit")
+    hostname = (config.get("hostname", "") if config else "").strip().rstrip("/")
+    if not hostname:
+        return ""
+    base = hostname if "://" in hostname else f"https://{hostname}"
+    parsed = urlsplit(base)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or any(char.isspace() for char in base)
+        or not re.fullmatch(r"[A-Za-z0-9_-]+", shortname)
+    ):
+        raise ImproperlyConfigured("ActionKit requires a public hostname and a page short name")
+    # Same campaign endpoint used by the site's embed integration, without
+    # form_only/abs_urls parameters. It resolves the campaign's action type.
+    return f"{base}/act/{shortname}/"
+
+
+@register_renderer(SignupActionKitBlock)
+def render_signup_actionkit(block, value, context):
+    url = actionkit_url(value, context)
+    return join(
+        child(block, value, "eyebrow", context),
+        child(block, value, "content", context),
+        child(block, value, "image", context),
+        child(block, value, "image_caption", context),
+        link(gettext("Take action"), url) if url else "",
+    )
+
+
+@register_renderer(HeroSignupActionKitBlock)
+def render_hero_signup_actionkit(block, value, context):
+    # The compact hero strip has no content field or displayed image/eyebrow.
+    url = actionkit_url(value, context)
+    return link(gettext("Take action"), url) if url else ""
 
 
 @register_renderer(VideoBlock)

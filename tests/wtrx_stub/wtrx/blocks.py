@@ -49,6 +49,44 @@ class ImageBlock(blocks.StructBlock):
     caption = blocks.CharBlock(required=False)
 
 
+class PageCardsBlock(blocks.StructBlock):
+    content = blocks.RichTextBlock(required=False)
+    index_page = blocks.PageChooserBlock()
+    category = blocks.CharBlock(required=False)  # Unused snippet chooser stand-in.
+    link_text = blocks.CharBlock(required=False, default="Read more")
+
+
+class HeroBlock(blocks.StructBlock):
+    headline = blocks.CharBlock()
+    content = blocks.RichTextBlock(required=False)
+    image = ImageChooserBlock(required=False)
+    image_caption = blocks.CharBlock(required=False)
+    banner_color = blocks.ChoiceBlock(choices=[("navy", "Navy")], default="navy")
+
+
+class DonateFundraiseUpBlock(blocks.StructBlock):
+    content = blocks.RichTextBlock(required=False)
+    image = ImageChooserBlock(required=False)
+    image_caption = blocks.CharBlock(required=False)
+    designation_id = IdentifierBlock(required=False)
+    alignment = blocks.ChoiceBlock(choices=[("image-left", "Left")], default="image-left")
+    advanced_settings = blocks.StructBlock(
+        [
+            (name, IdentifierBlock(required=False))
+            for name in (
+                "element_id_us",
+                "element_id_nl",
+                "element_id_ca",
+                "element_id_gb",
+                "eu_country_codes",
+                "element_id_eu",
+                "element_id_default",
+            )
+        ],
+        required=False,
+    )
+
+
 class VideoBlock(blocks.StructBlock):
     embed_url = blocks.URLBlock(required=False)
     media_file = VideoChooserBlock(required=False)
@@ -158,12 +196,37 @@ class SignupActionNetworkBlock(blocks.StructBlock):
     anchor_id = IdentifierBlock(required=False)
 
 
+class HeroSignupActionKitBlock(blocks.StructBlock):
+    eyebrow = blocks.CharBlock(required=False)
+    background = blocks.ChoiceBlock(choices=[("dark-grey", "Dark grey")], default="dark-grey")
+    layout = blocks.ChoiceBlock(choices=[("columns", "Side by side")], default="columns")
+    image = ImageChooserBlock(required=False)
+    image_caption = blocks.CharBlock(required=False)
+    short_form_id = IdentifierBlock()
+    anchor_id = IdentifierBlock(required=False)
+    success_message = SuccessMessageBlock(required=False)
+
+
+class SignupActionKitBlock(HeroSignupActionKitBlock):
+    # The real classes are siblings sharing a mixin; fields are otherwise identical.
+    content = blocks.RichTextBlock(required=False)
+
+
+class HeroCTABlock(blocks.StreamBlock):
+    button = ButtonBlock()
+    signup = HeroSignupActionKitBlock()
+
+
 class SectionContentBlock(blocks.StreamBlock):
     """A subset of the site's 29 children: the ones these tests nest."""
 
     text = TextBlock()
     lead_text = LeadTextBlock()
     heading = HeadingBlock()
+    image = ImageBlock()
+    hero = HeroBlock()
+    page_cards = PageCardsBlock()
+    donate_fundraiseup = DonateFundraiseUpBlock()
     video = VideoBlock()
     button = ButtonBlock()
     button_group = ButtonGroupBlock()
@@ -174,6 +237,7 @@ class SectionContentBlock(blocks.StreamBlock):
     accordion = AccordionBlock()
     signup_wagtail_forms = SignupWagtailFormsBlock()
     signup_action_network = SignupActionNetworkBlock()
+    signup_actionkit = SignupActionKitBlock()
 
 
 class SectionBlock(blocks.StructBlock):
