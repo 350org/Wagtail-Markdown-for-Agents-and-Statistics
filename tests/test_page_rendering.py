@@ -13,7 +13,11 @@ from wagtail.models import Page, Site
 from tests.test_golden import assert_matches_golden
 from wagtail_markdown_agents.rendering import frontmatter, render_page
 from wagtail_markdown_agents.rendering.html import PRE_CONVERT_HOOK
-from wagtail_markdown_agents.rendering.page import POST_RENDER_HOOK, PageRenderError
+from wagtail_markdown_agents.rendering.page import (
+    PAGE_FIELDS_HOOK,
+    POST_RENDER_HOOK,
+    PageRenderError,
+)
 
 pytestmark = pytest.mark.django_db
 NOW = datetime.datetime(2026, 9, 14, 12, tzinfo=datetime.UTC)
@@ -91,6 +95,27 @@ def test_explicit_order_and_omission(page, settings):
 def test_unconfigured_type_still_auto_detects(page, settings):
     settings.WAGTAIL_MARKDOWN_AGENTS = {"PAGE_FIELDS": {"testapp.ArticlePage": ["body"]}}
     assert "global" in render_page(page)
+
+
+def test_integration_default_fields_and_explicit_override(page, settings):
+    with hooks.register_temporarily(PAGE_FIELDS_HOOK, lambda model: ["body"]):
+        assert "global" not in render_page(page)
+        settings.WAGTAIL_MARKDOWN_AGENTS = {
+            "PAGE_FIELDS": {"testapp.ContentPage": ["intro", "body"]}
+        }
+        assert "An introduction." in render_page(page)
+        settings.WAGTAIL_MARKDOWN_AGENTS = {"PAGE_FIELDS": {"testapp.ContentPage": []}}
+        with pytest.raises(PageRenderError, match="no body"):
+            render_page(page)
+
+
+@pytest.mark.parametrize("names", ["body", ["missing"], ["title"], ["body", "body"]])
+def test_integration_default_fields_are_validated(page, names):
+    with (
+        hooks.register_temporarily(PAGE_FIELDS_HOOK, lambda model: names),
+        pytest.raises(ImproperlyConfigured, match=PAGE_FIELDS_HOOK),
+    ):
+        render_page(page)
 
 
 @pytest.mark.parametrize(

@@ -137,6 +137,13 @@ it still ranks below custom templates. Template rendering converts the resulting
 once: children reached through `include_block` render with Wagtail, never back through
 the registry.
 
+Reusable integrations may supply default fields with the public
+`markdown_page_fields(page_model)` hook (25 September 2026, #14). It returns an
+ordered list of StreamField/RichTextField names or `None`. An explicit setting
+for the model wins; otherwise the first non-`None` hook wins, with the same field
+validation. This keeps project-specific page assembly in its add-on without
+mutating deployment settings or importing client models into the core.
+
 Page body fields: `WAGTAIL_MARKDOWN_AGENTS["PAGE_FIELDS"]` map
 (`{"app.Model": ["body"]}`), defaulting to auto-detection of all
 StreamField/RichTextField fields in definition order. Non-StreamField pages: v0.2.

@@ -203,6 +203,16 @@ def test_the_same_definition_merges_its_locations():
     assert promo.locations == ["test.Page.body > promo", "test.Page.sidebar > promo"]
 
 
+@override_settings(
+    WAGTAIL_MARKDOWN_AGENTS={
+        "PAGE_TYPES": [
+            "testapp.ArticlePage",
+            "testapp.ContentPage",
+            "testapp.MarkdownArticlePage",
+            "testapp.FormPage",
+        ]
+    }
+)
 def test_report_covers_exportable_page_types_and_skips_form_pages():
     report = build_report()
     assert report.page_types == [
@@ -226,6 +236,16 @@ def test_report_respects_page_types_and_page_fields():
     assert locations and all(loc.startswith("testapp.ArticlePage.body") for loc in locations)
 
 
+@override_settings(
+    WAGTAIL_MARKDOWN_AGENTS={
+        "PAGE_TYPES": [
+            "testapp.ArticlePage",
+            "testapp.ContentPage",
+            "testapp.MarkdownArticlePage",
+            "testapp.FormPage",
+        ]
+    }
+)
 def test_command_groups_blocks_by_path_and_summarises():
     output = run()
     assert output.startswith("Block coverage for 3 page types: testapp.ArticlePage,")

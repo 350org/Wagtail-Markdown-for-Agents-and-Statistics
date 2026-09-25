@@ -23,6 +23,7 @@ from .context import render_context
 from .links import rewrite_links
 
 POST_RENDER_HOOK = "markdown_post_render"
+PAGE_FIELDS_HOOK = "markdown_page_fields"
 
 
 class PageRenderError(ValueError):
@@ -43,7 +44,7 @@ def render_page(page: Page, site=None, *, navigation: str = "", root_index: bool
     """Render a published page as YAML frontmatter and a Markdown body.
 
     PAGE_FIELDS selects ordered StreamField/RichTextField body fields; absent
-    entries auto-detect them. v0.1 requires a StreamField on the model and does
+    entries use integration hook defaults, then auto-detection. v0.1 requires a StreamField and does
     not support form pages. No arbitrary fields or related objects are dumped.
 
     ``markdown_post_render(markdown, page, context)`` hooks receive the assembled
@@ -129,7 +130,7 @@ def unsupported_reason(model) -> str:
 
 
 def selected_fields(page_model):
-    """The ordered body fields rendered for pages of ``page_model`` (``PAGE_FIELDS``, else auto)."""
+    """Ordered body fields: explicit ``PAGE_FIELDS``, integration defaults, then auto-detection."""
     configured = get_setting("PAGE_FIELDS")
     if configured is None:
         configured = {}
@@ -149,34 +150,39 @@ def selected_fields(page_model):
             raise ImproperlyConfigured(f"PAGE_FIELDS key {label!r} must name a Page model")
         if model in selection:
             raise ImproperlyConfigured(f"PAGE_FIELDS configures {model._meta.label} more than once")
-        if not isinstance(names, list | tuple):
-            raise ImproperlyConfigured(f"PAGE_FIELDS[{label!r}] must be an ordered list of names")
-        fields = []
-        seen = set()
-        for name in names:
-            if not isinstance(name, str) or name in seen:
-                raise ImproperlyConfigured(
-                    f"PAGE_FIELDS[{label!r}] has invalid/duplicate name {name!r}"
-                )
-            seen.add(name)
-            try:
-                field = model._meta.get_field(name)
-            except FieldDoesNotExist as exc:
-                raise ImproperlyConfigured(f"PAGE_FIELDS[{label!r}] has no field {name!r}") from exc
-            if not isinstance(field, StreamField | RichTextField):
-                raise ImproperlyConfigured(
-                    f"PAGE_FIELDS[{label!r}][{name!r}] must be a StreamField or RichTextField"
-                )
-            fields.append(field)
-        selection[model] = fields
-    return selection.get(
-        page_model,
-        [
-            field
-            for field in page_model._meta.get_fields()
-            if isinstance(field, StreamField | RichTextField)
-        ],
-    )
+        selection[model] = _named_fields(model, names, f"PAGE_FIELDS[{label!r}]")
+    if page_model in selection:
+        return selection[page_model]
+    # Integrations can supply defaults without mutating host settings.
+    # Explicit PAGE_FIELDS wins; the first hook with a result owns defaults.
+    for hook in hooks.get_hooks(PAGE_FIELDS_HOOK):
+        names = hook(page_model)
+        if names is not None:
+            return _named_fields(page_model, names, PAGE_FIELDS_HOOK)
+    return [
+        field
+        for field in page_model._meta.get_fields()
+        if isinstance(field, StreamField | RichTextField)
+    ]
+
+
+def _named_fields(model, names, source):
+    if not isinstance(names, list | tuple):
+        raise ImproperlyConfigured(f"{source} must be an ordered list of names")
+    fields = []
+    seen = set()
+    for name in names:
+        if not isinstance(name, str) or name in seen:
+            raise ImproperlyConfigured(f"{source} has invalid/duplicate name {name!r}")
+        seen.add(name)
+        try:
+            field = model._meta.get_field(name)
+        except FieldDoesNotExist as exc:
+            raise ImproperlyConfigured(f"{source} has no field {name!r}") from exc
+        if not isinstance(field, StreamField | RichTextField):
+            raise ImproperlyConfigured(f"{source}[{name!r}] must be a StreamField or RichTextField")
+        fields.append(field)
+    return fields
 
 
 def _render_field(field, page, context):
