@@ -8,6 +8,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Rebuild the affected site's exports after committed 350.org integration-setting
+  changes (#14), including ActionKit destinations and template-based donation
+  defaults. Skip unchanged saves and first-use empty settings creation; honour
+  `AUTO_GENERATE`, current site ownership and published revisions. The existing
+  synchronous task backend runs the refresh and finalises discovery once.
 - Complete the next 350.org rendering batch (#14): campaign-specific ActionKit
   links (including hero signups), index-only page cards, images with authored
   captions, body heroes and FundraiseUp content. Page hooks assemble visible

@@ -95,11 +95,41 @@ ActionKit destinations, index-only page cards, authored image/hero captions and
 complete page-hero omission when hidden. A separately stored image `credit` is
 not added automatically; that choice remains open.
 
+## Integration settings and regeneration
+
+With the add-on enabled, saving a changed `IntegrationSettings.integrations`
+configuration schedules a rebuild of that site's pages after the database
+transaction commits. The rebuild reads the latest settings and published page
+revisions, so ActionKit hostname/enabled changes and template-based donation
+defaults reach existing exports without republishing pages. It finishes the site's
+indexes, `llms.txt` and manifest once. Nested sites are selected by their actual
+routing owner and are not rebuilt with their parent site.
+
+The selection covers the whole site because nested blocks and templates can use
+integration settings without declaring individual dependencies. Unchanged saves
+and edits to custom head/body HTML alone do not trigger regeneration. Creating
+the empty settings row on first use does not trigger a recursive rebuild. Deleting
+the settings row rebuilds with the default empty configuration; reassigning a row
+to another site refreshes both sites.
+
+`AUTO_GENERATE=False` disables this automatic work. The same switch and site policy
+are checked again when a queued task executes. Rolled-back transactions discard
+the callback. This uses the existing synchronous v0.1 task backend: an integration
+save waits for regeneration after commit, and repeated changed saves are not
+debounced. No new database tables or startup queries are introduced by the add-on.
+
+Failures are logged after the settings save has committed; earlier page writes or
+older exports may remain, and a failed batch is not finalised as a successful
+manifest. Fix the cause and run
+`python manage.py agentmd_generate --site example.org --force` to recover. This
+explicit command also works when automatic generation is disabled. Bulk updates
+and raw fixture loading bypass this receiver and require the same explicit refresh.
+
 ## Remaining coverage decisions
 
 Logo grids still use linked images through their templates, and donation currency
 formatting retains the template's output. Separate image credits, post metadata
-mappings, settings-triggered regeneration and full client acceptance remain open.
+mappings and full client acceptance remain open.
 
 The other blocks export acceptably through their templates; see the matrix on #14.
 
@@ -111,3 +141,9 @@ The other blocks export acceptably through their templates; see the matrix on #1
 and `hide_hero`. Their migration belongs only to the test app; the add-on has no
 database migration. The site itself isn't a test dependency. When the site's
 blocks change, update the stand-ins to match.
+
+`tests/test_wtrx_settings_lifecycle.py` covers committed settings edits, real offline
+configuration reads, unchanged page revisions, draft isolation, nested sites,
+rollback, delayed tasks, disabled generation, storage failures and recovery on
+filesystem and synthetic remote storage. Its synthetic settings model and migration
+belong to the test app only.
