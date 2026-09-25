@@ -108,6 +108,23 @@ def test_decorative_empty_alt_images_are_omitted(html, expected):
     assert rich(html) == expected
 
 
+def test_template_content_is_omitted():
+    # <template> is inert: a browser never renders it.
+    html = '<p>Before</p><template><p>Row</p><a href="/x">Link</a></template><p>After</p>'
+
+    assert rich(html) == "Before\n\nAfter"
+
+
+def test_hidden_markup_other_than_template_is_kept():
+    # Collapsed panels and <noscript> links are content; renderers decide.
+    html = (
+        '<div class="hidden"><p>Answer</p></div><div hidden><p>Tab</p></div>'
+        '<noscript><a href="/form/">Sign up</a></noscript>'
+    )
+
+    assert rich(html) == "Answer\n\nTab\n\n[Sign up](/form/)"
+
+
 def test_empty_rich_text_renders_empty():
     assert rich("") == ""
 

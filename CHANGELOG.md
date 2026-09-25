@@ -13,8 +13,8 @@ versioning: [SemVer](https://semver.org/).
   block's custom template, or Wagtail's default HTML. It reads block definitions
   only and follows the same dispatch as export. Blocks exported through a template
   get hints from its source and the templates it includes: `{% include_block %}`,
-  `{% embed %}`, use of `request`, and `<noscript>`, `<dialog>`, `<template>` or
-  hidden markup whose text would be exported. `--json` writes a snapshot, and
+  `{% embed %}`, use of `request`, and `<noscript>`, `<dialog>` or hidden markup
+  whose text would be exported. `--json` writes a snapshot, and
   `--compare` exits non-zero when blocks, their renderers, hints or the fields
   inside templated blocks have changed since it. `--page ID` renders one published
   page block by block, showing each block's Markdown, hints and any error (#18).
@@ -41,6 +41,10 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Omit `<template>` content from converted HTML. Browsers never render it, but its
+  inert markup was exported. Other hidden markup is still converted, because
+  collapsed panels and `<noscript>` links are content; write a renderer for blocks
+  whose hidden text should be left out.
 - Omit decorative images from converted HTML. An `<img alt="">` in rich text or a
   block template (icons, backgrounds) was exported as `![](url)`; it now renders
   nothing, like a decorative `ImageBlock`. Images with no `alt` attribute are kept.
