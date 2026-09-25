@@ -140,7 +140,9 @@ The other blocks export acceptably through their templates; see the matrix on #1
 `1997766`. Synthetic page models exercise published hero assembly, field order
 and `hide_hero`. Their migration belongs only to the test app; the add-on has no
 database migration. The site itself isn't a test dependency. When the site's
-blocks change, update the stand-ins to match.
+blocks change, update the stand-ins to match. The manual
+[block drift check](350org-block-drift.md) compares a chosen site revision against
+the pinned real-site definition snapshot without database rows or rendering.
 
 `tests/test_wtrx_settings_lifecycle.py` covers committed settings edits, real offline
 configuration reads, unchanged page revisions, draft isolation, nested sites,

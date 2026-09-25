@@ -1,0 +1,53 @@
+name: 350.org block drift
+
+# On demand only; this is not part of package CI or a scheduled site integration.
+on:
+  workflow_dispatch:
+    inputs:
+      site_ref:
+        description: "Trusted wagtail-wtr-350 ref to inspect (branch, tag or commit)"
+        required: true
+        default: "199776652df68c8b74a51c0493f503228de23cd9"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check source access is configured
+        env:
+          SOURCE_TOKEN: ${{ secrets.WTRX_SOURCE_READ_TOKEN }}
+        run: |
+          if [ -z "$SOURCE_TOKEN" ]; then
+            echo "Configure WTRX_SOURCE_READ_TOKEN with read access to 350org/wagtail-wtr-350."
+            exit 1
+          fi
+      - name: Check out the selected site revision
+        uses: actions/checkout@v4
+        with:
+          repository: 350org/wagtail-wtr-350
+          ref: ${{ inputs.site_ref }}
+          token: ${{ secrets.WTRX_SOURCE_READ_TOKEN }}
+          path: wtrx-source
+          persist-credentials: false
+      - name: Record source revisions
+        run: |
+          git rev-parse HEAD
+          git -C wtrx-source rev-parse HEAD
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: Install the package and site dependencies
+        run: |
+          uv venv --python 3.13
+          uv pip install --python .venv/bin/python -c scripts/wtrx-drift-constraints.txt . ./wtrx-source
+          uv pip freeze --python .venv/bin/python
+      - name: Compare block definitions and renderer coverage
+        run: .venv/bin/python scripts/wtrx_block_drift.py wtrx-source

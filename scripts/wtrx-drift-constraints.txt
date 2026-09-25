@@ -1,0 +1,5 @@
+# The reviewed definition/template environment; the site supplies other dependencies.
+Django==5.2.17
+wagtail==7.4.3
+wagtail-localize==1.14.5
+wagtailmedia==0.19.1

@@ -8,6 +8,10 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- An on-demand 350.org block drift workflow (#14), comparing a chosen site ref
+  with the reviewed `1997766` block snapshot through `agentmd_blocks --compare`.
+  The isolated helper requires no database rows or production settings and rejects
+  database/network access during inspection. See `docs/350org-block-drift.md`.
 - Rebuild the affected site's exports after committed 350.org integration-setting
   changes (#14), including ActionKit destinations and template-based donation
   defaults. Skip unchanged saves and first-use empty settings creation; honour

@@ -212,6 +212,9 @@ need a renderer reviewed. Blocks are matched by name and class. After reviewing 
 changes, write a new snapshot with `--json`. A snapshot records dotted class paths,
 so compare it only against the same project.
 
+The optional 350.org integration has a manual [block drift workflow](350org-block-drift.md)
+that uses this comparison against a pinned real-site snapshot.
+
 ## Delete exports
 
 ```bash
