@@ -204,13 +204,18 @@ unevaluated page queryset whose scope might change.
 
 ## Related content and failures
 
-In v0.1 ordinary edits to images, documents, snippets, donation settings or referenced
+The optional [350.org add-on](350org-addon.md#integration-settings-and-regeneration)
+automatically selects the affected site's pages after committed integration-setting
+changes, using the same refresh and task mechanisms. It honours `AUTO_GENERATE`
+and keeps nested sites separate.
+
+In v0.1 other edits to images, documents, snippets, settings or referenced
 page fields require project-owned after-commit hooks selecting the affected page IDs.
 An explicit full-site selection is the conservative fallback when dependencies are
 unknown. HTML cache purges alone do not rebuild Markdown. Use the helper above or
 `agentmd_generate --site example.org --force` for an explicit refresh. There is no persistent
-dependency graph. The exact 350.org refresh selection/sample still needs agreement
-under #63/#65; this core implementation does not settle those presentation decisions.
+dependency graph. Site-specific dependency selection belongs in the integration;
+the core does not import client models.
 Incoming links in unrelated leaf exports require this explicit refresh after target moves. Changes to
 eligibility are a separate privacy requirement and are never deferred as ordinary
 freshness or configuration-staleness work.

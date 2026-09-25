@@ -5,6 +5,8 @@ integrations, credentials or private data are needed.
 """
 
 from django.db import models
+from wagtail import blocks
+from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 
@@ -49,3 +51,39 @@ class Blogs(Page, HeroMixin):  # noqa: DJ008 — inherits Page.__str__
 class Post(Page):
     hero_headline = models.CharField(max_length=255, blank=True)
     body = StreamField(SectionContentBlock(), blank=True)
+
+
+class IntegrationSettings(BaseSiteSetting):
+    """Only fields needed to test settings saves and offline configuration reads."""
+
+    integrations = StreamField(
+        [
+            (
+                "actionkit",
+                blocks.StructBlock(
+                    [
+                        ("enabled", blocks.BooleanBlock(required=False, default=True)),
+                        ("hostname", blocks.CharBlock(required=False)),
+                    ]
+                ),
+            ),
+            (
+                "actblue",
+                blocks.StructBlock(
+                    [
+                        ("enabled", blocks.BooleanBlock(required=False, default=True)),
+                        ("page_url", blocks.URLBlock(required=False)),
+                    ]
+                ),
+            ),
+        ],
+        blank=True,
+    )
+    custom_head_html = models.TextField(blank=True)
+    custom_body_html = models.TextField(blank=True)
+
+    def get_integration_config(self, slug):
+        for block in self.integrations:
+            if block.block_type == slug and block.value.get("enabled", True):
+                return block.value
+        return None
