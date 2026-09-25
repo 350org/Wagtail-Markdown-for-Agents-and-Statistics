@@ -6,3 +6,8 @@ class WtrxMarkdownConfig(AppConfig):
     # The site's own app is labelled "wtrx".
     label = "agentmd_wtrx"
     verbose_name = "Markdown for Agents: 350.org blocks"
+
+    def ready(self):
+        from . import handlers
+
+        handlers.connect()
