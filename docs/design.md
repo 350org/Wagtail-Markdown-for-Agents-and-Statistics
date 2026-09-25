@@ -88,7 +88,9 @@ same way, along with any link left empty; an image with no `alt` attribute is ke
 block images and rich-text images alike — is absolute when `WAGTAILADMIN_BASE_URL`
 is set, as `Rendition.full_url` is. `EmbedBlock` renders a link whose text is the
 title from Wagtail's embed cache when one exists, else an autolink; generation never
-calls a provider's oEmbed API. `TableBlock`/`TypedTableBlock` render GFM pipe tables:
+calls a provider's oEmbed API. A block template's `{% embed %}` (or an `EmbedBlock`
+rendered inside a template) uses only embeds Wagtail has stored while the fallback
+renders, and renders nothing otherwise; Wagtail's own page rendering still fetches. `TableBlock`/`TypedTableBlock` render GFM pipe tables:
 the caption precedes the table on its own line (where markdownify puts a
 `<caption>`), a table with no header row gets an empty one because GFM requires it,
 a first-column header renders as an ordinary cell, pipes are escaped and line breaks

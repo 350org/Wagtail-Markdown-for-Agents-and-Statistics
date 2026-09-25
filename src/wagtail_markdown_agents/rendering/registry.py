@@ -77,6 +77,9 @@ def render_fallback(block, value, context) -> str:
     Blocks without a template use Wagtail's basic HTML rendering. ``context``
     becomes the template's parent context; see ``rendering.context.render_context``.
 
+    The template never fetches embeds from their provider; see
+    ``rendering.offline``.
+
     A block with no value renders nothing — Wagtail's basic rendering would
     otherwise print ``None`` (#85). StaticBlocks are the exception: they never
     have a value, and their template is their content.
@@ -84,11 +87,13 @@ def render_fallback(block, value, context) -> str:
     from wagtail.blocks import StaticBlock
 
     from .html import convert_html
+    from .offline import offline_embeds
 
     if value is None and not isinstance(block, StaticBlock):
         return ""
     try:
-        html = block.render(value, context=dict(context))
+        with offline_embeds():
+            html = block.render(value, context=dict(context))
     except Exception as exc:
         raise BlockRenderError(block, exc) from exc
     return convert_html(str(html), block, context)

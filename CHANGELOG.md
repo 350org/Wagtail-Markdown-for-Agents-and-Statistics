@@ -41,6 +41,14 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Block templates no longer call an embed provider during export. `{% embed %}` in a
+  template rendered by the fallback, including inside nested blocks, called the
+  provider's oEmbed API on every export, so publishing depended on a third party.
+  It now uses only unexpired embeds Wagtail has already stored, and renders nothing
+  otherwise. A video player's iframe converted to nothing anyway; an embed whose
+  HTML carries text, such as a quoted post, is exported only once Wagtail has
+  stored it, usually when the HTML page is first viewed. Wagtail's own page
+  rendering still fetches as before.
 - Omit `<template>` content from converted HTML. Browsers never render it, but its
   inert markup was exported. Other hidden markup is still converted, because
   collapsed panels and `<noscript>` links are content; write a renderer for blocks

@@ -155,7 +155,7 @@ template's source. Templates it includes by name (`{% include "..." %}` or
 | Hint | Why it matters |
 | --- | --- |
 | `{% include_block %}` | Child blocks render through their own templates. A renderer registered for a child is never used. |
-| `{% embed %}` | Export calls the embed provider over the network. |
+| `{% embed %}` | Export never calls the embed provider, and an embedded player converts to nothing, so the media is missing from the Markdown. A renderer can link its URL instead. |
 | `request` | There is no request during export. Output that depends on it will differ from the HTML page. |
 | `<noscript>`, `<dialog>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
 | Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
@@ -186,8 +186,8 @@ This shows each block's Markdown before page hooks (`markdown_post_render`) and
 link rewriting, which apply to the whole document; `agentmd_generate` writes the
 full document. The page does not have to be exported under the current policy,
 but it must be live and of a supported type. Rendering has the same side effects
-as export: block templates run their queries, and `{% embed %}` fetches from the
-embed provider.
+as export: block templates run their queries. Like export, it never fetches an embed
+from its provider.
 
 ### Snapshots and drift
 
