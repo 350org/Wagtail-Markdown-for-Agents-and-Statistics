@@ -49,6 +49,7 @@ integration-setting changes do not themselves publish a new page revision.
 | `hero` | `## headline`, content and the authored image caption. The background image and colour are omitted. |
 | `donate_fundraiseup` | Content, image and authored image caption. Designation IDs and advanced settings are omitted; no checkout URL is invented. |
 | `signup_actionkit` | Eyebrow, content, image and authored caption, then `[Take action](campaign URL)`. No form fetch, success message or unavailable-form placeholder. |
+| `donate` | The site's template with offline, site-bound ActBlue URL/amount defaults. Authored overrides, button labels, amount formatting and the `$` symbol remain template-controlled. |
 
 Containers render their children through export's own dispatch
 (`render_block`), so nested blocks get their renderers: a video inside a
@@ -131,7 +132,11 @@ Logo grids still use linked images through their templates, and donation currenc
 formatting retains the template's output. Separate image credits, post metadata
 mappings and full client acceptance remain open.
 
-The other blocks export acceptably through their templates; see the matrix on #14.
+Eight other block types use template fallback. The
+[rendering output review](acceptance/17-rendering-output-review.md) supplies a
+synthetic gallery and records its limits, including raw-HTML player loss and
+fragment-only feature-panel links. This is not blanket client acceptance of the
+site's templates.
 
 ## Tests
 
@@ -149,3 +154,11 @@ configuration reads, unchanged page revisions, draft isolation, nested sites,
 rollback, delayed tasks, disabled generation, storage failures and recovery on
 filesystem and synthetic remote storage. Its synthetic settings model and migration
 belong to the test app only.
+
+`tests/test_wtrx_golden.py`, `tests/test_wtrx_fallback_golden.py` and
+`tests/test_wtrx_donate.py` pin complete add-on documents and review examples.
+The donation fixture mirrors the actual `base_url` and `suggested_amounts` fields:
+the site's request-only defaults require the add-on's context adapter during
+offline export. Its original template is still used. See the
+[review ledger](acceptance/17-rendering-output-review.md) for test mappings and
+open presentation choices.

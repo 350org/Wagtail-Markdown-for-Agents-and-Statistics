@@ -10,15 +10,17 @@ It has no push, pull-request or scheduled trigger and is separate from package C
 [`fixtures/wtrx-blocks.json`](fixtures/wtrx-blocks.json) was generated on
 25 September 2026 from the site's `improvements` revision
 [`199776652df68c8b74a51c0493f503228de23cd9`](https://github.com/350org/wagtail-wtr-350/commit/199776652df68c8b74a51c0493f503228de23cd9),
-with the package's 350.org add-on enabled after PR #32 (package revision
-`82ddae695ec33c0f75909f1ba8fd14c9de732a6a`). It contains all 31 body block types
+with the package's 350.org add-on enabled. The initial package basis was PR #32
+(`82ddae695ec33c0f75909f1ba8fd14c9de732a6a`); the snapshot was then refreshed for
+the [offline donation correction](acceptance/17-rendering-output-review.md#donation-finding-and-correction)
+in #4/#14. Only donation's dispatch and renderer changed. It contains all 31 body block types
 across HomePage, ContentPage, IndexPage, Post and Blogs. Blogs has no body blocks
 under the add-on's page-field mapping.
 
 The snapshot records definition metadata, not site content or a copy of the
 site's implementation. Its source is the 350.org repository above. The comparison
-uses `agentmd_blocks --compare` and the normal renderer registry: 19 block types
-use the add-on, three use the core and nine use template fallback. The report
+uses `agentmd_blocks --compare` and the normal renderer registry: 20 block types
+use the add-on, three use the core and eight use template fallback. The report
 labels both core and bundled add-on renderers as `built_in`; the full renderer
 paths distinguish them.
 

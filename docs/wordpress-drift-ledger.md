@@ -7,6 +7,13 @@ the Wagtail release; identify the reviewer in that release's review record.
 
 ## Reviewed baseline and follow-ups
 
+- **Client rendering evidence, 25 September 2026:** the
+  [output review](acceptance/17-rendering-output-review.md) maps existing generic
+  contracts to tests and adds bounded 350.org goldens. Offline donation defaults
+  now reach the site's existing template through the optional add-on. This is
+  site-specific integration work, not a new WordPress interval audit or client
+  presentation sign-off; P24 remains open. D6/D12 implementation is recorded in
+  scenario 01, while D9 and the listed output choices remain unresolved.
 - **Last complete behavioural audit:** WordPress 1.7.0, commit
   `8ad646e826ccbc836863aca30745abe0c5198a53`, audited 7 September 2026 in the
   [historical audit](wordpress-parity-audit.md). This baseline is unchanged.

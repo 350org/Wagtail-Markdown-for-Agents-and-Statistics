@@ -1,5 +1,11 @@
 # Pre-transfer review — 21 September 2026
 
+Rendering update, 25 September 2026: D6 and D12 were agreed and implemented on
+24 September. The [output review](acceptance/17-rendering-output-review.md) now
+maps the generic acceptance checklist to tests and supplies bounded add-on golden
+files, including the offline donation-default correction. D9 and client output
+sign-off remain open. Earlier dated verification paragraphs below are historical.
+
 Licensing update, 22 September 2026: the project now uses GPL-3.0-or-later,
 aligned with the original WordPress plugin, with copyright held by 350.org.
 BSD references below describe the historical review and artifacts, not the
@@ -109,7 +115,7 @@ Additional checks:
 Test/build/audit scratch evidence is under `/tmp/agentmd-review-*` and `.tox/*/log/`; it is local
 and temporary, not a durable handover archive.
 
-## D9 unresolved; D12 implemented
+## D9 unresolved; D6 and D12 implemented
 
 **D9 — `hide_from_search`:** the core currently gives this project field no export
 meaning. The proposed answer remains “no”, requiring explicit 350.org sign-off.
@@ -126,11 +132,12 @@ registrations below custom templates. Generic tests do not settle client
 presentation: 350.org's templated containers need their own renderers (#14). See
 [design](design.md) and [scenario 01](acceptance/01-contentpage-end-to-end.md).
 
-Also retain D6: the proposed restricted-target link removal differs from the
-implemented preservation of HTML links to unavailable targets. Do not claim
-scenario 01/S6 has passed. Agree the bounded 350.org fixture/output matrix in
-legacy #65; receipt
-of provisional models is not sign-off or completed integration.
+**D6 — restricted-target links:** agreed by the package owner and implemented on
+24 September. Private targets lose their link while preserving the label; public
+targets outside export keep their HTML URL. Generic link tests and the bounded
+add-on content golden exercise this behaviour. They do not establish acceptance
+of the whole scenario 01. The #14 fixture/output matrix and client sign-off remain
+separate from receipt of provisional models and passing tests.
 
 ## Bounded live evidence is not full acceptance
 

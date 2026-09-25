@@ -7,8 +7,10 @@ calls on ledger #84 (angle brackets kept, media embeds as links, heading
 levels, decorative images omitted, table layout, embed titles from cache,
 frontmatter precedence) are pinned here.
 
-Containers are covered by test_container_defaults.py; full-page goldens follow
-#78, and 350.org's blocks follow #65.
+Containers are covered by test_container_defaults.py; full-page goldens live in
+test_page_rendering.py and test_indexes.py. The shipped 350.org add-on has its own
+documents and fallback gallery in test_wtrx_golden.py, test_wtrx_donate.py and
+test_wtrx_fallback_golden.py. These pin current output, not client sign-off.
 """
 
 import datetime
