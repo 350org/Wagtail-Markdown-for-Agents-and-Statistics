@@ -37,7 +37,8 @@ Write a renderer when the template's HTML says something different from the cont
   or carousel controls;
 - it hides text until a visitor acts, such as a success message, a `<dialog>` or an
   accordion;
-- it depends on JavaScript, a `request` or a network call (`{% embed %}`);
+- it depends on JavaScript or a `request`, or embeds media with `{% embed %}`: export
+  never fetches the embed, and a player converts to nothing, so link the URL instead;
 - it renders child blocks with `{% include_block %}`, so renderers you register for
   those children are never used;
 - the meaning lives in field values the template turns into styling, such as a

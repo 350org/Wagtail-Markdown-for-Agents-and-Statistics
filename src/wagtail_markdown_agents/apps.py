@@ -12,8 +12,10 @@ class WagtailMarkdownAgentsConfig(AppConfig):
             handlers,
             stats,
         )
+        from .rendering import offline
         from .rendering.registry import autodiscover
 
         handlers.connect()
         stats.connect()
+        offline.install()
         autodiscover()
