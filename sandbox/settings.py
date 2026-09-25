@@ -1,8 +1,12 @@
 """Sandbox Wagtail project — test target for the package. Not for production."""
 
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+
+# contrib.wtrx imports the 350.org site's blocks; the tests use a stand-in.
+sys.path.append(str(BASE_DIR.parent / "tests" / "wtrx_stub"))
 
 SECRET_KEY = "sandbox-insecure-key-not-for-production"  # noqa: S105
 DEBUG = True
@@ -10,6 +14,7 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "wagtail_markdown_agents",
+    "wagtail_markdown_agents.contrib.wtrx",
     "sandbox.testapp",
     "sandbox.events",
     "wagtail.contrib.forms",
