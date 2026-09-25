@@ -384,7 +384,7 @@ def test_templates_without_problems_have_no_hints():
         ("<p>{{ request }}</p>", [HINT_REQUEST]),
         ("<p>We received your request.</p>", []),
         ("<dialog open>Bio</dialog>", [HINT_ELEMENTS["dialog"]]),
-        ("<template><li>Row</li></template>", [HINT_ELEMENTS["template"]]),
+        ("<template><li>Row</li></template>", []),
         ("<div hidden>Thanks</div>", [HINT_HIDDEN]),
         ('<div class="msg hidden">Thanks</div>', [HINT_HIDDEN]),
         ('<div class="{% if x %}hidden{% endif %} msg">Thanks</div>', [HINT_HIDDEN]),

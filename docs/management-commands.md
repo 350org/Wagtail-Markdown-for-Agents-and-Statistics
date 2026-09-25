@@ -157,10 +157,11 @@ template's source. Templates it includes by name (`{% include "..." %}` or
 | `{% include_block %}` | Child blocks render through their own templates. A renderer registered for a child is never used. |
 | `{% embed %}` | Export calls the embed provider over the network. |
 | `request` | There is no request during export. Output that depends on it will differ from the HTML page. |
-| `<noscript>`, `<dialog>`, `<template>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
+| `<noscript>`, `<dialog>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
 | Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
 
-`<script>` and `<style>` are not hints: conversion drops them with their contents.
+`<script>`, `<style>` and `<template>` are not hints: conversion drops them with
+their contents.
 Template comments are ignored.
 
 Hints come from the source, so treat them as prompts to check the output, not

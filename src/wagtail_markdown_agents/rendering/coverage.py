@@ -66,7 +66,6 @@ HINT_HIDDEN = "hidden markup (hidden, class hidden, aria-hidden, display: none):
 HINT_ELEMENTS = {
     "noscript": "<noscript>: its fallback text is exported",
     "dialog": "<dialog>: its content is exported where it appears, often duplicating the page",
-    "template": "<template>: its inert markup is exported",
 }
 HINT_DYNAMIC_INCLUDE = "includes a template chosen at render time, which is not checked"
 
