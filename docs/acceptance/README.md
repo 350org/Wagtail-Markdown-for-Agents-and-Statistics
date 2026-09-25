@@ -23,6 +23,7 @@ Tracked in legacy #63.
 | [14-page-exclusion-settings.md](14-page-exclusion-settings.md) | Page action-menu exclusion form, permissions, locks, CSRF and export transitions (#17) | Project-owner authorised; tests in `tests/test_page_settings.py` |
 | [15-editor-exclusion-panel.md](15-editor-exclusion-panel.md) | Optional editor checkbox, revision/preview behaviour, permissions and shared exclusion lifecycle (#18) | Project-owner authorised; tests in `tests/test_editor_panel.py` |
 | [16-agent-traffic-simulator.md](16-agent-traffic-simulator.md) | Deterministic traffic, durable client evidence, cache assertions and UTC reconciliation (#59) | Project-owner authorised; local tests and the 23 September bounded deployed run cover all six explicit fixtures; a separate bounded run proves cold state for one URL at the observed LHR edge; multi-day and genuine vendor verification remain open |
+| [17-rendering-output-review.md](17-rendering-output-review.md) | Checklist-to-test map, full add-on documents, fallback gallery, offline donation correction and remaining output decisions (#4/#14/#15) | Implementation evidence and review candidates; client sign-off remains open |
 
 ## Status
 

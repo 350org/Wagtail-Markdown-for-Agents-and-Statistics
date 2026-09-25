@@ -1,0 +1,6 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<div>
+  {% if value.image %}{% image value.image fill-1600x900 as img %}<img src="{{ img.url }}" alt="" aria-hidden="true">{% endif %}
+  <div>{{ value.content|richtext }}</div>
+  {% if value.link_text %}{% include "testapp/blocks/wtrx/button.html" with text=value.link_text link_page=value.link_page link_url=value.link_url %}{% endif %}
+</div>

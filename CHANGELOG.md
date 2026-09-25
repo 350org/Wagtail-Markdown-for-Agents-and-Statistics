@@ -8,6 +8,9 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Reviewable 350.org full-page, optional-hero, index, template-fallback and donation
+  golden outputs, with a checklist-to-test map and explicit outstanding client
+  decisions (#4/#14). Snapshots record implementation behaviour, not client sign-off.
 - An on-demand 350.org block drift workflow (#14), comparing a chosen site ref
   with the reviewed `1997766` block snapshot through `agentmd_blocks --compare`.
   The isolated helper requires no database rows or production settings and rejects
@@ -52,6 +55,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Fix offline 350.org donation defaults: the optional add-on reads the enabled
+  site's ActBlue `base_url` and `suggested_amounts`, then renders the existing
+  donation template. Previously the request-only context lost those defaults.
+  Authored overrides and template currency/formatting are preserved; the real
+  donation renderer now participates in the settings-regeneration regression.
 - Blocks are rendered in the agreed D12 order: name override, then a specialised
   class renderer, then the block's custom template, then generic container
   recursion, then the template fallback. A StructBlock or StreamBlock without its

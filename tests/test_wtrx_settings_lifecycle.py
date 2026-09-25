@@ -10,6 +10,7 @@ from django.db.models.signals import post_save
 from wagtail import hooks
 from wagtail.contrib.settings.registry import Registry
 from wagtail.models import Locale, Page, PageViewRestriction, Site
+from wtrx.blocks import DonateBlock
 from wtrx.models import ContentPage, HomePage, IntegrationSettings
 
 from tests.test_indexes import read
@@ -19,6 +20,7 @@ from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.export.state import StaleBuild
 from wagtail_markdown_agents.export.writer import FileWriter
 from wagtail_markdown_agents.models import ExportArtifact
+from wagtail_markdown_agents.rendering import render_block
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
 
@@ -259,19 +261,30 @@ def test_raw_saves_idempotent_connections_and_primary_database_contract(setup, m
 
 def test_other_integration_changes_refresh_template_dependent_output(setup):
     writer, site, home, page, integration = setup
+    block = DonateBlock()
+    value = block.to_python({"content": "<h2>Support us</h2>", "override_amounts": []})
 
     def donation_copy(markdown, page, context):
-        config = context["settings"]["wtrx"]["IntegrationSettings"].get_integration_config(
-            "actblue"
-        )
-        return markdown + (f"\n\n[Donate]({config['page_url']})" if config else "")
+        # Exercise the actual add-on renderer/template with the fresh settings
+        # proxy, rather than constructing a link directly from a fake field.
+        return markdown + "\n\n" + render_block(block, value, context)
 
     with hooks.register_temporarily("markdown_post_render", donation_copy):
         integration.integrations = [
-            ("actblue", {"enabled": True, "page_url": "https://donate.example.org/campaign"})
+            (
+                "actblue",
+                {
+                    "enabled": True,
+                    "base_url": "https://donate.example.org/campaign",
+                    "suggested_amounts": "10,25",
+                },
+            )
         ]
         integration.save()
     assert "[Donate](https://donate.example.org/campaign)" in read(
+        writer, "example.org/campaign.md"
+    )
+    assert "[$25](https://donate.example.org/campaign?amount=25)" in read(
         writer, "example.org/campaign.md"
     )
 

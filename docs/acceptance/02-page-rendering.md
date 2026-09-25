@@ -24,9 +24,14 @@ behaviour and its tests; they do not record 350.org sign-off on scenario 01.
 - A project-owned hero example orders heading, hero copy, CTA, then selected fields.
   Missing optional hero content is omitted; decorative hero media is omitted.
   This illustrates the proposed scenario 01 decisions, not accepted customer output.
-- Given generated navigation supplied by a future index generator, append it once
+- Given generated navigation supplied by the index generator, append it once
   after the authored body. The caller owns selecting one listing; assembly never
   invents child listings or discards authored text to deduplicate them.
 - Frontmatter is serialised separately from body text. Final internal-link rewriting
-  is still #14, navigation generation is #20, and command diagnostics consume these
-  errors in #24. Rendering returns a document; storage/serving are separate work.
+  runs on the assembled body before YAML is joined, and generated navigation comes
+  from the index generator. Command diagnostics report these rendering errors.
+  Storage and serving are covered by their own acceptance scenarios.
+
+The [25 September output review](17-rendering-output-review.md) maps generic cases
+to existing tests and adds shipped-add-on goldens. It records current implementation
+output while preserving the separate client sign-off boundary.

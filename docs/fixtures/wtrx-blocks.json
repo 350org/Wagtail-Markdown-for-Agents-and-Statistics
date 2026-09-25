@@ -199,8 +199,8 @@
     {
       "name": "donate",
       "block_class": "wtrx.blocks.DonateBlock",
-      "path": "custom_template",
-      "renderer": "wagtail_markdown_agents.rendering.registry.render_fallback",
+      "path": "built_in",
+      "renderer": "wagtail_markdown_agents.contrib.wtrx.markdown_renderers.render_donate",
       "by_name": false,
       "template": "wtrx/components/streamfield/blocks/donate_block.html",
       "fields": [

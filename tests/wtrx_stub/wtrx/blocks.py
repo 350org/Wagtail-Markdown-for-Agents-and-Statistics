@@ -87,6 +87,23 @@ class DonateFundraiseUpBlock(blocks.StructBlock):
     )
 
 
+class DonateBlock(blocks.StructBlock):
+    content = blocks.RichTextBlock(required=False)
+    button_text = blocks.CharBlock(required=False, default="Donate")
+    override_amounts = blocks.ListBlock(blocks.DecimalBlock(), required=False)
+    override_url = blocks.URLBlock(required=False)
+
+    def get_context(self, value, parent_context=None):
+        # The real block reads defaults only through request. With export's
+        # request-free context it supplies empty defaults, even with settings.
+        context = super().get_context(value, parent_context)
+        context.update(donation_base_url="", donation_suggested_amounts_list=[])
+        return context
+
+    class Meta:
+        template = "testapp/blocks/wtrx/donate.html"
+
+
 class VideoBlock(blocks.StructBlock):
     embed_url = blocks.URLBlock(required=False)
     media_file = VideoChooserBlock(required=False)

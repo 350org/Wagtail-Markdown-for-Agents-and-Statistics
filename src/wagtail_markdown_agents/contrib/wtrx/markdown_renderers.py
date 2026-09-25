@@ -12,9 +12,11 @@ left out, since the anchor doesn't exist in the Markdown.
 
 import re
 from copy import copy
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
+from django.template.loader import render_to_string
 from django.utils.translation import gettext
 from wtrx.blocks import (
     AccordionBlock,
@@ -23,6 +25,7 @@ from wtrx.blocks import (
     CardBlock,
     CardCarouselBlock,
     CardGridBlock,
+    DonateBlock,
     DonateFundraiseUpBlock,
     HeroBlock,
     HeroSignupActionKitBlock,
@@ -40,7 +43,9 @@ from wtrx.blocks import (
 )
 
 from wagtail_markdown_agents.rendering import register_renderer, render_block
-from wagtail_markdown_agents.rendering.html import absolute_url
+from wagtail_markdown_agents.rendering.html import absolute_url, convert_html
+from wagtail_markdown_agents.rendering.offline import offline_embeds
+from wagtail_markdown_agents.rendering.registry import BlockRenderError
 
 
 def child(block, value, name, context):
@@ -124,6 +129,43 @@ def render_donate_fundraiseup(block, value, context):
         child(block, value, "image", context),
         child(block, value, "image_caption", context),
     )
+
+
+@register_renderer(DonateBlock)
+def render_donate(block, value, context):
+    """Keep the site's donation template, supplying defaults without a request.
+
+    The pinned site's get_context reads IntegrationSettings only through request.
+    Override those two context values after it runs; the template still owns
+    authored overrides, labels, amount formatting and the currency symbol.
+    """
+    if value is None:
+        return ""
+    settings = context.get("settings")
+    config = None
+    if settings is not None and context.get("site") is not None:
+        config = settings["wtrx"]["IntegrationSettings"].get_integration_config("actblue")
+    config = config or {}
+    amounts = config.get("suggested_amounts") or ""
+    try:
+        amounts = [Decimal(part.strip()) for part in amounts.split(",") if part.strip()]
+    except (InvalidOperation, AttributeError):
+        amounts = []  # Same malformed-default behaviour as the site's block.
+    parent_context = dict(context)
+    parent_context.pop("request", None)
+    try:
+        with offline_embeds():
+            template_context = block.get_context(value, parent_context=parent_context)
+            template_context.update(
+                donation_base_url=config.get("base_url") or "",
+                donation_suggested_amounts_list=amounts,
+            )
+            html = render_to_string(
+                block.get_template(value, context=template_context), template_context
+            )
+    except Exception as exc:
+        raise BlockRenderError(block, exc) from exc
+    return convert_html(html, block, context)
 
 
 def actionkit_url(value, context):

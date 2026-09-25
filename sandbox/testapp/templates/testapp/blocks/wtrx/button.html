@@ -1,0 +1,3 @@
+{% if link_page or link_url %}
+<a href="{% if link_page %}{{ link_page.url }}{% else %}{{ link_url }}{% endif %}">{{ text }}</a>
+{% endif %}

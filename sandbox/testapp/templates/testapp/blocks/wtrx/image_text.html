@@ -1,0 +1,7 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<div>
+  {% if value.crop %}{% image value.image fill-960x960 as img %}{% else %}{% image value.image max-960x960 as img %}{% endif %}
+  <img src="{{ img.url }}" alt="{{ img.alt }}">
+  <div>{{ value.content|richtext }}</div>
+  {% if value.link_text %}{% include "testapp/blocks/wtrx/button.html" with text=value.link_text link_page=value.link_page link_url=value.link_url %}{% endif %}
+</div>

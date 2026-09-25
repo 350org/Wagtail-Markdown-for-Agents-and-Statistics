@@ -72,7 +72,8 @@ class IntegrationSettings(BaseSiteSetting):
                 blocks.StructBlock(
                     [
                         ("enabled", blocks.BooleanBlock(required=False, default=True)),
-                        ("page_url", blocks.URLBlock(required=False)),
+                        ("base_url", blocks.URLBlock(required=False)),
+                        ("suggested_amounts", blocks.CharBlock(required=False)),
                     ]
                 ),
             ),

@@ -1,0 +1,9 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<div>
+  <h2>{{ value.heading }}</h2>
+  <div>
+    {% image value.image fill-1200x1200 as img %}
+    <img src="{{ img.url }}" alt="{{ img.alt }}">
+  </div>
+  {% for card in value.cards %}<div>{{ card.content|richtext }}</div>{% endfor %}
+</div>

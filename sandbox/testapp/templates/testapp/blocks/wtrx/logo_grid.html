@@ -1,0 +1,14 @@
+{% load wagtailimages_tags %}
+<div>
+  {% if value.heading %}<h2>{{ value.heading }}</h2>{% endif %}
+  <div>
+    {% for logo in value.logos %}
+      {% image logo.image max-300x160 as img %}
+      {% if logo.link_page or logo.link_url %}
+        <a href="{% if logo.link_page %}{{ logo.link_page.url }}{% else %}{{ logo.link_url }}{% endif %}"><img src="{{ img.url }}" alt="{{ logo.image.description|default:logo.name }}"></a>
+      {% else %}
+        <div><img src="{{ img.url }}" alt="{{ logo.image.description|default:logo.name }}"></div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>

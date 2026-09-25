@@ -3,6 +3,13 @@
 **Status: Proposed.** Not yet agreed with 350.org. Open decisions are marked
 **D*n*** with a recommendation.
 
+**Implementation review, 25 September 2026:** the
+[rendering output review](17-rendering-output-review.md) maps these areas to tests
+and supplies full documents from the shipped 350.org add-on. Its bounded fixture
+uses the current hero CTA stream and nested block shapes. The tree and sample
+below remain a proposed client scenario, not proof that every step has been
+accepted end to end.
+
 Proves one complete path before breadth: a published
 350.org ContentPage with a hero and nested body → generated Markdown → negotiated and
 direct retrieval → working links → withdrawal when restricted, with a newer draft never
@@ -34,11 +41,11 @@ HomePage  "350"                            /
 | `hero_headline` | Keep it in the ground |
 | `hero_copy` | `<p>Join the <b>global</b> movement to end fossil fuels.</p>` |
 | `hero_image` | a decorative photo (background in HTML) |
-| `hero_link_text` / `hero_link_page` | Get involved → "Get involved" page |
+| `hero_cta` | one `button`: text "Get involved", `link_page` → "Get involved" page |
 | `search_description` | Why we campaign for a fossil-free future. |
 | `body[0]` `text` | `<h2>Why now</h2><p>Read the <a href="https://www.ipcc.ch/">IPCC report</a> and our <a linktype="page" id="…organiser handbook…">organiser handbook</a>.</p>` |
 | `body[1]` `section` (background `dark`, padding `lg`) | contains a `card_grid` of two cards: "Divest" (description "Move money out of fossil fuels.", link → "Get involved") and "Organise" (description "Start a local group.", no link) |
-| `body[2]` `quote` | quote "There is no planet B.", attribution "Campaigner" |
+| `body[2]` `quote` | `content`: `<p>There is no planet B.</p><p>— Campaigner</p>` (the current block has no separate attribution field) |
 
 **Newer draft (saved, not published):** `hero_headline` "DRAFT HEADLINE" and an extra
 `text` block "DRAFT PARAGRAPH".
@@ -60,7 +67,7 @@ excerpt: Why we campaign for a fossil-free future.
 
 Join the **global** movement to end fossil fuels.
 
-[Get involved](http://localhost/get-involved/?output_format=md)
+[Get involved](http://localhost/markdown/get-involved.md)
 
 ## Why now
 
@@ -70,7 +77,7 @@ Read the [IPCC report](https://www.ipcc.ch/) and our organiser handbook.
 
 Move money out of fossil fuels.
 
-[Learn more](http://localhost/get-involved/?output_format=md)
+[Learn more](http://localhost/markdown/get-involved.md)
 
 ### Organise
 
@@ -94,14 +101,14 @@ golden file once D1–D11 are agreed; the scenarios below assert structure, not 
 | D4 | Hero CTA with text but no link | Omitted. | The template renders the button only when a page or URL is set. |
 | D5 | Section block presentation fields | `background`, `padding`, `anchor_id` produce no output; the section's content renders in place, without an added heading. | Presentation only. Anchor preservation can be revisited if agents need fragment links. |
 | D6 | Internal link to a **private** page (not live, or behind its own or an inherited view restriction) | **Agreed 24 September 2026:** keep the link text, drop the link. Links to public pages that are only outside the export (excluded, type disabled, hook veto, another site) keep their HTML URL. | Exporting the URL of a restricted page reveals it exists (design: "must not reveal restricted related pages"). A public page's URL reveals nothing, and agents keep a useful link. |
-| D7 | Internal link to an **eligible** page | Absolute export URL: canonical page URL with `?output_format=md` while query negotiation is enabled, otherwise the explicit Markdown route (#72). | Design §Storage & middleware. Keeps an agent on Markdown when it follows links. |
+| D7 | Internal link to an **eligible** page | Absolute managed export URL for the target's current owned file, including a relocated path. | Implemented by link rewriting. HTML discovery may advertise the query URL; document-body links use the direct route. |
 | D8 | Hero video | Out of this scenario; covered with #65 blocks. | Keeps 01 to one path. |
 | D9 | Does `hide_from_search` exclude from Markdown? | **Proposed no.** It has no built-in export meaning; normal live/restriction/type checks and `PageAgentSettings.excluded` still apply. If 350.org wants it to exclude content, map it through the project `markdown_export_eligible` hook and reconcile existing exports. | A request-only serve gate does not remove stored exports, links or discovery listings. The core must not depend on `wtrx`. **Needs explicit 350.org sign-off.** |
 | D10 | Card link text | `Learn more`, as in the HTML, without the `→` arrow; the card's `### heading` immediately above gives it context. Card `image` renders as `![image title](url)` when set (not in this fixture); the decorative `icon` is omitted. | The HTML link label is a fixed "Learn more →" whatever the card. Linking the heading instead reads better for agents but departs from the page; propose staying faithful and revisiting with #65. |
-| D11 | Quote marks | A `quote` block becomes a Markdown blockquote without the curly quote marks the HTML adds; `attribution` becomes a final `— Attribution` line. | The blockquote already marks it as a quotation; the HTML `“…”` is presentation. |
+| D11 | Quote marks | A `quote` block's authored rich-text content becomes a Markdown blockquote. An attribution belongs in that content; no separate attribution field is read. | The current source block supplies `content`. The full-page golden shows an authored final `— Campaigner` paragraph. |
 | D12 | Block dispatch precedence (#7/#11/#12) | **Agreed 24 September 2026:** name override → specialised class renderer (nearest in MRO) → custom presentation template → generic container recursion → fallback. Inherited Wagtail default templates do not count as custom. | Agreed as proposed on #63. A custom template wins over recursion so presentation-only fields do not leak. Implemented in #1/#2; see [design](../design.md). |
 
-### Review of D9/D12 — 21 September 2026
+### Review of D9/D12 — 21 September 2026 (historical)
 
 Neither decision is accepted by the bounded bakerydemo verification. D9 needs a
 client policy decision and examples covering generation, direct/negotiated serving,
@@ -109,12 +116,10 @@ links and discovery after a flag change. If a project adopts the eligibility hoo
 it must reconcile revocation when the field changes (bulk updates bypass signals)
 and after configuration changes with `agentmd_revoke_ineligible`.
 
-D12 currently implements name override → registered class MRO → HTML/template
-fallback. ListBlock is registered; StructBlock and StreamBlock recursion helpers
-are tested but not registered by default. Agreement must settle custom templates
-versus generic containers, including the ListBlock exception, before changing
-dispatch and verifying the selected nested 350.org fixtures. Local generic tests
-do not constitute client presentation sign-off.
+D12's dispatch question from that review was resolved on 24 September, as recorded
+below. The earlier absence of default StructBlock/StreamBlock recursion is no
+longer current. Local generic tests still do not constitute client presentation
+sign-off.
 
 ### Decisions — 24 September 2026
 
