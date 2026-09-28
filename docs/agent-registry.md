@@ -1,10 +1,16 @@
 # Agent registry
 
-Registry `2026-09-22.1` is an independent Wagtail baseline reviewed on 22 September
-2026. It contains 23 recognised HTTP identities and enables automatic Markdown for
-12. It is deliberately bounded: absence means unreviewed or outside this baseline,
-not that a bot does not exist. The previous 69-entry WordPress list is retained only
-as historical evidence and classification data.
+Registry `2026-09-28.1` contains 67 recognised HTTP identities and enables
+automatic Markdown for 19. It builds on the bounded `2026-09-22.1` baseline, which
+had 23 identities. Every one of the 69 strings inherited from the WordPress plugin now
+has a recorded disposition:
+
+- 61 are active;
+- 4 are excluded with evidence (retired or robots.txt-only);
+- 4 are deferred with a stated evidence gap.
+
+See the [28 September review](agent-registry-review.md) for the matrix, sources and
+policy. Absence from the registry does not mean that a bot does not exist.
 
 ## Source and serving policy
 
@@ -33,7 +39,14 @@ DOM to navigate or act. Any client can still explicitly request Markdown using
 and cache configuration. `NEGOTIATE_USER_AGENT=False` disables all automatic serving
 without disabling recognition on explicit Markdown requests.
 
-## Initial identities
+## Identities
+
+The table lists the 22 September baseline. The
+[review](agent-registry-review.md#matrix) lists every restored identity. Of those, 7
+serve Markdown automatically: `KimiBot` (training), and `Amzn-SearchBot`,
+`Cloudflare-AI-Search`, `LinerBot`, `ShapBot/`, `KernelSearchBot` and `Anomura`
+(search). The other 37 restored identities, including 14 whose operators describe
+non-AI tooling (purpose `other`), are recognition-only.
 
 | Stored label | Estimated purpose | Automatic Markdown |
 | --- | --- | --- |
@@ -81,22 +94,37 @@ URL. It does not authenticate identities: client headers remain spoofable.
 Registry order is the documented tie-breaker when a header claims several identities.
 The same selected record determines both serving and statistics. Aliases belong to
 one record, e.g. Google's image/video GoogleOther products store `GoogleOther`.
-`meta-externalfetcher/` and `CloudVertexBot` retain their existing statistics labels;
-the latter now matches only the documented `Google-CloudVertexBot` HTTP token.
+Some records keep their existing statistics labels while matching a different
+product token:
+
+- `meta-externalfetcher/` keeps its label, including the slash.
+- `CloudVertexBot` matches only the documented `Google-CloudVertexBot` HTTP token.
+- The restored `ShapBot/`, `ICC-Crawler/`, `Cotoyogi/`, `Nava/`, `Retool/`,
+  `AdpResearchBot/` and `SemrushBot-SWA/` keep their WordPress labels, including the
+  slash, and match the token before it.
+- `Awario` matches its operator's three product tokens (`AwarioBot`, `AwarioSmartBot`,
+  `AwarioRssBot`).
+
+Aliases must be listed explicitly. A token followed by `-` does not match, so
+`Cloudflare-AI-Search-External` and the GoogleOther image and video products are
+separate tokens.
 
 `Google-Extended` and `Applebot-Extended` are robots.txt controls and never detect
 an HTTP identity. `Gemini-User` remains historical category-only data without a
-verified HTTP identity in this baseline. Legacy entries such as Claude-Web,
-anthropic-ai, Bytespider, Instapaper and the long tail of directory imports are not
-active without a fresh review. This does not assert that those identities are retired
-by their operators. Unrecognised clients share the existing anonymous unknown bucket.
+verified HTTP identity. Claude-Web and anthropic-ai are excluded because Anthropic
+retired them. cohere-ai, FishBot, Anchor Browser and amazon-kendra- are deferred until
+there is a usable, attributable HTTP token. Deferral is not a claim that they are
+retired. Unrecognised clients share the existing anonymous unknown bucket.
 
 `data/legacy_agents.py` freezes the WordPress categories and their source attribution.
 The WordPress fixture verifies that snapshot, not active-list equality. Retired
 labels remain readable without becoming detectable. Current active metadata owns
 classification for continuing identities. The initial corrections are GoogleOther
-(training → unknown) and CloudVertexBot (training → search); these affect historical
-report categorisation because categories are calculated at read time. Counts and
+(training → unknown) and CloudVertexBot (training → search). Registry
+`2026-09-28.1` corrects 24 restored labels to match operator evidence; they are listed
+in the [review](agent-registry-review.md#read-time-category-changes). These changes
+affect historical report categorisation, because categories are calculated at read
+time. Counts and
 stored labels are unchanged. Exact category matches precede substring compatibility
 matches, so historical Applebot-Extended does not become mixed merely because the
 new Applebot identity exists. Project category hooks retain ordered mutation; use
