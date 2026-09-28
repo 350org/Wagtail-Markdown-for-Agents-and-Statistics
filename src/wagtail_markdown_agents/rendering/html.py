@@ -115,6 +115,18 @@ class _Converter(MarkdownConverter):
         return f"{before}{markdown}{after}"
 
 
+# Elements that start or end their own line in Markdown, so an image beside one
+# doesn't run into text.
+_LINE_ELEMENTS = frozenset(
+    {
+        "address", "article", "aside", "blockquote", "br", "dd", "details", "div", "dl",
+        "dt", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5",
+        "h6", "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table",
+        "ul",
+    }
+)  # fmt: skip
+
+
 def _touches_text(sibling, *, at_end: bool) -> bool:
     """Whether an image's neighbour would run into it without a space."""
     if sibling is None:
@@ -124,4 +136,4 @@ def _touches_text(sibling, *, at_end: bool) -> bool:
         if not text:
             return False
         return not (text[-1] if at_end else text[0]).isspace()
-    return True
+    return sibling.name not in _LINE_ELEMENTS

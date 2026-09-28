@@ -78,6 +78,9 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- An image next to a paragraph, heading, list, line break or other block element
+  no longer gets a stray space, as in `Before.\n\n ![A](…)`. Only a neighbour
+  that would run into the image is spaced.
 - Block templates no longer call an embed provider during export. `{% embed %}` in a
   template rendered by the fallback, including inside nested blocks, called the
   provider's oEmbed API on every export, so publishing depended on a third party.
