@@ -284,7 +284,7 @@ def test_other_integration_changes_refresh_template_dependent_output(setup):
     assert "[Donate](https://donate.example.org/campaign)" in read(
         writer, "example.org/campaign.md"
     )
-    assert "[$25](https://donate.example.org/campaign?amount=25)" in read(
+    assert "[US$25](https://donate.example.org/campaign?amount=25)" in read(
         writer, "example.org/campaign.md"
     )
 

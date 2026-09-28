@@ -25,8 +25,8 @@ versioning: [SemVer](https://semver.org/).
   captions, body heroes and FundraiseUp content. Page hooks assemble visible
   heroes once and omit the entire page hero when `hide_hero` is set. New
   `markdown_page_fields` hooks provide validated integration defaults while
-  explicit `PAGE_FIELDS` retains precedence. Separate image credits remain an
-  open choice; no ActionKit form is fetched during export.
+  explicit `PAGE_FIELDS` retains precedence. No ActionKit form is fetched during
+  export.
 - `wagtail_markdown_agents.contrib.wtrx`, an optional app with Markdown renderers
   for 14 of the 350.org site's blocks (#14): video, button, button group, quote,
   card, person card, card grid, person card grid, card carousel, accordion,
@@ -55,6 +55,15 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- 350.org exports now include each image's stored credit (#14) after the image
+  and its caption, as authored, or labelled `Credit:` when the editor gave no
+  label. Template and rich-text images get it through a `markdown_pre_convert`
+  hook in the optional add-on.
+- 350.org logo grids export as a `- [name](url)` list instead of linked logo
+  images (#14). The 31 block types now split into 22 add-on renderers, three
+  core renderers and six template fallbacks.
+- 350.org donation amounts read `US$10` instead of `$10` (#14): ActBlue takes only
+  US dollars. Authored prose is unchanged.
 - 350.org feature panels leave out a CTA that only jumps to an anchor on the
   page (#14), as buttons already did: the anchor doesn't exist in the Markdown.
   The optional add-on still renders the site's panel template; the 31 block types
