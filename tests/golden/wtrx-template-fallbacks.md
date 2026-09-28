@@ -15,14 +15,6 @@ Visible *copy*.
 ![Marchers](https://example.org/media/images/test.2e16d0ba.fill-600x600.png)
 ![Rally](https://example.org/media/images/test.2e16d0ba.fill-600x600.png)
 
-# logo_grid
-
-## Partners
-
-[![Climate group](https://example.org/media/images/test.max-300x160.png)](https://partner.example)
-
-![Local organisers](https://example.org/media/images/test.max-300x160.png)
-
 # image_card_list
 
 ## Our priorities

@@ -44,12 +44,13 @@ integration-setting changes do not themselves publish a new page revision.
 | `timeline` | Each year as `## year` over its content. The year navigation links to anchors in the HTML page. |
 | `signup_wagtail_forms` | The content, then `[button text or "Sign Up"](form page)`. The success message is left out. |
 | `signup_action_network` | The content, then `[Sign Up](action URL)`. The success message stream is left out. |
-| `image` | The image, using the block's alt override or the image's description/title, then its authored caption. |
+| `image` | The image, using the block's alt override or the image's description/title, then its authored caption and stored credit. |
 | `page_cards` | The content, then `[link text or "Read more"](index page)`. No child listing or child query. |
-| `hero` | `## headline`, content and the authored image caption. The background image and colour are omitted. |
-| `donate_fundraiseup` | Content, image and authored image caption. Designation IDs and advanced settings are omitted; no checkout URL is invented. |
-| `signup_actionkit` | Eyebrow, content, image and authored caption, then `[Take action](campaign URL)`. No form fetch, success message or unavailable-form placeholder. |
-| `donate` | The site's template with offline, site-bound ActBlue URL/amount defaults. Authored overrides, button labels, amount formatting and the `$` symbol remain template-controlled. |
+| `hero` | `## headline`, content, the authored image caption and the image's credit. The background image and colour are omitted. |
+| `donate_fundraiseup` | Content, image, authored image caption and credit. Designation IDs and advanced settings are omitted; no checkout URL is invented. |
+| `signup_actionkit` | Eyebrow, content, image, authored caption and credit, then `[Take action](campaign URL)`. No form fetch, success message or unavailable-form placeholder. |
+| `donate` | The site's template with offline, site-bound ActBlue URL/amount defaults. Authored overrides, button labels and amount formatting remain template-controlled. Amounts read `US$10`, since ActBlue takes only US dollars; `$` in authored prose is unchanged. |
+| `logo_grid` | `## heading`, then `- [name](page or URL)` for each logo, or `- name` when it doesn't link. The logo images are left out. |
 | `feature_panel` | The site's template: image, eyebrow, content, then `[link text](page or URL)`. A CTA that only jumps to an anchor on the page is left out, as for `button`. |
 
 Containers render their children through export's own dispatch
@@ -94,8 +95,25 @@ configurations that would duplicate them or bypass `hide_hero`.
 
 These output decisions were agreed on 25 September 2026: campaign-specific
 ActionKit destinations, index-only page cards, authored image/hero captions and
-complete page-hero omission when hidden. A separately stored image `credit` is
-not added automatically; that choice remains open.
+complete page-hero omission when hidden. The package owner confirmed them on
+28 September and decided three more: image credits, logo grids as lists and US$
+amounts.
+
+## Image credits
+
+The site's image model stores a `credit`. Wherever an image is exported, its
+credit follows the image and any caption on its own line, exactly as the editor
+typed it, for example `Photo: Jane Smith`. A credit without a label (no `:`) is
+prefixed `Credit: `. A decorative or left-out image drops its credit, except a
+hero's background image: its caption and credit are shown, as on the page. The
+page hero's image credit follows the hero caption unless a hero video replaces
+the image.
+
+Images in add-on renderers get their credit directly. Images in site templates
+(image grid, image/text, image card list and feature panel) and in rich text get
+it through a `markdown_pre_convert` hook, which finds the image from its
+rendition's file name and adds the credit after the `<img>`. Images whose
+rendition isn't found, such as static files, get no credit.
 
 ## Integration settings and regeneration
 
@@ -129,11 +147,10 @@ and raw fixture loading bypass this receiver and require the same explicit refre
 
 ## Remaining coverage decisions
 
-Logo grids still use linked images through their templates, and donation currency
-formatting retains the template's output. Separate image credits, post metadata
-mappings and full client acceptance remain open.
+Post metadata mappings, a broader translated corpus for donation amount
+formatting and full client acceptance remain open.
 
-Seven other block types use template fallback. The
+Six other block types use template fallback. The
 [rendering output review](acceptance/17-rendering-output-review.md) supplies a
 synthetic gallery and records its limits, including raw-HTML player loss. This is
 not blanket client acceptance of the site's templates.
