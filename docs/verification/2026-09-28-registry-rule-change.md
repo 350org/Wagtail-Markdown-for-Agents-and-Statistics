@@ -93,3 +93,38 @@ Markdown responses added four counter increments to the home page.
 Not covered here: the Accept-only free-plan limitation, which is unchanged and
 documented in the [CDN guide](../cdn-caching.md), multi-day behaviour and edges
 other than the one that served these requests.
+
+## Registry 2026-09-28.2 update
+
+Later the same day, revision `139abff` (registry `2026-09-28.2`, PR #37) added
+Kimi-User, Kimi-SearchBot, Amzn-User and Shap-User with automatic Markdown. That makes
+71 identities, 23 of them served Markdown automatically. The existing clauses do not
+cover these names, so the rule was regenerated. It is the expression above with four
+more clauses: `amzn-user`, `kimi-searchbot`, `kimi-user` and `shap-user`.
+
+```text
+(http.host eq "HOST" and (lower(url_decode(http.request.uri.query)) contains "output_format" or lower(http.user_agent) contains "amzn-searchbot" or lower(http.user_agent) contains "amzn-user" or lower(http.user_agent) contains "anomura" or lower(http.user_agent) contains "chatgpt-user" or lower(http.user_agent) contains "claude-searchbot" or lower(http.user_agent) contains "claude-user" or lower(http.user_agent) contains "claudebot" or lower(http.user_agent) contains "cloudflare-ai-search" or lower(http.user_agent) contains "cloudflare-ai-search-external" or lower(http.user_agent) contains "duckassistbot" or lower(http.user_agent) contains "gptbot" or lower(http.user_agent) contains "kernelsearchbot" or lower(http.user_agent) contains "kimi-searchbot" or lower(http.user_agent) contains "kimi-user" or lower(http.user_agent) contains "kimibot" or lower(http.user_agent) contains "linerbot" or lower(http.user_agent) contains "meta-externalagent" or lower(http.user_agent) contains "meta-externalfetcher" or lower(http.user_agent) contains "mistralai-user" or lower(http.user_agent) contains "oai-searchbot" or lower(http.user_agent) contains "perplexity-user" or lower(http.user_agent) contains "perplexitybot" or lower(http.user_agent) contains "shap-user" or lower(http.user_agent) contains "shapbot"))
+```
+
+The SHA-256 of the exact text with the real hostname is
+`233c7ad9490dc11cbfc8e48713df9c1553a6b1f72742dd06ed6ef50cae7cff22`. The rollback is
+the `2026-09-28.1` expression in the previous section.
+
+The operator replaced the rule first. A check showed the four identities bypassed
+(`DYNAMIC`) but receiving HTML, including on a unique cold URL, because the
+application was still running `2026-09-28.1`. After the operator deployed `139abff`,
+these requests ran against the warm home page. Each carried the operator's documented
+header shape and a unique marker.
+
+| Request | Content type | `cf-cache-status` |
+| --- | --- | --- |
+| Browser | `text/html` | `HIT` |
+| `Kimi-User/1.0` | `text/markdown` | `DYNAMIC` |
+| `Kimi-SearchBot/1.0` | `text/markdown` | `DYNAMIC` |
+| `Amzn-User/0.1` | `text/markdown` | `DYNAMIC` |
+| `Shap-User/0.1.0` | `text/markdown` | `DYNAMIC` |
+| `KimiBot/1.0` (previous addition) | `text/markdown` | `DYNAMIC` |
+| `PetalBot` (recognition-only) | `text/html` | `HIT` |
+| Browser again | `text/html` | `HIT` |
+
+The five Markdown responses added five counter increments to the home page.
