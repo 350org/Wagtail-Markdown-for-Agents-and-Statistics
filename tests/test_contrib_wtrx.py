@@ -355,6 +355,34 @@ def test_button_group_is_a_list_of_links_without_anchor_buttons(context):
     )
 
 
+FEATURE_PANEL = {
+    "eyebrow": "Campaign",
+    "content": "<h2>A just transition</h2><p>Communities lead.</p>",
+    "link_text": "Read more",
+}
+
+
+def test_feature_panel_keeps_its_template_and_links_a_page_or_url(context, image, form_page):
+    raw = {**FEATURE_PANEL, "image": image.pk, "link_url": "https://example.org/transition"}
+    output = render(wtrx.FeaturePanelBlock, raw, context)
+
+    assert output.startswith("![Rally](")
+    assert output.endswith(
+        "Campaign\n\n## A just transition\n\nCommunities lead.\n\n"
+        "[Read more](https://example.org/transition)"
+    )
+    raw.update(link_url="", link_page=form_page.pk)
+    assert render(wtrx.FeaturePanelBlock, raw, context).endswith("[Read more](/join/)")
+
+
+def test_anchor_only_feature_panel_cta_is_left_out(context, image):
+    raw = {**FEATURE_PANEL, "image": image.pk, "link_text": "Join", "anchor": "join"}
+    output = render(wtrx.FeaturePanelBlock, raw, context)
+
+    assert output.endswith("## A just transition\n\nCommunities lead.")
+    assert "Join" not in output and "#join" not in output
+
+
 def test_quote_is_a_blockquote_then_its_link(context):
     raw = {
         "content": "<p>We are unstoppable.</p><p>Another world is possible.</p>",

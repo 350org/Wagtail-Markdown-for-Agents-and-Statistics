@@ -6,8 +6,8 @@ leave out what the page shows only to a visitor with JavaScript, such as a
 signup form's success message, "Loading form…" and the person card's bio
 dialog, or what would fetch from the network, such as a video's oEmbed player.
 Styling fields (style, size, layout, background, alignment, anchors) are
-omitted throughout, and a button that only jumps to an anchor on the page is
-left out, since the anchor doesn't exist in the Markdown.
+omitted throughout, and a button or feature-panel CTA that only jumps to an
+anchor on the page is left out, since the anchor doesn't exist in the Markdown.
 """
 
 import re
@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from django.core.exceptions import ImproperlyConfigured
 from django.template.loader import render_to_string
 from django.utils.translation import gettext
+from wagtail.blocks import StructValue
 from wtrx.blocks import (
     AccordionBlock,
     ButtonBlock,
@@ -27,6 +28,7 @@ from wtrx.blocks import (
     CardGridBlock,
     DonateBlock,
     DonateFundraiseUpBlock,
+    FeaturePanelBlock,
     HeroBlock,
     HeroSignupActionKitBlock,
     ImageBlock,
@@ -45,7 +47,7 @@ from wtrx.blocks import (
 from wagtail_markdown_agents.rendering import register_renderer, render_block
 from wagtail_markdown_agents.rendering.html import absolute_url, convert_html
 from wagtail_markdown_agents.rendering.offline import offline_embeds
-from wagtail_markdown_agents.rendering.registry import BlockRenderError
+from wagtail_markdown_agents.rendering.registry import BlockRenderError, render_fallback
 
 
 def child(block, value, name, context):
@@ -242,6 +244,15 @@ def render_button(block, value, context):
     if not url:
         return ""
     return link(child(block, value, "text", context), url)
+
+
+@register_renderer(FeaturePanelBlock)
+def render_feature_panel(block, value, context):
+    """Keep the site's panel template, leaving out a CTA that only jumps to an anchor."""
+    if value is not None and value.get("anchor") and not target(value, "link_page", "link_url"):
+        # With no anchor, the template's CTA condition is false.
+        value = StructValue(block, [(k, "" if k == "anchor" else v) for k, v in value.items()])
+    return render_fallback(block, value, context)
 
 
 @register_renderer(ButtonGroupBlock)

@@ -119,6 +119,22 @@ class ButtonBlock(blocks.StructBlock):
     size = blocks.ChoiceBlock(choices=[("regular", "Regular")], default="regular")
 
 
+class FeaturePanelBlock(blocks.StructBlock):
+    eyebrow = blocks.CharBlock(required=False)
+    content = blocks.RichTextBlock()
+    image = ImageChooserBlock()
+    alignment = blocks.ChoiceBlock(choices=[("image-left", "Image left")], default="image-left")
+    background = blocks.ChoiceBlock(choices=[("white", "White")], default="white")
+    link_text = blocks.CharBlock(required=False)
+    link_page = blocks.PageChooserBlock(required=False)
+    link_url = blocks.URLBlock(required=False)
+    anchor = IdentifierBlock(required=False)
+
+    class Meta:
+        # The renderer keeps the site's template; this is its reduced copy.
+        template = "testapp/blocks/wtrx/feature_panel.html"
+
+
 class ButtonGroupBlock(blocks.StructBlock):
     buttons = blocks.ListBlock(ButtonBlock())
     layout = blocks.ChoiceBlock(choices=[("horizontal", "Horizontal")], default="horizontal")

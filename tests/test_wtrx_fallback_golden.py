@@ -21,7 +21,7 @@ def template_block(name, fields):
 
 
 def cases(image):
-    """The eight remaining template paths; donation has its own context renderer."""
+    """The seven remaining template paths; donation and feature panel have renderers."""
     image_field = ("image", ImageChooserBlock(required=False))
     rich = ("content", blocks.RichTextBlock(required=False))
     heading = ("heading", blocks.CharBlock(required=False))
@@ -108,26 +108,6 @@ def cases(image):
         },
     )
     yield (
-        "feature_panel",
-        template_block(
-            "feature_panel",
-            [
-                image_field,
-                rich,
-                ("eyebrow", blocks.CharBlock()),
-                ("anchor", blocks.CharBlock()),
-                *links,
-            ],
-        ),
-        {
-            "image": image.pk,
-            "eyebrow": "Campaign",
-            "content": "<h2>A just transition</h2><p>Communities lead.</p>",
-            "link_text": "Read more",
-            "link_url": "https://example.org/transition",
-        },
-    )
-    yield (
         "callout",
         template_block("callout", [image_field, rich, *links]),
         {
@@ -160,13 +140,3 @@ def test_template_fallback_gallery_golden(rendered_cases):
     assert "![Climate group]" in rendered_cases["logo_grid"]
     assert "player" not in rendered_cases["raw_html"]
     assert "DO NOT EXPORT" not in output and "INERT CONTENT" not in output
-
-
-def test_feature_panel_fragment_is_a_recorded_fallback_limit(settings, tmp_path):
-    settings.MEDIA_ROOT = str(tmp_path)
-    image = get_image_model().objects.create(title="Rally", file=get_test_image_file())
-    _, block, raw = next(case for case in cases(image) if case[0] == "feature_panel")
-    raw.update(link_url="", anchor="join", link_text="Join")
-    # Unlike the explicit ButtonBlock renderer, this template keeps fragments.
-    # The review ledger records this as unresolved, not accepted presentation.
-    assert "[Join](#join)" in render_block(block, block.to_python(raw), {})
