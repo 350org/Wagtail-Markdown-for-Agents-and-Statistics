@@ -145,7 +145,11 @@ def test_retired_or_robots_only_tokens_are_not_detected():
         "Applebot-Extended",
         "Claude-Web",
         "anthropic-ai",
-        "Instapaper",
+        # Deferred in 2026-09-28.1 for want of a usable, attributable token.
+        "cohere-ai",
+        "FishBot",
+        "Anchor Browser",
+        "amazon-kendra-web-crawler-1",
         "w4mwnpbXf3MFAbxOkJRw",
     ):
         assert detect_agent(token) is None

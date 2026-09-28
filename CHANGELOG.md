@@ -55,6 +55,19 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Agent registry `2026-09-28.1` (#19) records a reviewed disposition for all 69
+  inherited WordPress detection strings. See `docs/agent-registry-review.md`.
+  - 44 identities are restored, bringing the registry to 67.
+  - Automatic Markdown is added for KimiBot, Amzn-SearchBot, Cloudflare-AI-Search,
+    LinerBot, ShapBot, KernelSearchBot and Anomura (19 in total). The other restored
+    identities, including browser agents and non-AI tools, are recognition-only.
+  - Claude-Web, anthropic-ai, Google-Extended and Applebot-Extended are excluded
+    because they are retired or robots.txt-only.
+  - cohere-ai, FishBot, Anchor Browser and amazon-kendra- are deferred for lack of a
+    usable HTTP token.
+  - Restored records keep their historical stored labels. Reports recategorise 24 of
+    them at read time according to operator evidence. No counters are rewritten.
+  - Regenerate the Cloudflare cache-bypass expression for the new serving set.
 - 350.org exports now include each image's stored credit (#14) after the image
   and its caption, as authored, or labelled `Credit:` when the editor gave no
   label. Template and rich-text images get it through a `markdown_pre_convert`
