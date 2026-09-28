@@ -124,6 +124,83 @@ def test_fundraiseup_keeps_content_image_and_caption_only(context, image):
     assert "DO-NOT-EXPORT" not in output
 
 
+@pytest.fixture
+def credits(monkeypatch):
+    """Stored credits by image pk; the site's image model has a credit field."""
+    stored = {}
+    monkeypatch.setattr(
+        get_image_model(), "credit", property(lambda image: stored.get(image.pk, "")), raising=False
+    )
+    return stored
+
+
+def test_image_credit_follows_the_caption_as_authored(context, image, credits):
+    credits[image.pk] = "Photo: Jane_Smith"
+    raw = {"image": image.pk, "caption": "Nairobi, 2026"}
+    assert render(wtrx.ImageBlock, raw, context).endswith(
+        "\n\nNairobi, 2026\n\nPhoto: Jane\\_Smith"
+    )
+    credits[image.pk] = "  Jane Smith "
+    assert render(wtrx.ImageBlock, raw, context).endswith("\n\nCredit: Jane Smith")
+    credits[image.pk] = ""
+    assert render(wtrx.ImageBlock, raw, context).endswith("\n\nNairobi, 2026")
+
+
+def test_card_fundraiseup_actionkit_and_hero_images_carry_their_credit(
+    context, actionkit_context, image, credits
+):
+    credits[image.pk] = "Photo: Ada"
+    card = render(wtrx.CardBlock, {"content": "<h3>Divest</h3>", "image": image.pk}, context)
+    assert card.startswith("### Divest\n\n![Rally](") and card.endswith(")\n\nPhoto: Ada")
+    fundraiseup = {"image": image.pk, "image_caption": "Caption"}
+    assert render(wtrx.DonateFundraiseUpBlock, fundraiseup, context).endswith(
+        "\n\nCaption\n\nPhoto: Ada"
+    )
+    signup = {"short_form_id": "climate", "image": image.pk, "image_caption": "Caption"}
+    assert "\n\nCaption\n\nPhoto: Ada\n\n[Take action](" in render(
+        wtrx.SignupActionKitBlock, signup, actionkit_context
+    )
+    # The body hero's image is its background; its caption and credit are shown.
+    hero = {"headline": "People power", "image": image.pk, "image_caption": "Caption"}
+    assert render(wtrx.HeroBlock, hero, context) == "## People power\n\nCaption\n\nPhoto: Ada"
+
+
+def test_page_hero_image_credit_follows_its_caption(hero_page, image, credits):
+    from wagtail_markdown_agents.contrib.wtrx.wagtail_hooks import page_hero
+
+    credits[image.pk] = "Photo: Ada"
+    hero_page.hero_image = image
+    output = page_hero("Body.", hero_page, render_context(hero_page))
+    assert output.endswith("\n\nHero caption\n\nPhoto: Ada\n\nBody.")
+    hero_page.hero_video = object()  # The video takes the image's place.
+    assert "Photo: Ada" not in page_hero("Body.", hero_page, render_context(hero_page))
+
+
+def test_template_and_rich_text_images_carry_their_credit(context, image, credits):
+    credits[image.pk] = "Photo: Ada"
+    panel = {**FEATURE_PANEL, "image": image.pk, "link_url": "https://example.org/t"}
+    output = render(wtrx.FeaturePanelBlock, panel, context)
+    assert output.startswith("![Rally](") and ")\n\nPhoto: Ada\n\nCampaign\n\n" in output
+
+    rich = f'<p>Before.</p><embed embedtype="image" id="{image.pk}" format="left" alt="Rally"/>'
+    output = render(wtrx.TextBlock, rich, context)
+    assert "![Rally](" in output and output.endswith(")\n\nPhoto: Ada")
+
+
+def test_decorative_template_images_and_uncredited_images_add_nothing(
+    context, image, credits, django_assert_num_queries
+):
+    from wagtail_markdown_agents.contrib.wtrx.wagtail_hooks import image_credits
+
+    rendition = image.get_rendition("fill-10x10")
+    credits[image.pk] = "Photo: Ada"
+    assert image_credits(f'<img src="{rendition.url}" alt="">', None, context) is None
+    credits[image.pk] = ""
+    assert image_credits(f'<img src="{rendition.url}" alt="Rally">', None, context) is None
+    with django_assert_num_queries(0):  # Not a rendition: no lookup.
+        assert image_credits('<img src="/static/logo.svg" alt="Logo">', None, context) is None
+
+
 @pytest.mark.parametrize("shortname", ["climate-action", "join_kenya"])
 def test_actionkit_links_each_campaign_offline(actionkit_context, shortname, monkeypatch):
     def fail(*args, **kwargs):
@@ -381,6 +458,22 @@ def test_anchor_only_feature_panel_cta_is_left_out(context, image):
 
     assert output.endswith("## A just transition\n\nCommunities lead.")
     assert "Join" not in output and "#join" not in output
+
+
+def test_logo_grid_is_a_list_of_names_linked_when_the_logo_links(context, image, form_page):
+    raw = {
+        "heading": "Partners",
+        "logos": [
+            {"image": image.pk, "name": "Climate [group]", "link_url": "https://partner.example"},
+            {"image": image.pk, "name": "Local organisers", "link_page": form_page.pk},
+            {"image": image.pk, "name": "Friends"},
+        ],
+    }
+    assert render(wtrx.LogoGridBlock, raw, context) == (
+        "## Partners\n\n- [Climate \\[group\\]](https://partner.example)\n"
+        "- [Local organisers](/join/)\n- Friends"
+    )
+    assert render(wtrx.LogoGridBlock, {"logos": raw["logos"][2:]}, context) == "- Friends"
 
 
 def test_quote_is_a_blockquote_then_its_link(context):

@@ -8,6 +8,8 @@ dialog, or what would fetch from the network, such as a video's oEmbed player.
 Styling fields (style, size, layout, background, alignment, anchors) are
 omitted throughout, and a button or feature-panel CTA that only jumps to an
 anchor on the page is left out, since the anchor doesn't exist in the Markdown.
+An image's stored credit follows the image and its caption, and donation
+amounts are labelled US$, the only currency ActBlue takes.
 """
 
 import re
@@ -18,7 +20,7 @@ from urllib.parse import urlsplit
 from django.core.exceptions import ImproperlyConfigured
 from django.template.loader import render_to_string
 from django.utils.translation import gettext
-from wagtail.blocks import StructValue
+from wagtail.blocks import CharBlock, StructValue
 from wtrx.blocks import (
     AccordionBlock,
     ButtonBlock,
@@ -32,6 +34,7 @@ from wtrx.blocks import (
     HeroBlock,
     HeroSignupActionKitBlock,
     ImageBlock,
+    LogoGridBlock,
     PageCardsBlock,
     PersonCardBlock,
     PersonCardGridBlock,
@@ -82,6 +85,23 @@ def link(text, url):
     return f"[{text}]({url})"
 
 
+def credit_text(image):
+    """An image's stored credit, labelled "Credit:" unless the editor labelled it."""
+    credit = (getattr(image, "credit", "") or "").strip()
+    if credit and ":" not in credit:
+        credit = gettext("Credit: %(credit)s") % {"credit": credit}
+    return credit
+
+
+def credit(image, context):
+    return render_block(CharBlock(), credit_text(image), context)
+
+
+def pictured(image_markdown, caption, image, context):
+    """An image, its caption, then its credit, which goes with a left-out image."""
+    return join(image_markdown, caption, credit(image, context) if image_markdown else "")
+
+
 def target(value, *fields):
     """The URL of the first link field set: a page, a URL or a document."""
     for name in fields:
@@ -99,9 +119,11 @@ def render_image(block, value, context):
         # Keep the override local to this occurrence of a shared image.
         image = copy(image)
         image.contextual_alt_text = value["alt_text"]
-    return join(
+    return pictured(
         render_block(block.child_blocks["image"], image, context),
         child(block, value, "caption", context),
+        image,
+        context,
     )
 
 
@@ -116,10 +138,12 @@ def render_page_cards(block, value, context):
 @register_renderer(HeroBlock)
 def render_hero(block, value, context):
     # This is an authored body section; hide_hero applies to the page header.
+    # The image is the background, but its caption and credit are shown.
     return join(
         heading(2, child(block, value, "headline", context)),
         child(block, value, "content", context),
         child(block, value, "image_caption", context),
+        credit(value.get("image"), context),
     )
 
 
@@ -128,8 +152,12 @@ def render_donate_fundraiseup(block, value, context):
     # Checkout configuration is not a public donation URL.
     return join(
         child(block, value, "content", context),
-        child(block, value, "image", context),
-        child(block, value, "image_caption", context),
+        pictured(
+            child(block, value, "image", context),
+            child(block, value, "image_caption", context),
+            value.get("image"),
+            context,
+        ),
     )
 
 
@@ -139,7 +167,7 @@ def render_donate(block, value, context):
 
     The pinned site's get_context reads IntegrationSettings only through request.
     Override those two context values after it runs; the template still owns
-    authored overrides, labels, amount formatting and the currency symbol.
+    authored overrides, labels and amount formatting. Its "$" becomes "US$".
     """
     if value is None:
         return ""
@@ -167,7 +195,12 @@ def render_donate(block, value, context):
             )
     except Exception as exc:
         raise BlockRenderError(block, exc) from exc
-    return convert_html(html, block, context)
+    return convert_html(US_DOLLARS.sub(r"\1US$", html), block, context)
+
+
+# An amount link or label whose whole text is "$" and a number: the template's
+# currency symbol, which is ambiguous outside the US. Authored prose is left alone.
+US_DOLLARS = re.compile(r"(<(a|span)\b[^>]*>\s*)\$(?=\d[\d.,\s]*</\2>)")
 
 
 def actionkit_url(value, context):
@@ -204,8 +237,12 @@ def render_signup_actionkit(block, value, context):
     return join(
         child(block, value, "eyebrow", context),
         child(block, value, "content", context),
-        child(block, value, "image", context),
-        child(block, value, "image_caption", context),
+        pictured(
+            child(block, value, "image", context),
+            child(block, value, "image_caption", context),
+            value.get("image"),
+            context,
+        ),
         link(gettext("Take action"), url) if url else "",
     )
 
@@ -255,6 +292,21 @@ def render_feature_panel(block, value, context):
     return render_fallback(block, value, context)
 
 
+@register_renderer(LogoGridBlock)
+def render_logo_grid(block, value, context):
+    """A list of the organisations, each linked when its logo links out.
+
+    The logos themselves are marks an agent can't read; the name is the content.
+    """
+    logo_block = block.child_blocks["logos"].child_block
+    names = []
+    for logo in value.get("logos") or []:
+        name = render_block(logo_block.child_blocks["name"], logo.get("name"), context)
+        if name:
+            names.append(f"- {link(name, target(logo, 'link_page', 'link_url'))}")
+    return join(heading(2, child(block, value, "heading", context)), "\n".join(names))
+
+
 @register_renderer(ButtonGroupBlock)
 def render_button_group(block, value, context):
     return child(block, value, "buttons", context)
@@ -282,7 +334,8 @@ def render_card(block, value, context):
         content = join(tag, content)
     url = target(value, "link_page", "link_url", "link_document")
     label = child(block, value, "link_text", context) or gettext("Learn more")
-    return join(content, child(block, value, "image", context), link(label, url) if url else "")
+    image = pictured(child(block, value, "image", context), "", value.get("image"), context)
+    return join(content, image, link(label, url) if url else "")
 
 
 @register_renderer(PersonCardBlock)

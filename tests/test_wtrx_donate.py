@@ -83,7 +83,7 @@ def test_donation_uses_template_language_and_does_not_mutate_context(context):
     keys = set(context)
     with translation.override("fr"):
         output = render(context, override_amounts=["12.50"], button_text="Contribuer")
-    assert "$12,50" in output
+    assert "[US$12,50](" in output
     assert "[Contribuer]" in output
     assert set(context) == keys
 
@@ -92,3 +92,10 @@ def test_donation_template_failure_is_explicit(context):
     block = DonateBlock(template="missing-donation-template.html")
     with pytest.raises(BlockRenderError, match="DonateBlock"):
         render_block(block, block.to_python({"override_amounts": []}), context)
+
+
+def test_amounts_are_labelled_us_dollars_but_authored_prose_is_not():
+    # ActBlue takes only US dollars. Without a destination, amounts are labels.
+    content = '<p>$5 buys a <a href="/x">$1 badge</a>.</p>'
+    output = render({}, content=content, override_amounts=["5"])
+    assert output == "$5 buys a [$1 badge](/x).\n\nUS$5"

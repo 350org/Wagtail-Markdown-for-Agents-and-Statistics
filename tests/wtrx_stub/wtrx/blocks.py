@@ -119,6 +119,18 @@ class ButtonBlock(blocks.StructBlock):
     size = blocks.ChoiceBlock(choices=[("regular", "Regular")], default="regular")
 
 
+class LogoGridItemBlock(blocks.StructBlock):
+    image = ImageChooserBlock()
+    name = blocks.CharBlock()
+    link_page = blocks.PageChooserBlock(required=False)
+    link_url = blocks.URLBlock(required=False)
+
+
+class LogoGridBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(required=False)
+    logos = blocks.ListBlock(LogoGridItemBlock())
+
+
 class FeaturePanelBlock(blocks.StructBlock):
     eyebrow = blocks.CharBlock(required=False)
     content = blocks.RichTextBlock()

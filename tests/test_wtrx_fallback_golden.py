@@ -21,7 +21,7 @@ def template_block(name, fields):
 
 
 def cases(image):
-    """The seven remaining template paths; donation and feature panel have renderers."""
+    """The six remaining template paths; donation, feature panel and logo grid have renderers."""
     image_field = ("image", ImageChooserBlock(required=False))
     rich = ("content", blocks.RichTextBlock(required=False))
     heading = ("heading", blocks.CharBlock(required=False))
@@ -57,28 +57,6 @@ def cases(image):
         {
             "heading": "In pictures",
             "images": [{"image": image.pk, "alt_text": "Marchers"}, {"image": image.pk}],
-        },
-    )
-    yield (
-        "logo_grid",
-        template_block(
-            "logo_grid",
-            [
-                heading,
-                (
-                    "logos",
-                    blocks.ListBlock(
-                        blocks.StructBlock([image_field, ("name", blocks.CharBlock()), *links[1:]])
-                    ),
-                ),
-            ],
-        ),
-        {
-            "heading": "Partners",
-            "logos": [
-                {"image": image.pk, "name": "Climate group", "link_url": "https://partner.example"},
-                {"image": image.pk, "name": "Local organisers"},
-            ],
         },
     )
     yield (
@@ -137,6 +115,5 @@ def test_template_fallback_gallery_golden(rendered_cases):
     output = "\n\n".join(f"# {name}\n\n{text}" for name, text in rendered_cases.items())
     assert_matches_golden("wtrx-template-fallbacks.md", output)
     assert "![" not in rendered_cases["callout"]  # Decorative background only.
-    assert "![Climate group]" in rendered_cases["logo_grid"]
     assert "player" not in rendered_cases["raw_html"]
     assert "DO NOT EXPORT" not in output and "INERT CONTENT" not in output
