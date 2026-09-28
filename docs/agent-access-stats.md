@@ -31,8 +31,8 @@ use the first matching entry from the dataset, preserving its canonical spelling
 Identification still runs with `NEGOTIATE_USER_AGENT = False`; that setting affects
 serving only. All other clients, including curl and browsers, share the empty
 label `""`, displayed as `unknown`. Arbitrary header fragments are never stored.
-With registry `2026-09-28.1`, at most 68 labels can be newly recorded per page,
-method and UTC date (67 identities plus unknown), regardless of how many different
+With registry `2026-09-28.2`, at most 72 labels can be newly recorded per page,
+method and UTC date (71 identities plus unknown), regardless of how many different
 User-Agent values arrive.
 Methods are at most 20 characters.
 

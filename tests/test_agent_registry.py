@@ -107,6 +107,8 @@ RESTORED_AUTO = {
     "KernelSearchBot",
     "Anomura",
 }
+# Operator-documented siblings of reviewed identities, added in 2026-09-28.2.
+SIBLINGS_AUTO = {"Kimi-User", "Kimi-SearchBot", "Amzn-User", "Shap-User"}
 
 
 def test_every_inherited_string_is_active_excluded_or_deferred():
@@ -131,6 +133,7 @@ def test_every_inherited_string_is_active_excluded_or_deferred():
         "MistralAI-User",
         "DuckAssistBot",
         *RESTORED_AUTO,
+        *SIBLINGS_AUTO,
     }
 
 
@@ -191,6 +194,24 @@ def test_every_inherited_string_is_active_excluded_or_deferred():
             "+https://www.kimi.com/policies/kimi-crawlers",
             "KimiBot",
         ),
+        (
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Kimi-User/1.0; "
+            "+https://www.kimi.com/policies/kimi-crawlers",
+            "Kimi-User",
+        ),
+        (
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Kimi-SearchBot/1.0; "
+            "+https://www.kimi.com/policies/kimi-crawlers",
+            "Kimi-SearchBot",
+        ),
+        (
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Amzn-User/0.1)",
+            "Amzn-User",
+        ),
+        (
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Shap-User/0.1.0",
+            "Shap-User",
+        ),
     ],
 )
 def test_published_headers_match_restored_identities(ua, label):
@@ -200,14 +221,11 @@ def test_published_headers_match_restored_identities(ua, label):
 @pytest.mark.parametrize(
     "ua",
     [
-        # Contact addresses, URLs and unreviewed sibling products are not identities.
+        # Contact addresses, URLs and unreviewed tokens are not identities.
         "CompetitorWatch/1.0 (+https://www.example.org/; contact devin@example.org)",
         "Tool/1.0 (+https://www.bigsur.ai)",
         "Make/production",
         "Integromat/production",
-        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Kimi-User/1.0",
-        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Shap-User/0.1.0",
-        "Mozilla/5.0 (compatible; Amzn-User/0.1)",
         "Awario/1.0",
     ],
 )
