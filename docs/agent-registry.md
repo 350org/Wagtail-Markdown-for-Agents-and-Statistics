@@ -1,7 +1,7 @@
 # Agent registry
 
-Registry `2026-09-28.1` contains 67 recognised HTTP identities and enables
-automatic Markdown for 19. It builds on the bounded `2026-09-22.1` baseline, which
+Registry `2026-09-28.2` contains 71 recognised HTTP identities and enables
+automatic Markdown for 23. It builds on the bounded `2026-09-22.1` baseline, which
 had 23 identities. Every one of the 69 strings inherited from the WordPress plugin now
 has a recorded disposition:
 
@@ -46,7 +46,10 @@ The table lists the 22 September baseline. The
 serve Markdown automatically: `KimiBot` (training), and `Amzn-SearchBot`,
 `Cloudflare-AI-Search`, `LinerBot`, `ShapBot/`, `KernelSearchBot` and `Anomura`
 (search). The other 37 restored identities, including 14 whose operators describe
-non-AI tooling (purpose `other`), are recognition-only.
+non-AI tooling (purpose `other`), are recognition-only. `2026-09-28.2` adds four
+operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` and
+`Shap-User` (on-demand), and `Kimi-SearchBot` (search). See the
+[review](agent-registry-review.md#additions-in-2026-09-282).
 
 | Stored label | Estimated purpose | Automatic Markdown |
 | --- | --- | --- |

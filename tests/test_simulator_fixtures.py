@@ -20,7 +20,7 @@ from wagtail_markdown_agents.models import AgentAccess, ExportArtifact, PageAgen
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
 TARGET = "http://localhost"
 # The fleet sends every registry identity all four triggers, so the complete
-# suite grows with the registry (67 identities in 2026-09-28.1).
+# suite grows with the registry (71 identities in 2026-09-28.2).
 PLAN_BUDGET = 400
 
 
