@@ -55,6 +55,10 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Agent registry `2026-09-28.2` (#19) adds four operator-documented siblings with
+  automatic Markdown: Kimi-User, Kimi-SearchBot, Amzn-User and Shap-User. That makes
+  71 identities, 23 of them served Markdown automatically. Regenerate the Cloudflare
+  cache-bypass expression; the existing clauses do not cover these names.
 - Agent registry `2026-09-28.1` (#19) records a reviewed disposition for all 69
   inherited WordPress detection strings. See `docs/agent-registry-review.md`.
   - 44 identities are restored, bringing the registry to 67.
