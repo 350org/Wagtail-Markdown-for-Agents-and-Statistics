@@ -19,6 +19,9 @@ from wagtail_markdown_agents.models import AgentAccess, ExportArtifact, PageAgen
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
 TARGET = "http://localhost"
+# The fleet sends every registry identity all four triggers, so the complete
+# suite grows with the registry (67 identities in 2026-09-28.1).
+PLAN_BUDGET = 400
 
 
 def response_body(response):
@@ -66,7 +69,7 @@ def make_plan(client, checks):
     pages = sim.discover(
         json.loads(response_body(manifest)), TARGET, lambda spec: fetch(client, spec)[2]
     )
-    return sim.build_plan(pages, TARGET, fixtures=checks, max_requests=250), pages
+    return sim.build_plan(pages, TARGET, fixtures=checks, max_requests=PLAN_BUDGET), pages
 
 
 def test_six_fixtures_have_real_page_state_and_no_counter_increments(corpus, client):
@@ -204,19 +207,19 @@ def test_full_plan_reconciles_actual_counters_with_test_transport_evidence(
     with sim.Runner(
         path,
         TARGET,
-        max_requests=250,
+        max_requests=PLAN_BUDGET,
         transport=transport,
         clock=Clock(),
         metadata={"coverage": plan["coverage"]},
     ) as runner:
         for row in plan["requests"]:
             runner.fetch(sim.RequestSpec.from_dict(row))
-        runner.emit("coverage", completed_plan_requests=250, planned_requests=250)
+        runner.emit("coverage", completed_plan_requests=PLAN_BUDGET, planned_requests=PLAN_BUDGET)
     assert runner.failures == 0
     report = sim.reconcile(events(path), origins, before, snapshot())
     assert report["status"] == "matched", report
     assert report["warnings"] == []
-    assert report["counts"]["attempts"] == 250
+    assert report["counts"]["attempts"] == PLAN_BUDGET
     assert sum(bucket["expected"] for bucket in report["buckets"]) > 0
     assert all(bucket["residual"] == 0 for bucket in report["buckets"])
     assert len([row for row in events(path) if row.get("scenario") in REQUIRED_FIXTURES]) == 12

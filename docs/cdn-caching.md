@@ -34,7 +34,8 @@ From a source checkout, prefix the command with `PYTHONPATH=src`. This prints th
 expression and does not contact Cloudflare. The generator uses only automatic
 Markdown-serving identities, not every recognised agent. For example, Googlebot,
 Applebot, bingbot and Google-Agent remain normal HTML clients unless they explicitly
-request Markdown. Registry version `2026-09-22.1` enables 12 automatic identities.
+request Markdown. Registry version `2026-09-28.1` enables 19 automatic identities
+(20 tokens).
 
 In **Caching → Cache Rules**, edit the existing Markdown **Bypass cache** rule,
 replace its expression with the generated output and keep it after the
@@ -59,9 +60,10 @@ Match deployment toggles with `--no-user-agent` or `--no-query-param`. Add
 recognition-only and unknown clients using **only** `Accept: text/markdown` can still
 receive cached HTML; use the query form or direct export URL. Check the expression
 against the account's limit, save it and run the verification sequence below.
-This revised expression is locally generated and tested, not yet verified on a live
-Cloudflare account. The 21 September measurements later in this guide describe the
-previous registry and rule.
+The `2026-09-28.1` expression was applied and checked on the staging deployment on
+28 September 2026. The [verification record](verification/2026-09-28-registry-rule-change.md)
+holds the results and the rollback expression. The 21 September measurements later in
+this guide describe an earlier registry and rule.
 
 When measuring counters, review Speed Brain, Early Hints, Rocket Loader and Always
 Online with the operator: extra traffic and HTML rewriting can affect the evidence.
