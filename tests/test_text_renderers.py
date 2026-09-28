@@ -79,6 +79,24 @@ def test_inline_image_is_separated_from_text_by_one_space(html):
     assert rich(html) == "Before ![A](https://350.org/a.png) after"
 
 
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<p>Before.</p><img src="https://350.org/a.png" alt="A"><p>After.</p>',
+        '<h2>Before.</h2><img src="https://350.org/a.png" alt="A"><ul><li>After.</li></ul>',
+    ],
+    ids=["paragraphs", "heading-and-list"],
+)
+def test_image_between_blocks_gets_no_padding_space(html):
+    assert rich(html).split("\n\n")[1] == "![A](https://350.org/a.png)"
+
+
+def test_image_after_a_line_break_starts_its_line():
+    assert rich('<p>Before<br><img src="https://350.org/a.png" alt="A"></p>') == (
+        "Before  \n![A](https://350.org/a.png)"
+    )
+
+
 def test_site_relative_image_src_becomes_absolute():
     assert rich('<p><img src="/a.png" alt="A"></p>') == "![A](http://localhost:8000/a.png)"
 
