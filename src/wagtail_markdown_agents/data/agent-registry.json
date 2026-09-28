@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2026-09-28.1",
+  "version": "2026-09-28.2",
   "agents": [
     {
       "label": "GPTBot",
@@ -394,7 +394,7 @@
         "https://radar.cloudflare.com/bots/directory/kimibot"
       ],
       "reviewed": "2026-09-28",
-      "notes": "Operator: content potentially used to train Kimi foundation models. Kimi-User and Kimi-SearchBot are separate identities, not reviewed here."
+      "notes": "Operator: content potentially used to train Kimi foundation models. Kimi-User and Kimi-SearchBot are separate records."
     },
     {
       "label": "Amzn-SearchBot",
@@ -463,7 +463,7 @@
         "https://parallel.ai/parallel-web-systems-bots"
       ],
       "reviewed": "2026-09-28",
-      "notes": "Keep the historical stored label, including slash; match the product token. Shap-User is a separate identity, not reviewed here."
+      "notes": "Keep the historical stored label, including slash; match the product token. Shap-User is a separate record."
     },
     {
       "label": "KernelSearchBot",
@@ -1123,6 +1123,71 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Content-licensing scraper for partners that gave permission. Token documented by Radar only; operator page was behind a challenge. WordPress estimated training."
+    },
+    {
+      "label": "Kimi-User",
+      "operator": "Moonshot AI",
+      "tokens": [
+        "Kimi-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://www.kimi.com/policies/kimi-crawlers"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: user-initiated actions such as summarising an article or live retrieval; not bulk crawling."
+    },
+    {
+      "label": "Kimi-SearchBot",
+      "operator": "Moonshot AI",
+      "tokens": [
+        "Kimi-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://www.kimi.com/policies/kimi-crawlers"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: analyses pages for relevance and builds the Kimi search index."
+    },
+    {
+      "label": "Amzn-User",
+      "operator": "Amazon",
+      "tokens": [
+        "Amzn-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developer.amazon.com/amazonbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: fetches live information on a user's behalf, e.g. for Alexa queries."
+    },
+    {
+      "label": "Shap-User",
+      "operator": "Parallel Web Systems",
+      "tokens": [
+        "Shap-User"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://parallel.ai/parallel-web-systems-bots",
+        "https://docs.parallel.ai/resources/crawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: accesses content on behalf of users; not automatic crawling."
     }
   ]
 }

@@ -44,8 +44,9 @@ These decisions were made by the package owner on 28 September 2026.
 - **Aliases.** Aliases of the same identity are added explicitly:
   Cloudflare-AI-Search-External, OnirocoCrawler (Chathive's new name), Instaparser and
   the three Awario product tokens.
-- **Deferred to a follow-up.** Separate sibling identities are left for a follow-up
-  review: Kimi-User, Kimi-SearchBot, Amzn-User and Shap-User.
+- **Sibling identities.** Separate sibling identities documented on the same operator
+  pages were added afterwards in `2026-09-28.2`; see
+  [Additions in 2026-09-28.2](#additions-in-2026-09-282).
 
 ## Evidence
 
@@ -108,9 +109,9 @@ Where they conflict, the purpose follows the operator and the conflict is noted.
 | `Anomura` | search | Restored, auto Markdown | `Anomura` | Direqt | search | 2026-09-28 | [1](https://docs.direqt-search.com/direqt-bots/direqt-crawlers-and-user-agents) [2](https://radar.cloudflare.com/bots/directory/direqt-anomura) | Operator: search crawler, not used for model training. |
 | `Element451Bot` | search | Restored, recognise only | `Element451Bot` | Element451 | search | 2026-09-28 | [1](https://help.element451.io/en/articles/10302715-getting-started-with-knowledge-hub) [2](https://radar.cloudflare.com/bots/directory/element451bot) | Knowledge-base ingestion for sites an Element451 customer connects; owner-connected, so recognition only. |
 | `KernelSearchBot` | search | Restored, auto Markdown | `KernelSearchBot` | Kernel | search | 2026-09-28 | [1](https://www.kernel.sh/docs/bots) [2](https://radar.cloudflare.com/bots/directory/kernel-search) | Operator: builds search indexes and retrieval databases. Kernel's browser agent has no User-Agent token and is not covered. |
-| `ShapBot/` | search | Restored, auto Markdown | `ShapBot` | Parallel Web Systems | search | 2026-09-28 | [1](https://docs.parallel.ai/resources/crawler) [2](https://parallel.ai/parallel-web-systems-bots) | Keep the historical stored label, including slash; match the product token. Shap-User is a separate identity, not reviewed here. |
+| `ShapBot/` | search | Restored, auto Markdown | `ShapBot` | Parallel Web Systems | search | 2026-09-28 | [1](https://docs.parallel.ai/resources/crawler) [2](https://parallel.ai/parallel-web-systems-bots) | Keep the historical stored label, including slash; match the product token. Shap-User is a separate record. |
 | `alphalens-bot` | search | Restored, recognise only | `alphalens-bot` | Alphalens | search | 2026-09-28 | [1](https://alphalensbot.com) [2](https://radar.cloudflare.com/bots/directory/alphalens-bot) | Company and product discovery index; the operator does not describe AI use. |
-| `KimiBot` | training | Restored, auto Markdown | `KimiBot` | Moonshot AI | training | 2026-09-28 | [1](https://www.kimi.com/policies/kimi-crawlers) [2](https://radar.cloudflare.com/bots/directory/kimibot) | Operator: content potentially used to train Kimi foundation models. Kimi-User and Kimi-SearchBot are separate identities, not reviewed here. |
+| `KimiBot` | training | Restored, auto Markdown | `KimiBot` | Moonshot AI | training | 2026-09-28 | [1](https://www.kimi.com/policies/kimi-crawlers) [2](https://radar.cloudflare.com/bots/directory/kimibot) | Operator: content potentially used to train Kimi foundation models. Kimi-User and Kimi-SearchBot are separate records. |
 | `PetalBot` | training | Restored, recognise only | `PetalBot` | Huawei | search | 2026-09-28 | [1](https://webmaster.petalsearch.com/site/petalbot) [2](https://radar.cloudflare.com/bots/directory/petalbot) | General Petal search engine crawler that also feeds Huawei AI search. WordPress estimated training; operator describes search. |
 | `GoogleOther` | training | Continuing, recognise only; WordPress served it | `GoogleOther`, `GoogleOther-Image`, `GoogleOther-Video` | Google | other | 2026-09-28 | [1](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers) | Generic research crawler; operator documentation does not establish training intent. Include documented image/video variants. |
 | `CloudVertexBot` | training | Continuing, recognise only; WordPress served it | `Google-CloudVertexBot` | Google | search | 2026-09-28 | [1](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers) | Site-owner-requested Vertex AI indexing. Retain historical stored label; require the full documented HTTP token. |
@@ -141,6 +142,23 @@ Where they conflict, the purpose follows the operator and the conflict is noted.
 
 `Gemini-User` appears only in the WordPress category map, not in its detection list,
 and has no verified HTTP identity. It remains historical category data.
+
+## Additions in 2026-09-28.2
+
+Four identities that the WordPress list never included are documented on the same
+operator pages as reviewed entries. They were added the same day with automatic
+Markdown. Each is described by its operator as a dedicated AI retrieval or search
+identity, and none as a browser that navigates, clicks or fills forms.
+
+| Stored label | HTTP token | Operator | Purpose | Evidence | Operator description |
+| --- | --- | --- | --- | --- | --- |
+| `Kimi-User` | `Kimi-User` | Moonshot AI | on-demand | [1](https://www.kimi.com/policies/kimi-crawlers) | User-initiated actions such as summarising an article; not bulk crawling |
+| `Kimi-SearchBot` | `Kimi-SearchBot` | Moonshot AI | search | [1](https://www.kimi.com/policies/kimi-crawlers) | Builds the Kimi search index |
+| `Amzn-User` | `Amzn-User` | Amazon | on-demand | [1](https://developer.amazon.com/amazonbot) | Live fetches on a user's behalf, e.g. for Alexa queries |
+| `Shap-User` | `Shap-User` | Parallel Web Systems | on-demand | [1](https://parallel.ai/parallel-web-systems-bots) | Accesses content on behalf of users; not automatic crawling |
+
+Registry `2026-09-28.2` recognises 71 identities and serves Markdown automatically to
+23. None of these labels has historical counters.
 
 ## Read-time category changes
 
