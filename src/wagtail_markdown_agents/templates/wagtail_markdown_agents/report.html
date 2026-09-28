@@ -6,6 +6,11 @@
     <link rel="stylesheet" href="{% static 'wagtail_markdown_agents/report.css' %}?v=5">
 {% endblock %}
 
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'wagtail_markdown_agents/report.js' %}?v=1"></script>
+{% endblock %}
+
 {% block listing %}
     <div class="nice-padding agentmd-report">
         <h1>{% trans "Agent access" %}</h1>
