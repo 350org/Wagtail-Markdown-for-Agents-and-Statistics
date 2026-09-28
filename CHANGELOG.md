@@ -55,6 +55,8 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- The agent access report selects **Custom dates** when From or To is changed, so
+  typed dates are no longer silently replaced by the preset range.
 - Agent registry `2026-09-28.2` (#19) adds four operator-documented siblings with
   automatic Markdown: Kimi-User, Kimi-SearchBot, Amzn-User and Shap-User. That makes
   71 identities, 23 of them served Markdown automatically. Regenerate the Cloudflare

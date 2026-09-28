@@ -129,6 +129,18 @@ def test_default_is_7_inclusive_utc_days(report, settings, use_tz):
     assert response.context["report_form"]["preset"].value() == "7"
 
 
+def test_typed_dates_select_custom_preset_in_the_browser(report):
+    # Dates apply only with the custom preset; report.js selects it when a date
+    # changes. The script finds the fields by these generated ids.
+    html = report().content.decode()
+    assert "wagtail_markdown_agents/report.js" in html
+    for element in ('id="id_preset"', 'id="id_start"', 'id="id_end"', 'value="custom"'):
+        assert element in html
+    # Without the script, a preset still overrides typed dates.
+    response = report(preset="7", start="2026-01-01", end="2026-01-02")
+    assert response.context["summary"]["start"] != date(2026, 1, 1)
+
+
 @pytest.mark.parametrize("preset,days", [("7", 7), ("30", 30), ("90", 90), ("365", 365)])
 def test_presets(report, preset, days):
     response = report(preset=preset)
