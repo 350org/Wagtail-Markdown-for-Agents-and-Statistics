@@ -55,6 +55,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- 350.org feature panels leave out a CTA that only jumps to an anchor on the
+  page (#14), as buttons already did: the anchor doesn't exist in the Markdown.
+  The optional add-on still renders the site's panel template; the 31 block types
+  now split into 21 add-on renderers, three core renderers and seven template
+  fallbacks.
 - Fix offline 350.org donation defaults: the optional add-on reads the enabled
   site's ActBlue `base_url` and `suggested_amounts`, then renders the existing
   donation template. Previously the request-only context lost those defaults.

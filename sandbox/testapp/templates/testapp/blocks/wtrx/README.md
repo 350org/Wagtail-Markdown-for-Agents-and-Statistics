@@ -15,8 +15,9 @@ button at `wtrx/templates/wtrx/components/button.html`. Field shapes come from
 The fixtures preserve headings, image rendition filters/alt sources, content
 order, link conditions, donation override precedence and the template's dollar
 symbol. They do not establish output equivalence for every source-template
-branch or client acceptance. Raw HTML's script/iframe loss and the feature
-panel's fragment-only link are recorded limits, not silently repaired here.
+branch or client acceptance. Raw HTML's script/iframe loss is a recorded limit,
+not silently repaired here. The feature panel's template is used through the
+add-on's renderer, which drops an anchor-only CTA before rendering it.
 
 See `tests/test_wtrx_fallback_golden.py`, `tests/test_wtrx_donate.py` and
 `docs/acceptance/17-rendering-output-review.md` for reviewed examples and limits.

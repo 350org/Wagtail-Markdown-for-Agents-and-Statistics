@@ -50,6 +50,7 @@ integration-setting changes do not themselves publish a new page revision.
 | `donate_fundraiseup` | Content, image and authored image caption. Designation IDs and advanced settings are omitted; no checkout URL is invented. |
 | `signup_actionkit` | Eyebrow, content, image and authored caption, then `[Take action](campaign URL)`. No form fetch, success message or unavailable-form placeholder. |
 | `donate` | The site's template with offline, site-bound ActBlue URL/amount defaults. Authored overrides, button labels, amount formatting and the `$` symbol remain template-controlled. |
+| `feature_panel` | The site's template: image, eyebrow, content, then `[link text](page or URL)`. A CTA that only jumps to an anchor on the page is left out, as for `button`. |
 
 Containers render their children through export's own dispatch
 (`render_block`), so nested blocks get their renderers: a video inside a
@@ -132,11 +133,10 @@ Logo grids still use linked images through their templates, and donation currenc
 formatting retains the template's output. Separate image credits, post metadata
 mappings and full client acceptance remain open.
 
-Eight other block types use template fallback. The
+Seven other block types use template fallback. The
 [rendering output review](acceptance/17-rendering-output-review.md) supplies a
-synthetic gallery and records its limits, including raw-HTML player loss and
-fragment-only feature-panel links. This is not blanket client acceptance of the
-site's templates.
+synthetic gallery and records its limits, including raw-HTML player loss. This is
+not blanket client acceptance of the site's templates.
 
 ## Tests
 

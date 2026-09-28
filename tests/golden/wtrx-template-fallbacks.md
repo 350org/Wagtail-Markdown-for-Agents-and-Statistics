@@ -47,18 +47,6 @@ Act together.
 
 [Join us](https://example.org/join)
 
-# feature_panel
-
-![Rally](https://example.org/media/images/test.2e16d0ba.fill-900x675.png)
-
-Campaign
-
-## A just transition
-
-Communities lead.
-
-[Read more](https://example.org/transition)
-
 # callout
 
 ## Keep going

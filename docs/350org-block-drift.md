@@ -19,8 +19,8 @@ under the add-on's page-field mapping.
 
 The snapshot records definition metadata, not site content or a copy of the
 site's implementation. Its source is the 350.org repository above. The comparison
-uses `agentmd_blocks --compare` and the normal renderer registry: 20 block types
-use the add-on, three use the core and eight use template fallback. The report
+uses `agentmd_blocks --compare` and the normal renderer registry: 21 block types
+use the add-on, three use the core and seven use template fallback. The report
 labels both core and bundled add-on renderers as `built_in`; the full renderer
 paths distinguish them.
 
