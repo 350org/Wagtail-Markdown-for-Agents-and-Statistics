@@ -4,7 +4,10 @@
 open.** This reconciles #4 against the existing tests and the bounded 350.org work
 in #14. It does not reopen implemented subsystems or mark proposed scenario 01 as
 accepted. D6 and D12 were agreed by the package owner on 24 September; D9 still
-needs a client decision.
+needs a client decision. On 28 September the package owner decided that a
+feature-panel CTA that only jumps to an anchor is left out, as a button's already
+was; see `test_anchor_only_feature_panel_cta_is_left_out` in
+[`test_contrib_wtrx.py`](../../tests/test_contrib_wtrx.py).
 
 ## Existing coverage, retained
 
@@ -39,7 +42,7 @@ headings, text, metadata and whitespace are compared.
 | [`wtrx-content.md`](../../tests/golden/wtrx-content.md) | One hero H1; pre-header/copy/CTA/caption before the body; card grid; accordion with an image/caption/video link; quotation; campaign-specific ActionKit destination; private-target label without its URL; no success message | [`test_wtrx_golden.py`](../../tests/test_wtrx_golden.py): `test_published_addon_document_golden_survives_newer_draft` also stores and retrieves the document by canonical query and direct route, follows the emitted target link, and verifies a newer draft appears only after publication. |
 | [`wtrx-content-no-hero.md`](../../tests/golden/wtrx-content-no-hero.md) | Ordinary title H1 with body retained; no hero prose/caption/CTA | Two cases in `test_optional_hero_document_goldens`: a hidden populated hero, and cleared optional fields with an unlinked button. Both intentionally have the same expected output. |
 | [`wtrx-index.md`](../../tests/golden/wtrx-index.md) | Real add-on hero → intro → body → one generated child listing | `test_addon_index_golden_has_one_generated_listing`; repeat generation must not duplicate the listing. |
-| [`wtrx-template-fallbacks.md`](../../tests/golden/wtrx-template-fallbacks.md) | Heading, raw HTML, image grid, linked-logo grid, image/card list, image/text, feature panel and callout | [`test_wtrx_fallback_golden.py`](../../tests/test_wtrx_fallback_golden.py); each case verifies it reaches fallback. Reduced templates model content-bearing markup, not every site-template branch. Their [provenance and omissions](../../sandbox/testapp/templates/testapp/blocks/wtrx/README.md) are explicit. |
+| [`wtrx-template-fallbacks.md`](../../tests/golden/wtrx-template-fallbacks.md) | Heading, raw HTML, image grid, linked-logo grid, image/card list, image/text and callout | [`test_wtrx_fallback_golden.py`](../../tests/test_wtrx_fallback_golden.py); each case verifies it reaches fallback. Reduced templates model content-bearing markup, not every site-template branch. Their [provenance and omissions](../../sandbox/testapp/templates/testapp/blocks/wtrx/README.md) are explicit. |
 | [`wtrx-donate.md`](../../tests/golden/wtrx-donate.md) | Site-default destination/amounts; authored URL/amount/button overrides; prose retained without an enabled integration | [`test_wtrx_donate.py`](../../tests/test_wtrx_donate.py); also covers malformed defaults, missing site, active-language amount formatting, context isolation and explicit template failure. |
 
 The full-page fixture is a bounded addition to scenario 01, not an exact copy of
@@ -71,7 +74,8 @@ The synthetic settings fixture now uses the actual `base_url` and
 `suggested_amounts` names. Its migration is test-only; the add-on has no production
 migration. The [drift snapshot](../fixtures/wtrx-blocks.json) changes only donation's
 dispatch/renderer: the 31-type split is now 20 add-on renderers, three core renderers
-and eight template fallbacks.
+and eight template fallbacks. The feature-panel renderer (28 September) makes it
+21 add-on renderers, three core renderers and seven template fallbacks.
 
 ## Decisions still requiring review
 
@@ -82,7 +86,6 @@ and eight template fallbacks.
 | Logo grid | Linked images, with the organisation name as the synthetic fallback alt text | Accept the gallery or request a reviewed text-list diff. |
 | Donation currency and locale | Template's `$` retained; active-language decimal formatting retained | Currency-code policy and a broader language corpus remain open. This fix supplies defaults and does not choose a currency. |
 | Post metadata and canonical override | Generic publication dates and permalink; no automatic custom Post author/date/category or `canonical_url` mapping | Agree field meanings and precedence before adding mappings or expected outputs. |
-| Feature-panel fragment-only CTA | `[Join](#join)` survives its template, although Markdown contains no matching anchor | `test_feature_panel_fragment_is_a_recorded_fallback_limit` records the current limitation. Decide omission versus anchor preservation; the explicit ButtonBlock already omits fragment-only links. |
 | Raw-HTML embedded player | Player iframe absent; surrounding authored text retained | Explicit fallback limit; use the video renderer when a media link is needed. |
 | Full client presentation | The five files above pin implementation output | A named reviewer must accept each file or request a specific diff; passing tests alone do not close #4/#14/#15. No client approval is recorded here. |
 
