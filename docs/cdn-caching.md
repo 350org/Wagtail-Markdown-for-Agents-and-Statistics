@@ -34,7 +34,8 @@ From a source checkout, prefix the command with `PYTHONPATH=src`. This prints th
 expression and does not contact Cloudflare. The generator uses only automatic
 Markdown-serving identities, not every recognised agent. For example, Googlebot,
 Applebot, bingbot and Google-Agent remain normal HTML clients unless they explicitly
-request Markdown. Registry version `2026-09-22.1` enables 12 automatic identities.
+request Markdown. Registry version `2026-09-28.1` enables 19 automatic identities
+(20 tokens).
 
 In **Caching → Cache Rules**, edit the existing Markdown **Bypass cache** rule,
 replace its expression with the generated output and keep it after the

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2026-09-22.1",
+  "version": "2026-09-28.1",
   "agents": [
     {
       "label": "GPTBot",
@@ -221,9 +221,10 @@
       ],
       "auto_markdown": false,
       "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers",
         "https://radar.cloudflare.com/bots/directory/google-agent"
       ],
-      "reviewed": "2026-09-22",
+      "reviewed": "2026-09-28",
       "notes": "Browser navigation and actions on user request; recognise it but preserve HTML needed by browser workflows."
     },
     {
@@ -237,9 +238,10 @@
       ],
       "auto_markdown": false,
       "sources": [
+        "https://developer.amazon.com/amazonbot",
         "https://radar.cloudflare.com/bots/directory/amazon-bot"
       ],
-      "reviewed": "2026-09-22",
+      "reviewed": "2026-09-28",
       "notes": "Radar training category is an estimate; general Amazon product crawler remains recognition-only."
     },
     {
@@ -253,9 +255,10 @@
       ],
       "auto_markdown": false,
       "sources": [
+        "https://commoncrawl.org/ccbot",
         "https://developers.cloudflare.com/ai-crawl-control/reference/bots/"
       ],
-      "reviewed": "2026-09-22",
+      "reviewed": "2026-09-28",
       "notes": "Radar training category is an estimate for a general corpus crawler; recognition only."
     },
     {
@@ -341,7 +344,7 @@
       "sources": [
         "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
       ],
-      "reviewed": "2026-09-22",
+      "reviewed": "2026-09-28",
       "notes": "Generic research crawler; operator documentation does not establish training intent. Include documented image/video variants."
     },
     {
@@ -357,7 +360,7 @@
       "sources": [
         "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
       ],
-      "reviewed": "2026-09-22",
+      "reviewed": "2026-09-28",
       "notes": "Site-owner-requested Vertex AI indexing. Retain historical stored label; require the full documented HTTP token."
     },
     {
@@ -375,6 +378,751 @@
       ],
       "reviewed": "2026-09-22",
       "notes": "Advertising validation, not foundation-model training or a request for Markdown."
+    },
+    {
+      "label": "KimiBot",
+      "operator": "Moonshot AI",
+      "tokens": [
+        "KimiBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://www.kimi.com/policies/kimi-crawlers",
+        "https://radar.cloudflare.com/bots/directory/kimibot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: content potentially used to train Kimi foundation models. Kimi-User and Kimi-SearchBot are separate identities, not reviewed here."
+    },
+    {
+      "label": "Amzn-SearchBot",
+      "operator": "Amazon",
+      "tokens": [
+        "Amzn-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developer.amazon.com/amazonbot",
+        "https://radar.cloudflare.com/bots/directory/amzn-searchbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: improves Amazon search experiences and does not crawl for generative AI model training."
+    },
+    {
+      "label": "Cloudflare-AI-Search",
+      "operator": "Cloudflare",
+      "tokens": [
+        "Cloudflare-AI-Search",
+        "Cloudflare-AI-Search-External"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://developers.cloudflare.com/ai-search/configuration/data-source/website/parse-types/",
+        "https://developers.cloudflare.com/ai-search/platform/release-note/"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "AI Search (formerly AutoRAG) retrieval indexer. The -External alias is used outside the customer's account and needs its own token."
+    },
+    {
+      "label": "LinerBot",
+      "operator": "Liner",
+      "tokens": [
+        "LinerBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://docs.getliner.com/docs/linerbot",
+        "https://radar.cloudflare.com/bots/directory/liner-bot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: indexes pages for Liner's AI search engine. WordPress estimated training; operator describes search."
+    },
+    {
+      "label": "ShapBot/",
+      "operator": "Parallel Web Systems",
+      "tokens": [
+        "ShapBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://docs.parallel.ai/resources/crawler",
+        "https://parallel.ai/parallel-web-systems-bots"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Keep the historical stored label, including slash; match the product token. Shap-User is a separate identity, not reviewed here."
+    },
+    {
+      "label": "KernelSearchBot",
+      "operator": "Kernel",
+      "tokens": [
+        "KernelSearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://www.kernel.sh/docs/bots",
+        "https://radar.cloudflare.com/bots/directory/kernel-search"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: builds search indexes and retrieval databases. Kernel's browser agent has no User-Agent token and is not covered."
+    },
+    {
+      "label": "Anomura",
+      "operator": "Direqt",
+      "tokens": [
+        "Anomura"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": true,
+      "sources": [
+        "https://docs.direqt-search.com/direqt-bots/direqt-crawlers-and-user-agents",
+        "https://radar.cloudflare.com/bots/directory/direqt-anomura"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Operator: search crawler, not used for model training."
+    },
+    {
+      "label": "Bytespider",
+      "operator": "ByteDance",
+      "tokens": [
+        "Bytespider"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.cloudflare.com/ai-crawl-control/reference/bots/",
+        "https://radar.cloudflare.com/bots/directory/bytedance-toutiao"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "No reachable operator documentation. Cloudflare lists it as an AI crawler, while Radar attaches its user agents to Toutiao search."
+    },
+    {
+      "label": "PetalBot",
+      "operator": "Huawei",
+      "tokens": [
+        "PetalBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://webmaster.petalsearch.com/site/petalbot",
+        "https://radar.cloudflare.com/bots/directory/petalbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "General Petal search engine crawler that also feeds Huawei AI search. WordPress estimated training; operator describes search."
+    },
+    {
+      "label": "Bravebot",
+      "operator": "Brave",
+      "tokens": [
+        "Bravebot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/bravebot",
+        "https://search.brave.com/help/brave-search-crawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Radar lists this verified token; Brave's own page says its crawler does not advertise a differentiated user agent. General search."
+    },
+    {
+      "label": "Element451Bot",
+      "operator": "Element451",
+      "tokens": [
+        "Element451Bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://help.element451.io/en/articles/10302715-getting-started-with-knowledge-hub",
+        "https://radar.cloudflare.com/bots/directory/element451bot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Knowledge-base ingestion for sites an Element451 customer connects; owner-connected, so recognition only."
+    },
+    {
+      "label": "atlassian-bot",
+      "operator": "Atlassian",
+      "tokens": [
+        "atlassian-bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://support.atlassian.com/organization-administration/docs/connect-custom-website-to-rovo/",
+        "https://radar.cloudflare.com/bots/directory/atlassian-bot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Rovo search and agent indexing of websites the customer owns; owner-connected, so recognition only. WordPress estimated training."
+    },
+    {
+      "label": "alphalens-bot",
+      "operator": "Alphalens",
+      "tokens": [
+        "alphalens-bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://alphalensbot.com",
+        "https://radar.cloudflare.com/bots/directory/alphalens-bot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Company and product discovery index; the operator does not describe AI use."
+    },
+    {
+      "label": "ICC-Crawler/",
+      "operator": "NICT",
+      "tokens": [
+        "ICC-Crawler"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://ucri.nict.go.jp/en/icccrawler.html",
+        "https://radar.cloudflare.com/bots/directory/icccrawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Research crawler for NICT's AI and translation R&D; may share data with third parties. Keep historical label, including slash."
+    },
+    {
+      "label": "Cotoyogi/",
+      "operator": "ROIS-DS",
+      "tokens": [
+        "Cotoyogi"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://ds.rois.ac.jp/center8/crawler/",
+        "https://radar.cloudflare.com/bots/directory/cotoyogi"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Japanese-language data resource collection; AI framing is Radar's. Keep historical label, including slash."
+    },
+    {
+      "label": "bigsur.ai",
+      "operator": "Big Sur AI",
+      "tokens": [
+        "bigsur.ai"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/big-sur-ai"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Builds a corpus for a customer's own site agents. Token documented by Radar only; the operator says requests may go through a proxy service."
+    },
+    {
+      "label": "NavuBot",
+      "operator": "Navu",
+      "tokens": [
+        "NavuBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://navu.co/ensuring-navu-has-access-to-your-site/",
+        "https://radar.cloudflare.com/bots/directory/navu"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Indexes customer or prospect sites for their own AI chat. WordPress estimated training."
+    },
+    {
+      "label": "QualifiedBot",
+      "operator": "Qualified",
+      "tokens": [
+        "QualifiedBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://www.qualified.com/legal/qualified-crawler-user-agent",
+        "https://radar.cloudflare.com/bots/directory/qualifiedbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Crawls customer websites to power Qualified AI features; may also use an unmarked Chromium user agent. WordPress estimated training."
+    },
+    {
+      "label": "ChathiveCrawler",
+      "operator": "Oniroco",
+      "tokens": [
+        "ChathiveCrawler",
+        "OnirocoCrawler"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.chathive.app/crawler/overview"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Chathive is now Oniroco; the default is OnirocoCrawler/1.0 and customers can change it. Customer chatbot ingestion. WordPress estimated on-demand."
+    },
+    {
+      "label": "CitibotSiteCrawler",
+      "operator": "Citibot",
+      "tokens": [
+        "CitibotSiteCrawler"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/citibotsitecrawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Collects government website data for Citibot civic AI tools. Token documented by Radar only. WordPress estimated training."
+    },
+    {
+      "label": "CloudflareBrowserRenderingCrawler",
+      "operator": "Cloudflare",
+      "tokens": [
+        "CloudflareBrowserRenderingCrawler"
+      ],
+      "purposes": [
+        "search",
+        "training",
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.cloudflare.com/browser-run/quick-actions/crawl-endpoint/",
+        "https://radar.cloudflare.com/bots/directory/cloudflare-browser-rendering-crawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Customer-run /crawl service; declared purposes default to search, AI input and AI training. Renders pages and may request HTML output."
+    },
+    {
+      "label": "Novellum",
+      "operator": "Novellum",
+      "tokens": [
+        "Novellum"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/novellum-ai-crawl"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Radar describes an MCP crawl tool used by agents. Operator documentation and site were unreachable on 2026-09-28; status unknown, not retired."
+    },
+    {
+      "label": "Devin",
+      "operator": "Cognition",
+      "tokens": [
+        "Devin"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/devin"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Coding agent with a full browser. Token documented by Radar only."
+    },
+    {
+      "label": "TwinAgent",
+      "operator": "Twin",
+      "tokens": [
+        "TwinAgent"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://docs.twin.so/web-agent",
+        "https://radar.cloudflare.com/bots/directory/twinagent"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Browser agent that automates user-defined workflows. Token documented by Radar only."
+    },
+    {
+      "label": "ApifyWebsiteContentCrawler",
+      "operator": "Apify",
+      "tokens": [
+        "ApifyWebsiteContentCrawler"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/apify-website-content-crawler",
+        "https://apify.com/apify/website-content-crawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Radar lists the token; the operator says the crawler does not currently use a specific user agent, so most runs will not match."
+    },
+    {
+      "label": "CledaraBot",
+      "operator": "Cledara",
+      "tokens": [
+        "CledaraBot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/cledara-saas-management-agent"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Automates customer-approved SaaS admin tasks. Token documented by Radar only."
+    },
+    {
+      "label": "HarkBot",
+      "operator": "Hark",
+      "tokens": [
+        "HarkBot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://app.hark.com/about/bot",
+        "https://radar.cloudflare.com/bots/directory/harkbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "User-requested research, form filling and account actions; operator says it requests HTML responses only."
+    },
+    {
+      "label": "HIFIBot",
+      "operator": "HIFI",
+      "tokens": [
+        "HIFIBot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/hifibot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Logs in to royalty portals on behalf of clients. Not an AI content agent; recognised for continuity."
+    },
+    {
+      "label": "Nava/",
+      "operator": "Nava",
+      "tokens": [
+        "Nava"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://dev.labs-asp.navateam.com/bot-disclosure",
+        "https://radar.cloudflare.com/bots/directory/nava-labs-asp-dev"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Caseworker-directed browser agent that fills benefit forms. Keep historical label, including slash."
+    },
+    {
+      "label": "Instapaper",
+      "operator": "Instapaper",
+      "tokens": [
+        "Instapaper",
+        "Instaparser"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/instapaper"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "User-triggered read-later fetch that parses HTML. Radar lists Instapaper/4.0 and Instaparser/1.0."
+    },
+    {
+      "label": "EasyScan",
+      "operator": "IT-Recht Kanzlei",
+      "tokens": [
+        "EasyScan"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/easyscan",
+        "https://www.it-recht-kanzlei.de/website-scanner-fuer-mandanten.php"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Privacy-policy compliance scanner. WordPress estimated on-demand."
+    },
+    {
+      "label": "QATechBot",
+      "operator": "QA.tech",
+      "tokens": [
+        "QATechBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://docs.qa.tech/bot",
+        "https://radar.cloudflare.com/bots/directory/qatechbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Authorised end-to-end tests in a real browser; not crawling. WordPress estimated on-demand."
+    },
+    {
+      "label": "Retool/",
+      "operator": "Retool",
+      "tokens": [
+        "Retool"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/retool",
+        "https://community.retool.com/t/how-does-the-user-agent-header-work/26238"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Requests from user-built internal tools. Keep historical label, including slash. WordPress estimated on-demand."
+    },
+    {
+      "label": "make.com",
+      "operator": "Make",
+      "tokens": [
+        "make.com"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/make-com-2"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Workflow automation. Radar also lists Make/production and Integromat/production; those generic tokens are not added. WordPress estimated training."
+    },
+    {
+      "label": "magpie-crawler",
+      "operator": "Brandwatch",
+      "tokens": [
+        "magpie-crawler"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://www.brandwatch.com/legal/magpie-crawler/",
+        "https://radar.cloudflare.com/bots/directory/magpiecrawler"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Social media monitoring index; the operator does not describe AI use. WordPress estimated training."
+    },
+    {
+      "label": "Awario",
+      "operator": "Awario",
+      "tokens": [
+        "AwarioBot",
+        "AwarioSmartBot",
+        "AwarioRssBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://awario.com/bots.html",
+        "https://radar.cloudflare.com/bots/directory/awario"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Brand-mention monitoring. Keep the historical label; match the three documented product tokens. WordPress estimated training."
+    },
+    {
+      "label": "BorderxBot",
+      "operator": "BorderX",
+      "tokens": [
+        "BorderxBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://www.nubestore.ai/borderxbot.html",
+        "https://radar.cloudflare.com/bots/directory/borderxbot-2"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "E-commerce product crawler. WordPress estimated training."
+    },
+    {
+      "label": "netEstate NE Crawler",
+      "operator": "netEstate",
+      "tokens": [
+        "netEstate NE Crawler"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/datenbank",
+        "https://www.netestate.de/informationsextraktion/software/impressums-crawler/"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Extracts contact details from imprint pages. The URL in its user agent no longer resolves. WordPress estimated training."
+    },
+    {
+      "label": "AdpResearchBot/",
+      "operator": "ADP",
+      "tokens": [
+        "AdpResearchBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://payroll-bot.adp.com/docs",
+        "https://radar.cloudflare.com/bots/directory/payroll-bot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Collects payroll and legal documentation from government sites; operator says it does not train AI models. Keep historical label, including slash."
+    },
+    {
+      "label": "SelectikaScraper",
+      "operator": "Selectika",
+      "tokens": [
+        "SelectikaScraper"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://selectika.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/selectika-ai"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Retail catalogue ingestion arranged with partners. WordPress estimated training."
+    },
+    {
+      "label": "SemrushBot-OCOB",
+      "operator": "Semrush",
+      "tokens": [
+        "SemrushBot-OCOB"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://www.semrush.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/semrushbot-ocob"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Crawls for the Semrush Content Toolkit; operator does not mention training. WordPress estimated training."
+    },
+    {
+      "label": "SemrushBot-SWA/",
+      "operator": "Semrush",
+      "tokens": [
+        "SemrushBot-SWA"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://www.semrush.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/semrush-swa"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "SEO Writing Assistant URL accessibility check. Keep historical label, including slash. WordPress estimated training."
+    },
+    {
+      "label": "WARDBot",
+      "operator": "WEBSPARK",
+      "tokens": [
+        "WARDBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://ward.ai/robot",
+        "https://radar.cloudflare.com/bots/directory/wardbot"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Uptime monitoring of user-listed URLs. WordPress estimated training."
+    },
+    {
+      "label": "ygs-scraper-bot",
+      "operator": "YGS Group",
+      "tokens": [
+        "ygs-scraper-bot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/ygs-group-falconer-scraper"
+      ],
+      "reviewed": "2026-09-28",
+      "notes": "Content-licensing scraper for partners that gave permission. Token documented by Radar only; operator page was behind a challenge. WordPress estimated training."
     }
   ]
 }
