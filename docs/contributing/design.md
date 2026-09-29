@@ -1,19 +1,15 @@
 # Architecture design — wagtail-markdown-for-agents
 
-Status: accepted (July 2026). This document is the design authority for the port; PRs
+Status: accepted (July 2026). This document is the design authority for the package; PRs
 that deviate from it must update it in the same change.
 
 This describes the product roadmap, which is wider than v0.1. The v0.1 milestone on
 the issue tracker defines what the first release delivers; bundles, ARD catalogs and
 other roadmap features are not v0.1 release dependencies.
 
-The [WordPress parity audit](wordpress-parity-audit.md) records the 1.7.0 reference
-behaviour, all settings and 22 public extension points, historical issue coverage and
-remaining work. The [current matrix](wordpress-parity-status.md) records implementation
-status; the [drift ledger](wordpress-drift-ledger.md) tracks subsequent upstream changes
-and deliberate differences. The audit's A01–A13 requirements supplement this design;
-proposed new work still needs implementation and acceptance tests. The audit's
-GitHub sync record links the implementation issues and milestones.
+The [package guides](../README.md) describe supported behaviour and configuration.
+Proposed work needs implementation, tests and documentation before it is presented
+as available. Record release validation using the [release checklist](release-checklist.md).
 
 ## Purpose
 
@@ -23,10 +19,9 @@ to Wagtail: convert CMS content to Markdown, write static `.md` files, serve the
 agents via HTTP content negotiation, and log agent access statistics. Developed
 in collaboration with 350.org.
 
-The 350.org reference notes on issue #65 (page models, the 18 StreamField block
-names and their nesting) supply concrete integration examples. Resolve their open
-acceptance decisions through #63 before implementation; they do not make that schema
-a core dependency.
+Project-specific renderers and lifecycle extensions belong in separate integration
+packages using the public hooks. The core package and its test project must run
+without importing site-specific models or schema fixtures.
 
 Ecosystem check (July 2026): no existing Wagtail/PyPI package does this. Wagtail 7.3's
 llms.txt work covers only wagtail.org's own documentation sites, not user sites.
@@ -38,7 +33,7 @@ llms.txt work covers only wagtail.org's own documentation sites, not user sites.
 - Support matrix: Python 3.11–3.13 × Django 4.2 LTS/5.2 LTS/6.0 × Wagtail 6.3 LTS/7.x,
   tested in these CI pairings (`tox.ini`, #71): Python 3.11 + Django 4.2 + Wagtail 6.3;
   Python 3.12 and 3.13 + Django 5.2 + latest Wagtail 7.x; Python 3.13 + Django 5.2 +
-  Wagtail 7.0.x, the combination the supplied 350.org reference declares; and Python
+  Wagtail 7.0.x for older host projects; and Python
   3.13 + Django 6.0 + Wagtail 7.4+. Pairing Django 4.2 only with Wagtail 6.3 is
   this project's CI policy: upstream Wagtail 7.0–7.3 also support Django 4.2;
   Wagtail 7.4 requires Django ≥ 5.2 (see the
@@ -67,7 +62,7 @@ Renderers live in a per-app `markdown_renderers.py`, autodiscovered like
 `wagtail_hooks.py`. A `WAGTAIL_MARKDOWN_AGENTS["RENDERERS"]` dotted-path map exists for
 settings-only overrides; the decorator is the documented path. A renderer renders
 its child blocks with the public `render_block`. The
-[custom blocks guide](custom-blocks.md) is the user-facing contract.
+[custom blocks guide](../custom-blocks.md) is the user-facing contract.
 
 Built-ins: `RichTextBlock` (expand `<a linktype="page">`/`<embed>` refs, then
 HTML→Markdown), `CharBlock`/`TextBlock`, heading conventions, `ImageBlock` and
@@ -114,7 +109,7 @@ A list whose items each render to one line becomes a `- ` bullet list; if any it
 spans several lines (cards, rich text, nested blocks) items are separated by blank
 lines.
 
-**Dispatch precedence (D12, agreed 24 September 2026, #1/#2):**
+**Dispatch precedence:**
 
 1. a renderer registered for the block's name;
 2. the nearest registered class in the block's MRO, other than Wagtail's generic
@@ -180,14 +175,14 @@ plain text. Authored headings are preserved; the package does not guess which to
 deduplicate. Frontmatter title remains governed by the separate frontmatter builder.
 
 Project code uses that hook for public hero fields; block renderers alone do not
-extract page-level scalar fields. See [the page rendering guide](page-rendering.md)
-and the synthetic project-owned hero mapping. The exact 350.org presentation remains
-proposed under #63/#65. General declarative extraction and non-StreamField support
+extract page-level scalar fields. See [the page rendering guide](../page-rendering.md)
+and the synthetic project-owned hero mapping. General declarative extraction and
+non-StreamField support
 remain #39 in v0.2. Navigation generation (#20) appends its already-rendered output
 once after the hook, with one listing source chosen by the project through the navigation hook.
 Final link rewriting (#14) runs on the complete body before YAML is attached.
 Current owned targets use absolute public export URLs; unavailable targets retain
-their HTML links. See the [link contract](internal-links.md) for syntax preservation,
+their HTML links. See the [link contract](../internal-links.md) for syntax preservation,
 reference links, conservative query handling, redirects and generation order.
 
 All HTML conversion paths remove script/style/template nodes and their contents
@@ -196,7 +191,8 @@ before conversion. Other hidden markup (`hidden`, `aria-hidden`, `<dialog>`,
 `<noscript>` signup link from a success message, so a block renderer decides. Output fixtures cover code whitespace/language, table captions and empty
 cells, escaped pipes, entities, Unicode and image/text spacing as well as block types.
 Expose pre-conversion, converter-options and page post-render hooks with documented
-ordering; see the audit's [extension inventory](wordpress-parity-audit.md#public-extension-surface).
+ordering and return contracts, as described below and in the
+[custom blocks guide](../custom-blocks.md).
 
 **Conversion hooks (implemented in #12).** Every HTML → Markdown conversion — rich
 text, plain text and the template fallback — runs these Wagtail hooks by `order`, then
@@ -217,7 +213,7 @@ post-render hook is implemented in #78 as described above.
 
 A block whose class, or a base class other than a generic container, has a
 registered renderer uses that renderer even when it declares its own template — a
-`CharBlock` subclass with a template still renders as plain text. See the D12
+`CharBlock` subclass with a template still renders as plain text. See the dispatch
 precedence above.
 
 ### Frontmatter
@@ -280,7 +276,7 @@ and locks against the saved page. Publication follows this step, so generation
 honours the new exclusion. Preview and invalid form submissions do not write it.
 The side-model remains independent of page revisions, and custom edit handlers
 omitting the panel leave exclusion unchanged. See the
-[editor integration guide](editor-exclusion-panel.md) for custom forms and panels.
+[editor integration guide](../editor-exclusion-panel.md) for custom forms and panels.
 
 The remaining WordPress editor controls are v0.2 work: export state/time, no-write
 preview of the saved published version, and single-page regeneration, all with page
@@ -327,7 +323,7 @@ The prefix is `Site.hostname` only — never the port — so `localhost:8000` ex
 Type-grouped indexes return in v1.0. Taxonomy/snippet term export is a **nice-to-have**
 (no milestone): Wagtail has no native taxonomy system — only taggit and per-site snippet
 conventions — so it stays out of the parity scope unless a concrete need (e.g. from
-350.org's models) pulls it in. The `markdown_export_path(path, page, site)` hook
+a host project) pulls it in. The `markdown_export_path(path, page, site)` hook
 relocates a page within its site: it receives the site-relative default
 (`blog/my-post.md`) and returns a replacement or `None`; results must be relative, free
 of `..` and end in `.md`, and are always prefixed with the hostname, so a hook cannot
@@ -348,7 +344,7 @@ use generic metadata; the root carries `OKF_VERSION`, even for an empty corpus.
 `markdown_index_content` customises or suppresses navigation with path/site/page and
 entry context. Explicit `IndexBatch` finalisation coalesces dirty sites, repairs
 leaf/index transitions, and uses publication guards against concurrent revocation.
-The [index guide](indexes.md) defines directory promotion, complete title-ordered
+The [index guide](../indexes.md) defines directory promotion, complete title-ordered
 listings independent of HTML pagination, and the lifecycle integration boundary.
 
 **Implemented in #21:** `llms.txt` contains a site-name heading (hostname fallback),
@@ -358,7 +354,7 @@ using the index generator's title ordering and subtree promotion rules. All entr
 use published metadata and actual checked public URLs. `IndexBatch` publishes it
 after indexes; direct generation is also available. Site-name/introduction changes
 invalidate site-dependent documents even for empty corpora, while introduction-only
-changes preserve ordinary leaf exports. See the [discovery guide](llms-txt.md).
+changes preserve ordinary leaf exports. See the [discovery guide](../llms-txt.md).
 
 ### Storage & middleware
 
@@ -404,11 +400,13 @@ logged without changing the reported publication result or skipping cleanup.
 Page-owned indexes/hierarchy and explicit site-dependent page builds capture a
 site-state guard; revocation withdraws them alongside standalone aggregates.
 Publication is after commit; immediate revocation supports an enclosing transaction
-and rollback can leave a safe missing file. Lifecycle receivers remain #23/#69/#70.
+and rollback can leave a safe missing file. The
+[lifecycle receivers](../publish-lifecycle.md) cover publication, moves, restrictions
+and exclusions (#23/#69/#70).
 Backend assumptions, crash windows, signals and the API are documented in the
-[storage writer guide](storage-writer.md). The BASE_DIR/STORAGE system check portion
+[storage writer guide](../storage-writer.md). The BASE_DIR/STORAGE system check portion
 of #29 ships with this writer; the middleware-order, settings-shape and route checks
-are **implemented in #29** and listed in the [checks guide](system-checks.md).
+are **implemented in #29** and listed in the [checks guide](../system-checks.md).
 
 Storage placement does not provide public URLs. Ship an explicitly included Django
 URLconf with named routes for managed page/directory exports and site `llms.txt` and
@@ -429,8 +427,8 @@ checked site's exact immutable file generation and supplies the shared response
 function for #26, returning no response on a miss so middleware can fall through.
 Direct routes map that miss to 404. GET/HEAD, header customisation, per-request vetoes
 and the `markdown_served` statistics integration signal are documented in the
-[public route guide](public-export-routes.md). The
-[statistics receiver](agent-access-stats.md) implements persistent counting (#32/#33).
+[public route guide](../public-export-routes.md). The
+[statistics receiver](../agent-access-stats.md) implements persistent counting (#32/#33).
 
 Web-served Markdown uses **absolute public export URLs** for internal links. A file
 stored at `blog/post.md` can also be served at `/blog/post/`, so file-relative links
@@ -440,7 +438,7 @@ metadata stays absolute. This supersedes the earlier relative-from-generation ch
 Image/document URLs stay absolute unless a project renderer explicitly overrides them.
 The resolver preserves fragments, handles same-site relative URLs and unambiguous
 redirects, honours `export_path`, and leaves meaningful query-dependent routes,
-external/media links and code examples intact (audit A01/A02).
+external/media links and code examples intact.
 
 `AgentMarkdownMiddleware` — after `SecurityMiddleware`, before `CommonMiddleware`
 (enforced by a system check):
@@ -464,7 +462,7 @@ external/media links and code examples intact (audit A01/A02).
   up the page's recorded export by site and page ID (so relocated and index paths need
   no URL-derived guess) and serves it through `serve_export`. Every miss, including
   withdrawal races, returns the ordinary HTML response; `before_serve_page` hooks
-  govern only that fallback. See the [negotiation guide](negotiation.md).
+  govern only that fallback. See the [negotiation guide](../negotiation.md).
 - **Response phase**: on HTML 200s whose page has an eligible export, append
   `Link: <…>; rel="alternate"; type="text/markdown"` and merge `Vary: Accept` (only
   `Accept` here — `Vary: User-Agent` on HTML would be cache-hostile). On a cache miss,
@@ -491,7 +489,7 @@ external/media links and code examples intact (audit A01/A02).
   invalidate entries at once in every process. The `construct_markdown_html_headers`
   hook adjusts or omits headers; `{% agent_markdown_link %}` shares the same
   resolution. Serving never consults the cache. See the
-  [discovery guide](discovery-headers.md).
+  [discovery guide](../discovery-headers.md).
 
 HEAD has GET's headers and no body. Explicit page-export GETs share the policy and
 logging path, with access method `export-url`; discovery/index-only, manifest and
@@ -499,7 +497,7 @@ bundle downloads do not count as page reads. Test both HTML→agent and agent→
 requests through the deployment's shared cache. HTML `Vary: Accept` alone cannot
 guarantee UA negotiation when cached HTML bypasses Django; document UA bypass/variant
 configuration for those hosts. Host-specific cache headers remain configurable.
-**Documented in #61:** the [CDN and cache guide](cdn-caching.md) covers both request
+**Documented in #61:** the [CDN and cache guide](../cdn-caching.md) covers both request
 orderings per trigger on `Vary`-honouring and `Vary`-blind caches, bypass-not-key
 rules, per-layer configuration (Cloudflare, Varnish/Fastly, nginx, LiteSpeed, Django's
 cache middleware, WhiteNoise), per-method header relaxation and the statistics gaps.
@@ -527,7 +525,7 @@ here are requirements for implementation, not claims about the current defaults 
 ### Signals & tasks
 
 **Implemented in #23:** the core receivers and shared ID-based refresh/revocation
-helpers are described in the [publish lifecycle guide](publish-lifecycle.md).
+helpers are described in the [publish lifecycle guide](../publish-lifecycle.md).
 `AUTO_GENERATE` defaults to True and controls routine regeneration only; immediate
 unpublish/delete/restriction/exclusion revocation remains active when disabled. The
 setting is excluded from content fingerprints. Explicit multi-page refreshes coalesce
@@ -539,14 +537,14 @@ restoration that bypasses the task queue and still honours AUTO_GENERATE. Public
 also handle settings-row removal and reassignment. Deployments disabling PAGE_TYPES
 run `agentmd_revoke_ineligible` under the new configuration before resuming traffic;
 the same helper supports explicit bulk-update reconciliation, without startup DB
-work or #75. The [lifecycle guide](publish-lifecycle.md) defines this trigger for
-#16/#24/#29 and the boundary with future negotiation/discovery middleware.
+work or #75. The [lifecycle guide](../publish-lifecycle.md) defines this trigger for
+#16/#24/#29 and the boundary with negotiation/discovery middleware.
 Move/slug receivers are implemented in #69. They capture the old subtree/site
 identities before a move, retire owned paths inline after commit (even with automatic
 generation disabled), then queue the current published subtree and affected parents
 through the same refresh helper. Rollback discards this cleanup as well as generation.
 Reorders with unchanged URL paths do no export work. The lifecycle guide documents
-the signal snapshot and the boundary with future negotiation middleware.
+the signal snapshot and the boundary with negotiation middleware.
 
 Receivers wired in `AppConfig.ready()`: `page_published`, `page_unpublished`, and
 `pre_delete` on Page (pre-, so `url_path` is still available). On publish: regenerate
@@ -600,12 +598,12 @@ v0.2 adds a django-tasks/Celery backend with coalescing keys
 (replacing WP's 5-minute bundle debounce). Custom signals: `markdown_generated`,
 `markdown_deleted`, `link_unresolved`.
 
-The backend seam alone is not bulk-generation parity. v0.2 also needs durable scoped
+The backend seam alone does not provide durable bulk generation. v0.2 also needs durable scoped
 jobs with cursor batches, progress/counters, bounded error history, exclusive write
 ownership, heartbeat/retry/recovery, and an admin start/status workflow that survives
 tab closure. Finalise dependent artefacts once per scope; preserve staleness if edits
-arrive during finalisation. Audit A05/A13 defines operational acceptance and explicit
-stop/removal procedures; importing or uninstalling the package never deletes user data.
+arrive during finalisation. Document explicit worker stop, recovery and removal
+procedures; importing or uninstalling the package never deletes user data.
 
 ### Manifests and commands
 
@@ -624,9 +622,9 @@ with the public pointer and survives aggregate withdrawal. Missing/stale eligibl
 exports are errors, not deletions; revoked metadata is omitted. Exact-file SHA-256
 includes the generation timestamp, while semantic metadata/change detection omits
 that timestamp so identical rebuilds remain unchanged. Schema/hash versioning,
-canonicalisation and failure semantics are defined in the [manifest guide](manifest.md).
+canonicalisation and failure semantics are defined in the [manifest guide](../manifest.md).
 
-**Implemented in #24:** the [management commands](management-commands.md) use the
+**Implemented in #24:** the [management commands](../management-commands.md) use the
 managed writer and `IndexBatch`. Generation skips readable exports with current
 publication state unless forced, and finalises each affected site once. Status and
 dry runs inspect without rendering or publication. Page/type deletion withdraws owned
@@ -641,7 +639,8 @@ repaired by v0.1 generation. v1.0 adds hash-based incremental generation and
 `changes.json` with initial/full and subsequent
 new/modified/deleted records, including old paths after moves. `--force` overrides
 unchanged skipping; manifests are core so no separate `--with-manifest` flag is needed.
-See the audit's [command matrix](wordpress-parity-audit.md#command-parity).
+See the [management commands guide](../management-commands.md) for current commands
+and their selection, dry-run and failure semantics.
 
 ### Stats (v0.1, pulled forward)
 
@@ -664,21 +663,21 @@ share the empty unknown label. Do not persist arbitrary header fragments or allo
 request-controlled labels to create unbounded daily rows.
 Retain stable page identifiers for historical counts after deletion. Concurrent hits
 must increment the existing count atomically; conflict-update assignment of `1` is
-not sufficient. Audit A09 specifies reporting grain, trends, retention and cache
-measurement limits.
+not sufficient. The [statistics guide](../agent-access-stats.md) specifies reporting
+grain, trends, retention and measurement limits.
 
 **Implemented in #32/#33:** `AgentAccess` stores the daily key with a date index
 and a numeric page ID that survives deletion. The `markdown_served` receiver uses
 a single parameterised upsert to increment counts, with canonical known-agent
 labels and one empty unknown bucket for other clients. Migration `0006` merges
 legacy arbitrary labels without losing daily totals. The
-[statistics guide](agent-access-stats.md) describes counting boundaries, UTC dates,
+[statistics guide](../agent-access-stats.md) describes counting boundaries, UTC dates,
 failure handling and CDN limits. **Implemented in #34:** `stats.categorise_agent`
 derives intent at read time with ordered, case-insensitive first-match lookup.
 `construct_markdown_agent_categories` mutates a fresh category map in hook order;
 unexpected category keys classify as unknown. The statistics guide documents
 historical reclassification and dataset verification. **Revised 22 September 2026:** the independent, versioned
-[agent registry](agent-registry.md) supersedes the WordPress parity constraint.
+[agent registry](../agent-registry.md) supersedes the WordPress parity constraint.
 Active records carry sources, review dates, HTTP tokens, purposes and a separate
 `auto_markdown` flag. Recognition uses product-token boundaries; stats prefer exact
 canonical labels before compatibility substring hooks. Frozen WordPress categories
@@ -693,7 +692,7 @@ One hook snapshot supplies all classification within a request. Trends are Pears
 correlation with neutral flat/insufficient series; on-demand is labelled an estimate.
 The existing `view_agentaccess` permission plus Wagtail admin access grants site-wide
 reporting, independently of page-edit permissions. Deleted IDs and counting limits
-are visible. The [report guide](agent-access-stats.md#admin-report-35) defines the
+are visible. The [report guide](../agent-access-stats.md#admin-report-35) defines the
 filter and aggregation contract. **Implemented in #36:** `agentmd_prune_stats`
 deletes counters dated strictly before today's UTC date minus `--days` (default
 `STATS_RETENTION_DAYS`, 90) with positive-days validation of either source, a typed
@@ -702,7 +701,7 @@ confirmation unless `--yes`, `--dry-run` and deleted/retained counts, in one ind
 
 ### Deployment verification
 
-**Implemented in #59:** the repository [agent traffic simulator](agent-simulator.md)
+**Implemented in #59:** the repository [agent traffic simulator](../agent-simulator.md)
 discovers manifest identities and exported canonical URLs, plans seeded bounded
 traffic, records append-only client evidence and reconciles verified origin logs
 with UTC counter snapshots. Cache limitations, uncertain selections and synthetic
@@ -726,29 +725,10 @@ withdraw it immediately for eligibility revocations. The catalog includes host a
 entry metadata, `type` and `mediaType`, and the stable URL of an available bundle;
 expose a catalog hook and avoid collisions with existing `.well-known` routes.
 
-## WP → Wagtail concept map
+## Export safety requirements
 
-| WordPress plugin | This package |
-| --- | --- |
-| `template_redirect` priority 1 | `AgentMarkdownMiddleware` request phase |
-| `AgentDetector` | `negotiation.py` + `data/agents.py` |
-| `ExportPolicy` | `export/policy.py` |
-| `Generator`/`FrontmatterBuilder`/`Converter` | `rendering/` (registry, frontmatter, markdownify) |
-| `FieldResolver` (ACF dot-notation) | typed model fields + `PAGE_FIELDS` setting |
-| `LinkRewriter`/`InternalUrlResolver` | `rendering/links.py` via page routing |
-| `FileWriter` (uploads dir) | `export/writer.py` over Django storages |
-| `IndexGenerator`/`ManifestGenerator` | `export/` (`llms_txt.py`, `manifest.py`) |
-| `_markdown_for_agents_excluded` meta | `PageAgentSettings` side-model |
-| `save_post` / WP-Cron debounce | Wagtail signals + `tasks.enqueue` seam |
-| WP-CLI `wp markdown-agents *` | `manage.py agentmd_*` commands |
-| 17 filters + 5 public actions | [22-row hook/signal inventory](wordpress-parity-audit.md#public-extension-surface); implement core hooks with their features, final audit in v1.0 |
-| Stats table + `Migrator` | `AgentAccess` model + Django migrations |
-| Strauss vendor prefixing | not needed |
-
-## Known WP limitations to fix (not inherit)
-
-- Links inside fenced code blocks were rewritten — don't.
-- Posts relocated via the export-path filter were invisible to the link resolver.
+- Preserve links inside fenced code blocks unchanged.
+- Resolve links using the recorded paths of exports relocated by an export-path hook.
 - Pages slugged `index`/`log` can shadow reserved names — allocate deterministic,
   collision-safe paths instead, including conflicts with escaped names.
 - Export-relative links are unsafe when a file is served at a canonical page URL.

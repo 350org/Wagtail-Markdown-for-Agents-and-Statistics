@@ -8,33 +8,8 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
-- Reviewable 350.org full-page, optional-hero, index, template-fallback and donation
-  golden outputs, with a checklist-to-test map and explicit outstanding client
-  decisions (#4/#14). Snapshots record implementation behaviour, not client sign-off.
-- An on-demand 350.org block drift workflow (#14), comparing a chosen site ref
-  with the reviewed `1997766` block snapshot through `agentmd_blocks --compare`.
-  The isolated helper requires no database rows or production settings and rejects
-  database/network access during inspection. See `docs/350org-block-drift.md`.
-- Rebuild the affected site's exports after committed 350.org integration-setting
-  changes (#14), including ActionKit destinations and template-based donation
-  defaults. Skip unchanged saves and first-use empty settings creation; honour
-  `AUTO_GENERATE`, current site ownership and published revisions. The existing
-  synchronous task backend runs the refresh and finalises discovery once.
-- Complete the next 350.org rendering batch (#14): campaign-specific ActionKit
-  links (including hero signups), index-only page cards, images with authored
-  captions, body heroes and FundraiseUp content. Page hooks assemble visible
-  heroes once and omit the entire page hero when `hide_hero` is set. New
-  `markdown_page_fields` hooks provide validated integration defaults while
-  explicit `PAGE_FIELDS` retains precedence. No ActionKit form is fetched during
-  export.
-- `wagtail_markdown_agents.contrib.wtrx`, an optional app with Markdown renderers
-  for 14 of the 350.org site's blocks (#14): video, button, button group, quote,
-  card, person card, card grid, person card grid, card carousel, accordion,
-  section, timeline and the Wagtail Forms and Action Network signups. Containers
-  now reach their children's renderers, and success messages, "JavaScript is
-  required" text, the person card's bio dialog, anchor-only links and oEmbed
-  fetches are gone from the export. The core never imports it
-  (`docs/350org-addon.md`).
+- `markdown_page_fields` hooks let project integrations supply validated default
+  field selections while explicit `PAGE_FIELDS` retains precedence.
 - `agentmd_blocks` management command, which reports how each block on exportable
   page types becomes Markdown: through a project renderer, a built-in renderer, the
   block's custom template, or Wagtail's default HTML. It reads block definitions
@@ -62,7 +37,7 @@ versioning: [SemVer](https://semver.org/).
   71 identities, 23 of them served Markdown automatically. Regenerate the Cloudflare
   cache-bypass expression; the existing clauses do not cover these names.
 - Agent registry `2026-09-28.1` (#19) records a reviewed disposition for all 69
-  inherited WordPress detection strings. See `docs/agent-registry-review.md`.
+  inherited WordPress detection strings. See `docs/contributing/agent-registry-review.md`.
   - 44 identities are restored, bringing the registry to 67.
   - Automatic Markdown is added for KimiBot, Amzn-SearchBot, Cloudflare-AI-Search,
     LinerBot, ShapBot, KernelSearchBot and Anomura (19 in total). The other restored
@@ -74,25 +49,6 @@ versioning: [SemVer](https://semver.org/).
   - Restored records keep their historical stored labels. Reports recategorise 24 of
     them at read time according to operator evidence. No counters are rewritten.
   - Regenerate the Cloudflare cache-bypass expression for the new serving set.
-- 350.org exports now include each image's stored credit (#14) after the image
-  and its caption, as authored, or labelled `Credit:` when the editor gave no
-  label. Template and rich-text images get it through a `markdown_pre_convert`
-  hook in the optional add-on.
-- 350.org logo grids export as a `- [name](url)` list instead of linked logo
-  images (#14). The 31 block types now split into 22 add-on renderers, three
-  core renderers and six template fallbacks.
-- 350.org donation amounts read `US$10` instead of `$10` (#14): ActBlue takes only
-  US dollars. Authored prose is unchanged.
-- 350.org feature panels leave out a CTA that only jumps to an anchor on the
-  page (#14), as buttons already did: the anchor doesn't exist in the Markdown.
-  The optional add-on still renders the site's panel template; the 31 block types
-  now split into 21 add-on renderers, three core renderers and seven template
-  fallbacks.
-- Fix offline 350.org donation defaults: the optional add-on reads the enabled
-  site's ActBlue `base_url` and `suggested_amounts`, then renders the existing
-  donation template. Previously the request-only context lost those defaults.
-  Authored overrides and template currency/formatting are preserved; the real
-  donation renderer now participates in the settings-regeneration regression.
 - Blocks are rendered in the agreed D12 order: name override, then a specialised
   class renderer, then the block's custom template, then generic container
   recursion, then the template fallback. A StructBlock or StreamBlock without its
@@ -110,8 +66,7 @@ versioning: [SemVer](https://semver.org/).
   reads instead of raising server errors, allowing generation (including `--force`)
   to recover. Cleanup retains the old inventory without touching rebound keys.
 - Multilingual sites now allocate page exports under locale directories and include
-  translated site-root trees in snapshots, indexes, manifests and integration-setting
-  refreshes. Regenerate existing multilingual exports after upgrading.
+  translated site-root trees in snapshots, indexes and manifests. Regenerate existing multilingual exports after upgrading.
 - An image next to a paragraph, heading, list, line break or other block element
   no longer gets a stray space, as in `Before.\n\n ![A](…)`. Only a neighbour
   that would run into the image is spaced.
@@ -195,10 +150,9 @@ versioning: [SemVer](https://semver.org/).
 - Documentation prepared for handover: README rewritten as an overview with a
   documentation index; INSTALL.md rewritten for installing from the repository, with
   serving checks, a cache-configuration step and upgrade notes; local development
-  walkthroughs moved to `docs/development.md`. Project-delivery material (the hosted
+  walkthroughs moved to `docs/contributing/development.md`. Project-delivery material (the hosted
   sandbox playbook and `scripts/sandbox/`, engagement scope, issue review)
-  is removed and preserved under the `pre-handover` tag; the 350.org page-model and
-  block reference moved to issue #65.
+  is removed from the package tree.
 
 ### Added
 

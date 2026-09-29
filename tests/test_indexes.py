@@ -292,7 +292,7 @@ def test_disabled_site_does_not_generate(setup, settings):
     assert not ExportArtifact.objects.exists()
 
 
-def test_350_style_index_golden_has_one_complete_listing(setup, settings, monkeypatch):
+def test_project_index_golden_has_one_complete_listing(setup, settings, monkeypatch):
     writer, site, home = setup
     now = datetime.datetime(2026, 9, 14, 12, tzinfo=datetime.UTC)
     monkeypatch.setattr(frontmatter.timezone, "now", lambda: now)

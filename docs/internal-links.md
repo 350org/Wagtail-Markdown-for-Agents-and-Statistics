@@ -64,8 +64,8 @@ stale and ungenerated targets retain their original HTML URLs, as do public page
 outside the export (excluded, type disabled, vetoed by a hook, or on another site).
 
 A link to a **private** page, one that is not live or has its own or an inherited
-view restriction, is replaced by its label so the export does not reveal the page
-(D6): `[members area](/members/)` becomes `members area`. Label formatting and
+view restriction, is replaced by its label so the export does not reveal the page:
+`[members area](/members/)` becomes `members area`. Label formatting and
 images in the label are kept; an autolink to a private page is removed. Reference
 definitions are never edited, so a project that emits `[label]: /private/` lines
 must not point them at private pages.
@@ -83,8 +83,11 @@ exceptions are logged without dropping authored content. The resolver caches URL
 and target results only for one run; a later run always checks fresh state.
 
 This makes generation order visible: links to pages not exported yet remain HTML
-links on the first pass. Bulk generation (#24) must establish target records before
-its final link pass if every available target should use Markdown URLs, including
-cycles and self-links. URL resolution checks availability at rendering time; direct
-serving independently checks eligibility on every request. Lifecycle-driven rebuilds
-after target changes remain #23/#69/#70. Offline bundle-relative conversion is #42.
+links on the first pass. [Bulk generation](management-commands.md#generate-pages)
+has no automatic second link pass. A subsequent `--force` run can rewrite links
+once target records exist, including cycles and self-links. URL resolution checks
+availability at rendering time; direct serving independently checks eligibility
+on every request. The
+[lifecycle guide](publish-lifecycle.md) describes automatic rebuild scopes after
+publication, eligibility changes and moves; link resolution itself does not schedule
+rebuilds of referring pages. Offline bundle-relative conversion is #42.

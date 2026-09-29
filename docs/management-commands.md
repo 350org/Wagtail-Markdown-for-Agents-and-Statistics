@@ -212,8 +212,8 @@ need a renderer reviewed. Blocks are matched by name and class. After reviewing 
 changes, write a new snapshot with `--json`. A snapshot records dotted class paths,
 so compare it only against the same project.
 
-The optional 350.org integration has a manual [block drift workflow](350org-block-drift.md)
-that uses this comparison against a pinned real-site snapshot.
+Keep project-specific snapshots and comparison workflows with the project
+integration, especially when block definitions reveal private schema details.
 
 ## Delete exports
 
@@ -278,7 +278,8 @@ iterated, and no page, export or report state is touched. Pruning is explicit: n
 schedules it, and the report keeps showing history until it is pruned. Run it from
 cron or a scheduled job with `--yes` if retention should be enforced routinely. It does
 not need autocommit and can run inside a caller transaction. The runtime-editable
-retention setting remains v0.2 (#38); volume benchmarks remain #66.
+retention setting remains v0.2 (#38).
+[Volume benchmarks](contributing/agent-stats-benchmarks.md) cover pruning and query budgets (#66).
 
 ## Dry runs
 

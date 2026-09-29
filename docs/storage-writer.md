@@ -31,7 +31,7 @@ rejects routers that send those reads or writes elsewhere, including replicas.
 The URL tree describes **logical paths**, such as `example.org/blog/post.md`.
 `ExportArtifact` maps each logical path and stable page ID to an `ExportFile` row.
 The file row records its actual storage alias, configuration fingerprint and returned
-key. Those records are the shared ownership source for future serving, links,
+key. Those records are the shared ownership source for serving, links,
 discovery, manifests and deletion; never infer a storage key from a request URL.
 
 Every upload has a new private key such as
@@ -150,10 +150,10 @@ page-owned indexes; it does not delete unrelated leaf exports or unowned files.
 
 The lifecycle receivers invoke these operations synchronously on unpublish/delete
 and restriction/exclusion changes, including descendants under inherited restrictions.
-Restoration runs after commit with fresh policy checks. The #69 extension must also
-cover old site scopes for moves; `open` already rejects obsolete paths while automatic
-move cleanup remains unwired. Public routes must use this checked API and their
-serving gates.
+Restoration runs after commit with fresh policy checks.
+[Move and published-slug receivers](publish-lifecycle.md#moves-and-published-slug-changes)
+clean up old site scopes after commit; checked reads reject obsolete paths before
+cleanup. Public routes must use this checked API and their serving gates.
 
 Retired object rows remain marked `cleanup_pending` until storage deletion succeeds.
 `writer.cleanup(site_id)` retries only those rows, including prior hook paths and

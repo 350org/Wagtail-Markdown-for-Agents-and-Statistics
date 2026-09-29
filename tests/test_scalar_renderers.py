@@ -233,11 +233,11 @@ def test_multiple_choice_renders_labels_in_order():
 
 
 def test_url_renders_as_an_autolink():
-    assert render(blocks.URLBlock(), "https://350.org/") == "<https://350.org/>"
+    assert render(blocks.URLBlock(), "https://example.org/") == "<https://example.org/>"
 
 
 def test_email_renders_as_an_autolink():
-    assert render(blocks.EmailBlock(), "hello@350.org") == "<hello@350.org>"
+    assert render(blocks.EmailBlock(), "hello@example.org") == "<hello@example.org>"
 
 
 def test_regex_block_text_is_escaped_like_plain_text():
@@ -297,8 +297,8 @@ def guard_cases(page, document, image):
         (blocks.CharBlock(required=False), ["text", "", None]),
         (blocks.TextBlock(required=False), ["text", "", None]),
         (blocks.RichTextBlock(required=False), ["<p>text</p>", ""]),
-        (blocks.URLBlock(required=False), ["https://350.org/", "", None]),
-        (blocks.EmailBlock(required=False), ["hello@350.org", None]),
+        (blocks.URLBlock(required=False), ["https://example.org/", "", None]),
+        (blocks.EmailBlock(required=False), ["hello@example.org", None]),
         (blocks.RegexBlock(regex=r".*", required=False), ["123", None]),
         (blocks.IntegerBlock(required=False), [0, 7, None]),
         (blocks.FloatBlock(required=False), [0.0, None]),

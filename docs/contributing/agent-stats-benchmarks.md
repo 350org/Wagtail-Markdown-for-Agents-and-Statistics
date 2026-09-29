@@ -27,17 +27,17 @@ The suite verifies:
   the shared export-serving function. The 160 successful responses produce exactly
   160 `export-url` counts. This includes eligibility, storage and signal handling;
   it does not include a network HTTP server, middleware or a CDN.
-- Both table sizes exercise 29 report requests: pagination, all date presets,
+- Both table sizes exercise 30 report requests: pagination, all date presets,
   every method/agent/intent, live and deleted page filters, combined filters,
   explicit custom endpoints, empty results, and grain transitions. Fixture-record
   sums independently reconcile tiles, chart bars, every bucket and the exact
   ordered page of records. Future and out-of-range dates are excluded.
-- Reports use at most **five counter queries** (distinct pages, distinct agents,
-  pagination count, at most 50 records, and SQL-grouped totals), **four page
-  queries** (one title lookup plus admin navigation), and **25 queries overall**.
+- Reports use at most **seven counter queries** (distinct pages, distinct agents,
+  pagination count, at most 50 records, SQL-grouped time/agent totals, per-page
+  totals and method breakdown), **four page queries** (one title lookup plus admin
+  navigation), and **25 queries overall**.
   These are ceilings at both volumes, including authentication and rendered admin
-  HTML. The observed current stack uses 12–13 total queries. Empty results can omit
-  the record query. Classification and displayed page titles never add per-row
+  HTML. Empty results can omit the record query. Classification and displayed page titles never add per-row
   queries. The budget does not imply constant runtime: distinct dimensions, total
   aggregation, sorting and deep OFFSET pagination still depend on retained data.
 - Pruning executes one counter COUNT in dry-run mode, or two COUNTs and one DELETE
@@ -64,12 +64,14 @@ AGENTMD_TEST_PORT=5432 uv run --with 'psycopg[binary]>=3.1' \
 
 The PostgreSQL server must be an isolated test server with permission to create
 and delete pytest's test database. Connection variables are documented in
-[CONTRIBUTING.md](../CONTRIBUTING.md). Run the full suite normally after changes;
+[CONTRIBUTING.md](../../CONTRIBUTING.md). Run the full suite normally after changes;
 use `-m 'not stats_volume'` only for a quick development pass. No benchmark is
 scheduled and the manual-only CI policy is unchanged.
 
-To pin the recorded framework pair, add `--with Django==6.0.8 --with wagtail==7.4.3`
-to `uv run`. Otherwise these commands use the locally resolved versions.
+Record the Python, Django, Wagtail and database versions with each run. To compare
+results, pin the same versions and use equivalent data, hardware and concurrency.
+Keep raw measurements with your own deployment or release evidence, outside this
+repository; elapsed timings are observations rather than performance guarantees.
 
 Each JSON output record includes the backend/version, Django/Wagtail versions,
 workload size, case and elapsed seconds. Write measurements include median and
@@ -78,43 +80,15 @@ request and template rendering, with framework caches warmed; fixture generation
 and the Python verification oracle are outside that timing. Prune timings cover
 the command, excluding verification reads. Query capture itself adds overhead.
 
-## Recorded run — 15 September 2026
+## MySQL write-only benchmark and deployment limitation
 
-[Raw measurements and query plans](benchmarks/agent-stats-2026-09-15.jsonl) record
-Python 3.12.9, Django 6.0.8 and Wagtail 7.4.3 on macOS arm64. SQLite 3.47.1 used
-pytest's in-memory database; PostgreSQL 16.15 and MySQL 8.4.11 ran in disposable
-Docker containers over localhost. These runs used a shared development machine
-and could overlap. They are a reproducible functional baseline, not a production
-capacity estimate or a fair ranking of database engines.
+The MySQL/MariaDB recorder uses `ON DUPLICATE KEY UPDATE`. The standalone script
+measures that recorder in isolation; it does not establish full application support.
 
-| Measurement at 48,000 rows | SQLite | PostgreSQL |
-| --- | ---: | ---: |
-| Increment median / p95 | 0.031 / 0.053 ms | 0.492 / 0.668 ms |
-| Report minimum / median / maximum (29 cases) | 49 / 70 / 167 ms | 30 / 49 / 106 ms |
-| Maximum counter queries per report | 5 | 5 |
-| Prune 9,600 rows (two timezone modes) | 19–20 ms | 11–12 ms |
-| Concurrent streamed GETs | 160 / 160 counted | 160 / 160 counted |
-
-Both planners used the date index for selective date/prune predicates and the
-compound unique index for the fully specified daily key. No additional index or
-production query change was justified by these results. A broad retention delete
-can legitimately choose a sequential scan; a selective SELECT plan does not claim
-that every DELETE or aggregate uses an index. Re-run against representative
-production cardinality and distributions before making capacity decisions.
-
-## MySQL write-only measurement and deployment limitation
-
-The existing MySQL/MariaDB SQL branch uses `ON DUPLICATE KEY UPDATE`. MySQL 8.4.11
-passed the isolated write benchmark: 201 sequential hits used 201 statements,
-and all eight 400-hit concurrency runs (four methods, new/existing counters)
-reconciled exactly. Median increment latency ranged from 1.03 to 1.34 ms and p95
-from 1.74 to 2.87 ms. MariaDB was not measured in this run.
-
-**This does not validate a full MySQL deployment.** Running the application
-migrations on MySQL with `utf8mb4` fails in the existing ExportArtifact schema:
-its unique `logical_path` has 1,024 characters, exceeding MySQL's 3,072-byte index
-limit. The benchmark leaves that unrelated schema unchanged. Reporting, pruning
-and serving measurements above cover SQLite and PostgreSQL only.
+**Full MySQL deployment is unsupported.** The existing ExportArtifact schema has
+a unique `logical_path` of 1,024 characters, exceeding MySQL's 3,072-byte index
+limit with `utf8mb4`. This benchmark does not run the application migrations or
+validate reporting, pruning and serving on MySQL.
 
 For a reproducible isolated write measurement, create a fresh disposable database
 with a name beginning `agentmd_stats_benchmark_` and a binary `utf8mb4` collation,

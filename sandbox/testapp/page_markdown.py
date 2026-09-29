@@ -1,8 +1,8 @@
 """Project-owned example: register ``render_hero`` as ``markdown_post_render``.
 
 Set PAGE_FIELDS for testapp.ContentPage to ["intro", "body"] so hero copy is
-selected here only. This demonstrates the proposed hero order in scenario 01;
-it is not a production mapping for 350.org's provisional models.
+selected here only. This demonstrates page-level assembly using generic
+synthetic fields; real projects supply their own field mappings.
 """
 
 from django.utils.html import format_html

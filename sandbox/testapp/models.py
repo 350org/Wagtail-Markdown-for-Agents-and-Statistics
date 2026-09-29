@@ -88,7 +88,7 @@ class MarkdownArticlePage(AgentMarkdownPanelMixin, ArticlePage):
 
 
 class ContentPage(Page):
-    """Synthetic page-level fields for orchestration tests; no wtrx dependency."""
+    """Synthetic page-level fields for generic orchestration tests."""
 
     hero_headline = models.CharField(max_length=255, blank=True)
     hero_copy = RichTextField(blank=True)

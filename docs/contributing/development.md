@@ -1,8 +1,8 @@
 # Development guide
 
 How to run the package locally, try it by hand and test it. For installing into a real
-site, see [INSTALL.md](../INSTALL.md); for workflow and the licensing and attribution policy,
-see [CONTRIBUTING.md](../CONTRIBUTING.md).
+site, see [INSTALL.md](../../INSTALL.md); for workflow and the licensing and attribution policy,
+see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 Requires [uv](https://docs.astral.sh/uv/).
 
@@ -85,7 +85,7 @@ current exports.
 ## Try the agent access report
 
 For a separate synthetic corpus covering all six simulator edge cases, see the
-[simulator fixture setup](agent-simulator.md#repeatable-local-corpus). It uses its
+[simulator fixture setup](../agent-simulator.md#repeatable-local-corpus). It uses its
 own database and export directory and includes a published-only preview adapter.
 
 Open <http://localhost:8000/admin/reports/agent-access/> and sign in, or choose
@@ -136,7 +136,7 @@ Superusers can view the report. For other users, grant Wagtail admin access and
 **Can view agent access** through **Settings → Groups**. This permission covers
 site-wide historical statistics, including page titles and deleted-page IDs; it
 does not follow individual page-edit permissions. See the
-[report guide](agent-access-stats.md#admin-report-35) for date rules, intent
+[report guide](../agent-access-stats.md#admin-report-35) for date rules, intent
 overrides and counting limits. Stop the local server with Ctrl-C.
 
 ## Manual testing with bakerydemo

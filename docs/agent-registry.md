@@ -9,7 +9,7 @@ has a recorded disposition:
 - 4 are excluded with evidence (retired or robots.txt-only);
 - 4 are deferred with a stated evidence gap.
 
-See the [28 September review](agent-registry-review.md) for the matrix, sources and
+See the [28 September review](contributing/agent-registry-review.md) for the matrix, sources and
 policy. Absence from the registry does not mean that a bot does not exist.
 
 ## Source and serving policy
@@ -42,14 +42,14 @@ without disabling recognition on explicit Markdown requests.
 ## Identities
 
 The table lists the 22 September baseline. The
-[review](agent-registry-review.md#matrix) lists every restored identity. Of those, 7
+[review](contributing/agent-registry-review.md#matrix) lists every restored identity. Of those, 7
 serve Markdown automatically: `KimiBot` (training), and `Amzn-SearchBot`,
 `Cloudflare-AI-Search`, `LinerBot`, `ShapBot/`, `KernelSearchBot` and `Anomura`
 (search). The other 37 restored identities, including 14 whose operators describe
 non-AI tooling (purpose `other`), are recognition-only. `2026-09-28.2` adds four
 operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` and
 `Shap-User` (on-demand), and `Kimi-SearchBot` (search). See the
-[review](agent-registry-review.md#additions-in-2026-09-282).
+[review](contributing/agent-registry-review.md#additions-in-2026-09-282).
 
 | Stored label | Estimated purpose | Automatic Markdown |
 | --- | --- | --- |
@@ -125,7 +125,7 @@ labels remain readable without becoming detectable. Current active metadata owns
 classification for continuing identities. The initial corrections are GoogleOther
 (training → unknown) and CloudVertexBot (training → search). Registry
 `2026-09-28.1` corrects 24 restored labels to match operator evidence; they are listed
-in the [review](agent-registry-review.md#read-time-category-changes). These changes
+in the [review](contributing/agent-registry-review.md#read-time-category-changes). These changes
 affect historical report categorisation, because categories are calculated at read
 time. Counts and
 stored labels are unchanged. Exact category matches precede substring compatibility

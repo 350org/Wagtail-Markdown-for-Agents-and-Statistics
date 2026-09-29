@@ -19,7 +19,7 @@ unreviewed. Omission in that baseline meant "not reviewed", not "retired".
 
 The registry now recognises 67 identities (61 inherited strings plus the six
 22 September additions) and serves Markdown automatically to 19. The Cloudflare
-cache bypass is generated from those 19; see [CDN caching](cdn-caching.md).
+cache bypass is generated from those 19; see [CDN caching](../cdn-caching.md).
 
 ## Policy applied
 

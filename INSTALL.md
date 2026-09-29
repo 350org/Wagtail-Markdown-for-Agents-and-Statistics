@@ -2,7 +2,7 @@
 
 These steps install the package into an existing Wagtail site (the **host site**),
 configure it, and verify that it is serving Markdown. To work on the package itself,
-see the [development guide](docs/development.md) instead.
+see the [development guide](docs/contributing/development.md) instead.
 
 Throughout, **site directory** means the host site (it contains `manage.py`). Run every
 command with the host site's virtual environment activated.
@@ -28,7 +28,7 @@ Passing package tests does not extend upstream security support. Python versions
 beyond 3.13 are allowed by metadata but are not covered by this package's matrix.
 
 SQLite and PostgreSQL are the verified database backends. Full MySQL installation
-is not verified; the [benchmark record](docs/agent-stats-benchmarks.md) documents
+is not verified; the [benchmark guide](docs/contributing/agent-stats-benchmarks.md) documents
 an existing migration limitation, despite successful isolated counter writes.
 
 ## 1. Install the package

@@ -91,7 +91,8 @@ indexes until they are rebuilt. Ordinary leaf exports stay available when only t
 introduction changes. This uses the existing conservative site-dependency guard;
 more granular dependency tracking remains future work.
 
-The [publish lifecycle](publish-lifecycle.md) now regenerates discovery automatically.
-Commands and restriction/move receivers remain #24/#69/#70.
+The [publish lifecycle](publish-lifecycle.md) regenerates discovery automatically
+after publication, eligibility changes and moves when automatic generation is
+enabled. [Management commands](management-commands.md) also finalise discovery.
 The [content-hash manifest](manifest.md) is generated after llms.txt. This implementation adds no automatic crawling,
 full-site concatenation file, editorial curation interface or new response headers.

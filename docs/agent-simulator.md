@@ -133,8 +133,8 @@ the preview flag serves Markdown. Never deploy this sandbox configuration.
 responses, no counter increments for fixtures, and a complete 250-request plan
 against real Wagtail views and database counters. Reconciliation uses explicitly
 modelled origin rows from the Django test transport. These are local integration
-checks, not nginx/CDN evidence; the historical live run remains inconclusive until
-equivalent deployed fixtures are independently verified.
+checks, not nginx/CDN evidence. Verify equivalent fixtures independently on the
+deployment being assessed.
 
 ### Fixtures on another controlled site
 
@@ -314,9 +314,9 @@ origin row; these provide the counter dimensions for its unique test URL.
 
 ## Genuine vendor verification (separate procedure)
 
-The [23 September remaining-checks record](verification/2026-09-23-remaining-checks-review.md)
-tracks the reduced three-sample observation across 48 hours. Its first sample
-passed; the other two are scheduled. The owner deferred paid vendor verification.
+Keep each deployment's run plans, logs and counter snapshots outside the package
+repository. Agree the duration, request budget and vendor-call scope for that
+deployment; local tests or simulated User-Agents do not prove vendor-origin traffic.
 
 The simulator never claims that vendor-shaped traffic came from a vendor. Production
 examples were checked on **21 September 2026** against [OpenAI's crawler
@@ -325,8 +325,10 @@ reference](https://privacy.claude.com/en/articles/8896518-does-anthropic-crawl-d
 OpenAI publishes complete examples: GPTBot 1.4, OAI-SearchBot 1.4 and ChatGPT-User 1.0.
 Anthropic confirms ClaudeBot/training, Claude-SearchBot/search and Claude-User/user
 retrieval; that page does not specify complete headers, so those full-header shapes
-are explicitly synthetic. Other dataset entries are `dataset-synthetic`, including
-Google-Extended and Applebot-Extended (robots.txt controls, not observed UAs).
+are explicitly synthetic. Other active registry entries are `dataset-synthetic`.
+Robots.txt-only controls such as Google-Extended and Applebot-Extended are excluded
+from the active fleet; the retained WordPress fixture is historical provenance.
+See the [agent registry](agent-registry.md).
 
 1. Agree a small, cost-bounded run: supported vendor/model, maximum API/tool calls,
    public test URLs, time window, permitted bot behaviour and who operates it. Keep

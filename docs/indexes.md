@@ -95,12 +95,11 @@ cannot accidentally replace the parent's body or YAML. Invalid return types and 
 errors abort the affected build. Hooks must be deterministic and must not mutate CMS
 or export records; publication checks still reject obsolete output if inputs change.
 
-For the synthetic 350-style fixture, the chosen package order is hero, intro, body,
+For the synthetic project fixture, the chosen package order is hero, intro, body,
 then a single generated title-ordered navigation list. It includes all 13 exported
 children in [the golden file](../tests/golden/index.md), independently of the HTML
 view's 12-item pagination. Projects may suppress generated navigation when they own
 an authored listing; the generator does not guess by deleting matching body text.
-The production 350.org mapping and presentation sign-off remain separate (#63/#65).
 
 ## Batch and revocation behaviour
 

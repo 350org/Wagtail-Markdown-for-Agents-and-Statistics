@@ -14,9 +14,8 @@ Please report vulnerabilities privately via
 rather than public issues. You should receive a response within a week.
 
 That link depends on repository visibility, permissions and reporting settings.
-If unavailable, use the private maintainer contact agreed during onboarding; do
-not put vulnerability details in a public issue. The receiving organisation must
-confirm an accessible private reporting channel and its responder before handover.
+If unavailable, ask the repository maintainers for a private reporting channel
+without including vulnerability details in a public issue.
 
 Areas of particular interest: path traversal in export/serving paths, cache poisoning
 via the negotiation headers, and header injection via configurable response headers.

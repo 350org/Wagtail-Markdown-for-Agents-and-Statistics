@@ -8,9 +8,7 @@ levels, decorative images omitted, table layout, embed titles from cache,
 frontmatter precedence) are pinned here.
 
 Containers are covered by test_container_defaults.py; full-page goldens live in
-test_page_rendering.py and test_indexes.py. The shipped 350.org add-on has its own
-documents and fallback gallery in test_wtrx_golden.py, test_wtrx_donate.py and
-test_wtrx_fallback_golden.py. These pin current output, not client sign-off.
+test_page_rendering.py and test_indexes.py. These pin current fixture output.
 """
 
 import datetime
@@ -144,7 +142,7 @@ def stream_value(article):
                 "value": (
                     "<h2>Why now</h2>"
                     "<p>Join the <b>global</b> <i>movement</i> at "
-                    '<a href="https://350.org/">350</a>. Caf&eacute; &amp; &lt;tag&gt; '
+                    '<a href="https://example.org/">Example</a>. Caf&eacute; &amp; &lt;tag&gt; '
                     "— “quotes” 🌍</p>"
                     "<ul><li>one</li><li>two</li></ul><ol><li>a</li><li>b</li></ol>"
                     '<pre><code class="language-python">def f():\n    return 1</code></pre>'
@@ -156,8 +154,8 @@ def stream_value(article):
             },
             {"type": "char", "value": "5 * 3 = 15 in snake_case"},
             {"type": "text", "value": "one\ntwo\n\nthree"},
-            {"type": "url", "value": "https://350.org/"},
-            {"type": "email", "value": "hello@350.org"},
+            {"type": "url", "value": "https://example.org/"},
+            {"type": "email", "value": "hello@example.org"},
             {"type": "integer", "value": 0},
             {"type": "float_", "value": 1.5},
             {"type": "decimal", "value": Decimal("1.50")},

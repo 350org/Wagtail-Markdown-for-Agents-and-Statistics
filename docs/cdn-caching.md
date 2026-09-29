@@ -60,10 +60,9 @@ Match deployment toggles with `--no-user-agent` or `--no-query-param`. Add
 recognition-only and unknown clients using **only** `Accept: text/markdown` can still
 receive cached HTML; use the query form or direct export URL. Check the expression
 against the account's limit, save it and run the verification sequence below.
-The `2026-09-28.1` and `2026-09-28.2` expressions were applied and checked on the
-staging deployment on 28 September 2026. The [verification record](verification/2026-09-28-registry-rule-change.md)
-holds the results and the rollback expression. The 21 September measurements later in
-this guide describe an earlier registry and rule.
+Regenerate and verify the expression after changing the installed registry or
+negotiation settings. Keep the previous expression in your deployment records so
+you can roll back a rule change.
 
 When measuring counters, review Speed Brain, Early Hints, Rocket Loader and Always
 Online with the operator: extra traffic and HTML rewriting can affect the evidence.
@@ -154,7 +153,7 @@ sends agent-shaped requests to the origin without consulting or filling the cach
 - query string contains `output_format=md` or `output_format=markdown`.
 
 Not every cache lets a rule read `Accept`: the tested free-plan account rejected it
-(see the [measurements](#measured-on-cloudflares-free-plan)). An unlisted Accept-only
+(see the [deployment limits](#deployment-verification-limits)). An unlisted Accept-only
 client therefore still received warm HTML in that configuration. Cloudflare's
 [rule-order documentation](https://developers.cloudflare.com/cache/how-to/cache-rules/order/)
 specifies that the last matching value for a setting wins: place cache bypass after
@@ -312,7 +311,8 @@ HEAD, HTML, aggregates and cache hits should not.
 To test that a Cloudflare bypass rule is live independently of the origin's headers,
 request an HTML URL that matches its query clause, twice, for example
 `https://www.example.org/a-listing-page/?output_format=mdprobe`. With the rule working
-both responses were `DYNAMIC` in the tested deployment. `MISS` then `HIT` indicates
+both responses should avoid an HTML cache hit; inspect the cache-status headers
+and origin logs for your deployment. `MISS` then `HIT` indicates
 that bypass did not apply as intended; inspect matching conditions and rule order.
 
 Before taking the baseline, verify an actual origin record containing the exact
@@ -322,73 +322,15 @@ per-bucket residuals and document any unlogged background traffic. The
 [simulator guide](agent-simulator.md#snapshot-and-reconcile) describes the evidence
 format and counter reconciliation.
 
-## Measured on Cloudflare's free plan
+## Deployment verification limits
 
-Run against a live test deployment on 21 September 2026: Wagtail's bakerydemo with
-this package behind
-Cloudflare free, one "cache everything" Cache Rule (Edge TTL *use cache-control
-header if present, cache with Cloudflare's default TTL for the response status if
-not*; Browser TTL *respect origin TTL*). These are observations, not predictions.
+Verify cache behaviour on the account, rules and package revision you deploy.
+An origin response with `no-store` cannot repair a request already answered from
+an edge cache. Test warm HTML, Markdown negotiation, browser isolation and direct
+exports using the sequence above, and correlate origin requests with counters.
 
-**The observed failure was HTML reaching agents.** Initial probes returned origin
-Markdown with `cf-cache-status: BYPASS`, followed by browser HTML. No browser
-Markdown was observed. Those request orders did not independently prove cold cache
-state. On warm HTML URLs without effective bypass, agent requests received `HIT`
-and `text/html` without reaching the origin. Origin response headers cannot repair
-a request already answered by the edge, or protect against rules that override them.
-
-**The tested free-plan account rejected an `Accept` Cache Rule.** An expression
-containing `any(http.request.headers["accept"][*] contains "text/markdown")` was
-rejected on save with *"service identity is not authorized"*, while a query-string
-expression saved. This records a dated account limitation; verify current
-capabilities before promising header-based bypass or custom cache keys.
-
-**The measured UA bypass used substring clauses**, without regex: 69
-`http.user_agent contains "..."` clauses from the deployed dataset. Including its
-hostname and query condition, the saved expression contained 3,050 characters.
-
-**A bypass rule must come after the cache-everything rule.** With the bypass rule
-ordered first, it had no effect at all: even an HTML URL matching its query clause
-went `MISS` then `HIT`. Cache Rules do not stop at the first match; every matching
-rule is applied in order and the last one to set cache eligibility wins, so the
-cache-everything rule re-enabled caching for the requests the bypass rule had just
-excluded. Moved below it, the same expression worked immediately: on a warm URL
-`GPTBot` and `ClaudeBot` User-Agents received `text/markdown` with
-`cf-cache-status: DYNAMIC` and appeared in the origin log, while browsers kept
-receiving `HIT` and `text/html`. With the rule in place the remaining gap on the free
-plan is exactly one trigger: `Accept: text/markdown` from a client with an
-unlisted User-Agent still receives cached HTML on a warm URL.
-
-The subsequent [bounded verification report](verification/2026-09-21-bounded-live-run.md)
-records 1,000 simulated requests: 964 passes, 36 expected Accept-only limitations,
-zero failures and 603 expected/observed counter selections. All 285 browser controls
-received HTML. Six fixtures, cold-cache proof, multi-day behaviour and genuine
-vendor fetches were outstanding at that date; the reconciler correctly returned
-`inconclusive`. The later [fixture run](verification/2026-09-23-bounded-deployed-run.md)
-and [bounded cold-cache run](verification/2026-09-23-cold-cache-run.md) address
-the first two gaps for the controlled deployment. Multi-day and genuine vendor
-checks remain open.
-
-Use explicit export routes or query negotiation with verified query preservation
-or bypass. Keep private/no-store defaults and test every cache layer. Record the
-Accept-only limitation where the deployment cannot distinguish those requests.
-
-## WordPress cache parity
-
-The WordPress reference for this follow-up is commit
-[`041beea`](https://github.com/chancery-lane-project/wp-mfa-plugin/commit/041beeac189917733bb830067bd674e88fcb96f4).
-Both implementations now describe counters as origin page Markdown GET selections;
-HEAD probes do not count. The live results above apply only to Wagtail.
-
-| Behaviour | Wagtail | WordPress reference |
-| --- | --- | --- |
-| Canonical page Markdown GET | Counts an eligible page selection | Counts a singular-post selection |
-| HEAD | No page increment | No page increment |
-| Direct page export GET | Application route checks policy/freshness and counts `export-url` | Static uploads normally skip the negotiator and its counters |
-| Aggregate downloads | No page increment; page-owned indexes remain page exports | Static indexes/manifests/bundles do not increment negotiator counters |
-| CDN hits or blocked requests | Not visible to origin counters | Not visible to origin counters |
-
-A WordPress verification adapter must account for its export format, static routes
-and taxonomy behaviour. Do not reuse Wagtail's expected counts unchanged or present
-this report as WordPress live verification. The [original parity audit](wordpress-parity-audit.md)
-retains its historical baseline and broader feature scope.
+If the account cannot match the `Accept` header, Accept-only requests may receive
+cached HTML. Use explicit export routes or query negotiation with verified query
+preservation or bypass, and record the limitation for that deployment. Keep
+private/no-store defaults and test every cache layer. A few successful samples do
+not prove continuous availability or consistent state across every CDN edge.

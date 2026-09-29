@@ -1,7 +1,4 @@
-"""Bootstrap smoke tests: the app installs, wires, and migrates cleanly.
-
-Real behaviour tests arrive with epics E2–E4.
-"""
+"""Smoke tests for app registration, versions, settings, middleware and models."""
 
 import pytest
 from django.apps import apps

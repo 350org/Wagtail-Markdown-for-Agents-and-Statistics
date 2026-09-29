@@ -204,13 +204,8 @@ unevaluated page queryset whose scope might change.
 
 ## Related content and failures
 
-The optional [350.org add-on](350org-addon.md#integration-settings-and-regeneration)
-automatically selects the affected site's pages after committed integration-setting
-changes, using the same refresh and task mechanisms. It honours `AUTO_GENERATE`
-and keeps nested sites separate.
-
-In v0.1 other edits to images, documents, snippets, settings or referenced
-page fields require project-owned after-commit hooks selecting the affected page IDs.
+Edits to images, documents, snippets, settings or referenced page fields require
+project-owned after-commit hooks selecting the affected page IDs.
 An explicit full-site selection is the conservative fallback when dependencies are
 unknown. HTML cache purges alone do not rebuild Markdown. Use the helper above or
 `agentmd_generate --site example.org --force` for an explicit refresh. There is no persistent

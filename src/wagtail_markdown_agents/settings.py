@@ -3,7 +3,7 @@
 All configuration lives under a single ``WAGTAIL_MARKDOWN_AGENTS`` dict in the
 host project's Django settings, merged over these defaults. Runtime-editable
 settings (agent-list deltas, UA toggle) arrive in v0.2 via
-``wagtail.contrib.settings``; see docs/design.md §Settings split.
+``wagtail.contrib.settings``; see docs/contributing/design.md §Settings split.
 """
 
 from typing import Any

@@ -31,6 +31,7 @@ uv run sandbox/manage.py migrate && uv run sandbox/manage.py runserver
 
 The `sandbox/` project is the test target; `scripts/bakerydemo-setup.sh` sets up
 Wagtail's bakerydemo with this package installed for realistic manual testing.
+The [script guide](scripts/README.md) lists maintenance entry points and their effects.
 
 The manual CI workflow also runs the full suite against PostgreSQL 16 to exercise
 publication locking on a production database. To do the same locally against a test
@@ -45,31 +46,22 @@ Override `AGENTMD_TEST_DB`, `AGENTMD_TEST_USER`, `AGENTMD_TEST_PASSWORD`,
 `sandbox/postgres_settings.py` and are for isolated test servers only.
 
 The normal suite includes 48,000-row statistics checks. For focused runs and
-recorded database measurements, see [Agent statistics benchmarks](docs/agent-stats-benchmarks.md).
+recorded database measurements, see [Agent statistics benchmarks](docs/contributing/agent-stats-benchmarks.md).
 
 Files in `tests/golden/` are reviewed snapshots of rendered output (#15). When a change in
-output is intended, run `UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`, then
-review the golden diff in the pull request as carefully as the code: the files are the
+output is intended, run the relevant test module with `UPDATE_GOLDEN=1`; the
+[test guide](tests/README.md#updating-golden-output) maps snapshots to their modules.
+Review the golden diff in the pull request as carefully as the code: the files are the
 record of what agents receive, and the judgement calls on the rendering ledger point at
 them.
 
-The WordPress original lives at
-[chancery-lane-project/wp-mfa-plugin](https://github.com/chancery-lane-project/wp-mfa-plugin).
-Use it to verify behaviour and feature parity, following the licensing and attribution policy below;
-it is a reference, not a package dependency. The
-[WordPress parity audit](docs/wordpress-parity-audit.md) pins the reviewed source
-revision and maps its behaviour to Wagtail issues and remaining acceptance criteria.
+When changing behaviour, update the relevant package guide and link the tests or
+other evidence in the pull request. Explain compatibility and migration effects.
+Before each release, record validation using the
+[release checklist](docs/contributing/release-checklist.md).
 
-Maintain the [current implementation matrix](docs/wordpress-parity-status.md) and
-[drift ledger](docs/wordpress-drift-ledger.md) when porting a fix, adding a feature
-or changing a deliberate difference. Link behavioural evidence; a planned feature
-or frozen agent fixture does not prove product parity. Before each release, the
-release maintainer completes the upstream interval review and records verification
-using the [release checklist](docs/release-checklist.md).
-
-Notes on 350.org's own page models and StreamField blocks are recorded on issue #65.
-That schema is provisional; recheck the source when implementing integration work and
-keep the package independent of it.
+Project-specific integrations should use the documented hooks and live in their
+own packages. Keep the core package independent of project models.
 
 ## Licensing and attribution
 
@@ -79,7 +71,7 @@ Both projects are distributed under **GPL-3.0-or-later**. This project's copyrig
 holder is **350.org**. Preserve applicable third-party copyright and licence notices
 when adapting code or importing assets.
 
-- Work from the behavioural specification in [docs/design.md](docs/design.md)
+- Work from the behavioural specification in [docs/contributing/design.md](docs/contributing/design.md)
   and implement the behaviour using Django and Wagtail conventions.
 - Keep the source revision and attribution for imported reference data. The agent
   registry's evidence, review procedure and historical fixture are documented in
@@ -90,7 +82,7 @@ when adapting code or importing assets.
 
 ## Design authority
 
-[docs/design.md](docs/design.md) is the architecture record. If an implementation needs
+[docs/contributing/design.md](docs/contributing/design.md) is the architecture record. If an implementation needs
 to deviate from it, say so in the PR and update the document in the same PR.
-The parity audit and roadmap are wider than v0.1; issues labelled `out-of-sow` are
+The roadmap is wider than v0.1; issues labelled `out-of-sow` are
 not v0.1 release dependencies.

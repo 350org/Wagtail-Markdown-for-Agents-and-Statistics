@@ -72,7 +72,7 @@ distinguish these requests using their own traffic and cache evidence; applicati
 totals must not be presented as total edge traffic.
 
 Volume checks and measured query budgets are documented in
-[Agent statistics benchmarks](agent-stats-benchmarks.md) (#66).
+[Agent statistics benchmarks](contributing/agent-stats-benchmarks.md) (#66).
 
 ## Retention pruning (#36)
 
@@ -130,7 +130,7 @@ can omit `categories` to build a fresh map as before.
 
 Open **Reports → Agent access**, at `/admin/reports/agent-access/` when the Wagtail
 admin is mounted at `/admin/`. The report uses Wagtail's `ReportView`, native admin
-fields, Reports menu and pagination. The [README walkthrough](development.md#try-the-agent-access-report)
+fields, Reports menu and pagination. The [README walkthrough](contributing/development.md#try-the-agent-access-report)
 provides sandbox startup commands and optional synthetic traffic.
 
 ### Access and filters
@@ -205,7 +205,7 @@ heights, including unknown, so the chart reconciles to the total tile. The on-de
 The report states the CDN/static bypass and aggregate-download exclusions above.
 It does not measure total edge traffic, verified bot identity, completed delivery
 or a proven human-triggered request. Pruning is the explicit command above;
-[volume benchmarks](agent-stats-benchmarks.md) document report and prune query
+[volume benchmarks](contributing/agent-stats-benchmarks.md) document report and prune query
 budgets (#66). The report does not schedule retention or add runtime settings.
 
 ### Historical classification versus runtime detection (#38)

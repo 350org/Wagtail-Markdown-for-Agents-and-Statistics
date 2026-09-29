@@ -96,7 +96,7 @@ Changing the heading does not change the frontmatter title.
 
 The fuller example in `sandbox/testapp/page_markdown.py` includes a labelled CTA
 to an eligible page and omits the decorative hero image. Its exact output is pinned
-by `tests/golden/page.md`; this is a synthetic example, not 350.org sign-off. For a
+by `tests/golden/page.md`; this is a synthetic integration example. For a
 meaningful hero image, a project can explicitly use the existing image renderer:
 
 ```python
@@ -108,7 +108,7 @@ image_markdown = render_block(ImageChooserBlock(), page.hero_image, context)
 Only include media that carries public content. Use the published page passed into
 the hook, rather than fetching its latest revision.
 
-## Navigation and remaining integration
+## Navigation and integration
 
 `render_page(page, navigation=rendered_navigation)` appends supplied Markdown once
 after the authored body. The index generator (#20) owns producing that navigation
@@ -127,5 +127,6 @@ Storage/publication is available through the [writer API](storage-writer.md) (#1
 page hooks and navigation, before frontmatter is attached. It uses current owned
 [public export URLs](public-export-routes.md) (#72), preserving canonical metadata.
 Ungenerated or unavailable targets retain their HTML links. Generated navigation
-is available through the [index API](indexes.md) (#20); command diagnostics (#24)
-and content negotiation remain planned.
+is available through the [index API](indexes.md) (#20).
+[Management commands](management-commands.md) (#24) provide generation diagnostics;
+[content negotiation](negotiation.md) serves current exports at canonical page URLs.

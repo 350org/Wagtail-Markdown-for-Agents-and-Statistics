@@ -18,10 +18,8 @@ developed in collaboration with [350.org](https://350.org) and
 > checks, per-page exclusion and daily agent access statistics with a Wagtail admin
 > report are implemented and tested. A repository traffic simulator supports
 > deployment verification and counter reconciliation. Remaining v0.1 work and the
-> later roadmap are documented in the acceptance scenarios and historical issue
-> references. New work belongs in the
-> [350.org repository](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues);
-> legacy issue numbers require mapping as work is migrated.
+> later roadmap are tracked in the
+> [issue tracker](https://github.com/350org/Wagtail-Markdown-for-Agents-and-Statistics/issues).
 
 ## How it works
 
@@ -38,7 +36,7 @@ MIDDLEWARE = [
 ]
 
 WAGTAIL_MARKDOWN_AGENTS = {
-    # all optional — sensible defaults; see docs/design.md §3.5
+    # all optional — sensible defaults; see INSTALL.md
 }
 ```
 
@@ -57,30 +55,31 @@ verification, and the cache configuration a live site needs.
 
 ## Documentation
 
+Browse the [package guides](docs/README.md) or the separate
+[contributor references](docs/contributing/README.md).
+
 | To do this | Read |
 | --- | --- |
 | Install, configure, verify, upgrade, uninstall | [INSTALL.md](INSTALL.md) |
-| Review handover readiness, verification limits and open client decisions | [Pre-transfer review](docs/transfer-readiness.md) |
 | Review recognised agents and automatic Markdown policy | [Agent registry](docs/agent-registry.md) |
 | Put the site behind Cloudflare, another CDN or a page cache | [CDN and cache guide](docs/cdn-caching.md) |
 | Understand which requests get Markdown | [Content negotiation](docs/negotiation.md) |
 | Let agents discover the Markdown from HTML | [Discovery headers and template tag](docs/discovery-headers.md) |
 | Serve the export tree, `llms.txt` and the manifest over HTTP | [Public export routes](docs/public-export-routes.md), [llms.txt](docs/llms-txt.md), [manifest](docs/manifest.md), [indexes](docs/indexes.md) |
 | Export your own StreamField blocks, or override a package's | [Custom blocks guide](docs/custom-blocks.md) |
-| Export the 350.org site's blocks | [350.org blocks add-on](docs/350org-addon.md) |
 | Generate, inspect, delete and prune from the command line, and report block coverage | [Management commands](docs/management-commands.md) |
 | Know what happens on publish, unpublish, move, restrict and exclude | [Publication and eligibility lifecycle](docs/publish-lifecycle.md) |
-| Read the agent access report and understand its limits | [Agent access statistics](docs/agent-access-stats.md), [benchmarks](docs/agent-stats-benchmarks.md) |
+| Read the agent access report and understand its limits | [Agent access statistics](docs/agent-access-stats.md), [benchmarks](docs/contributing/agent-stats-benchmarks.md) |
 | Plan simulated traffic and reconcile deployment evidence | [Agent traffic simulator](docs/agent-simulator.md) |
-| Review measured cache behaviour and counter reconciliation | [Bounded live verification, 21 September 2026](docs/verification/2026-09-21-bounded-live-run.md) |
-| Review independently proven cold-cache behaviour for one URL | [Bounded cold-cache verification, 23 September 2026](docs/verification/2026-09-23-cold-cache-run.md) |
-| Track the multi-day check and deferred vendor verification | [Remaining verification review, 23 September 2026](docs/verification/2026-09-23-remaining-checks-review.md) |
 | Fix a `manage.py check` message | [Configuration checks](docs/system-checks.md) |
 | Control how a page type or block becomes Markdown | [Page rendering](docs/page-rendering.md), [internal links](docs/internal-links.md) |
 | Add an exclusion checkbox to a page model's editor | [Editor exclusion panel](docs/editor-exclusion-panel.md) |
 | Change where and how export files are stored | [Managed export storage](docs/storage-writer.md) |
-| Work on the package | [Development guide](docs/development.md), [CONTRIBUTING.md](CONTRIBUTING.md), [architecture](docs/design.md), [acceptance scenarios](docs/acceptance/README.md), [WordPress parity audit](docs/wordpress-parity-audit.md) |
-| Track WordPress parity and prepare a release | [Current implementation matrix](docs/wordpress-parity-status.md), [drift ledger](docs/wordpress-drift-ledger.md), [release checklist](docs/release-checklist.md) |
+
+For contributors, start with [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[development guide](docs/contributing/development.md). Maintainer references cover
+[architecture](docs/contributing/design.md) and the
+[release checklist](docs/contributing/release-checklist.md).
 
 ## Excluding a page
 
@@ -107,8 +106,8 @@ for existing custom forms and Settings tabs.
   statistics with a Wagtail admin reporting view.
 - **v0.2 — operational hardening**: multi-site export, runtime-editable agent list,
   task backend with debounced rebuilds, docs site.
-- **v1.0 — parity + stable**: OKF zip bundle, ARD `ai-catalog.json`, `changes.json`
-  deltas, full hook parity with the WordPress plugin. (Taxonomy export is a
+- **v1.0 — stable release**: OKF zip bundle, ARD `ai-catalog.json`, `changes.json`
+  deltas and a stable extension API. (Taxonomy export is a
   nice-to-have outside the milestones.)
 
 ## Development
@@ -121,9 +120,9 @@ uv run pytest                             # test suite (runs against sandbox/)
 uv run ruff check .                       # lint
 ```
 
-The [development guide](docs/development.md) covers the local sandbox site, trying
+The [development guide](docs/contributing/development.md) covers the local sandbox site, trying
 Markdown serving and the agent access report by hand, and [setting up or refreshing
-Wagtail's bakerydemo](docs/development.md#manual-testing-with-bakerydemo).
+Wagtail's bakerydemo](docs/contributing/development.md#manual-testing-with-bakerydemo).
 
 ## Contributing
 

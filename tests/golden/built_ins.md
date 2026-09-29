@@ -2,7 +2,7 @@ Keep it in the ground
 
 ## Why now
 
-Join the **global** *movement* at [350](https://350.org/). Café & <tag> — “quotes” 🌍
+Join the **global** *movement* at [Example](https://example.org/). Café & <tag> — “quotes” 🌍
 
 - one
 - two
@@ -24,9 +24,9 @@ two
 
 three
 
-<https://350.org/>
+<https://example.org/>
 
-<hello@350.org>
+<hello@example.org>
 
 0
 

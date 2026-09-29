@@ -1,7 +1,7 @@
 """Isolated MySQL/MariaDB write benchmark settings, not a deployment target.
 
 Full application migrations exceed MySQL path-index limits; see
-docs/agent-stats-benchmarks.md. Only the scratch write runner uses these settings.
+docs/contributing/agent-stats-benchmarks.md. Only the scratch write runner uses these settings.
 """
 
 import os
