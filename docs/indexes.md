@@ -4,6 +4,14 @@
 leaf pages have been exported. It uses the same writer, policy and public routes as
 page exports; it neither lists storage directories nor generates files on requests.
 
+With `WAGTAIL_I18N_ENABLED=True`, each language has a directory, including the
+default language: `en/index.md`, `fr/index.md`, and so on. The site root index lists
+those readable page indexes. Site snapshots and the manifest include all translated
+root trees, respecting each tree's restrictions, exclusions and routing ownership.
+Regenerate existing multilingual exports with `agentmd_generate --site example.org
+--force` when upgrading to this layout. Single-language configurations with Wagtail
+internationalisation disabled retain their existing paths.
+
 ```python
 from wagtail_markdown_agents.export.indexes import IndexBatch, IndexGenerator
 

@@ -19,6 +19,8 @@ names ``index`` and ``log`` are reserved at every level: a page slugged
 the page's id is appended (``index_42``), so the layout is deterministic and
 two pages never share a path. The ``markdown_export_path`` hook may relocate a
 page within its site tree.
+With WAGTAIL_I18N_ENABLED, every locale has its own directory (including
+the default locale), such as ``{hostname}/en/index.md`` and ``{hostname}/fr/about.md``.
 
 Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
@@ -34,6 +36,7 @@ Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
 from __future__ import annotations
 
+from django.conf import settings
 from wagtail import hooks
 from wagtail.models import Page, PageViewRestriction, Site
 
@@ -105,6 +108,22 @@ class ExportPolicy:
 
     def _default_path(self, page: Page, site: Site) -> str:
         root_depth = site.root_page.depth
+        multilingual = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+        if multilingual:
+            # Translated site roots may occupy a different position in the tree.
+            ancestors = (
+                self.snapshot.ancestors(page)
+                if self.snapshot
+                else page.get_ancestors(inclusive=True)
+            )
+            root_depth = next(
+                (
+                    ancestor.depth
+                    for ancestor in ancestors
+                    if ancestor.translation_key == site.root_page.translation_key
+                ),
+                root_depth,
+            )
         lineage = (
             self.snapshot.lineage(page, root_depth)
             if self.snapshot
@@ -114,16 +133,16 @@ class ExportPolicy:
                 if ancestor.depth > root_depth
             ]
         )
-        segments = [_segment(ancestor, self.snapshot) for ancestor in lineage]
+        segments = ([page.locale.language_code] if multilingual else []) + [
+            _segment(ancestor, self.snapshot) for ancestor in lineage
+        ]
         has_children = (
             self.snapshot.has_live_children(page)
             if self.snapshot
             else page.get_children().live().exists()
         )
-        if has_children:
+        if has_children or not lineage:
             return "/".join([*segments, "index.md"]) if segments else "index.md"
-        if not segments:
-            return "index.md"
         return "/".join(segments) + ".md"
 
     @staticmethod

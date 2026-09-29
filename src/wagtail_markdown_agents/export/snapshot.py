@@ -1,5 +1,6 @@
 """Batched policy inputs for one fresh site-state calculation, never a persistent cache."""
 
+from django.conf import settings
 from django.db.models import Q
 from wagtail.models import Page, PageViewRestriction, Site
 
@@ -9,10 +10,23 @@ from ..models import PageAgentSettings
 class SiteSnapshot:
     def __init__(self, site):
         root = site.root_page
-        self.pages = {
-            page.pk: page
-            for page in root.get_descendants(inclusive=True).order_by("pk").specific(defer=True)
-        }
+        roots = (
+            list(root.get_translations(inclusive=True))
+            if getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+            else [root]
+        )
+        tree_filter = Q()
+        related_filter = Q()
+        for tree_root in roots:
+            tree_filter |= Q(path__startswith=tree_root.path)
+            related_filter |= Q(page__path__startswith=tree_root.path)
+        self.pages = {}
+        for page in Page.objects.filter(tree_filter).select_related("locale").order_by("pk"):
+            specific = page.specific_deferred
+            # Deferred specific instances do not retain the base row's related
+            # field cache on every supported Wagtail version.
+            specific.locale = page.locale
+            self.pages[page.pk] = specific
         self.by_path = {page.path: page for page in self.pages.values()}
         self.sites = {item.pk: item for item in Site.objects.select_related("root_page")}
         self.live_parents = {
@@ -23,17 +37,17 @@ class SiteSnapshot:
         }
         self.settings = {
             row.pop("page_id"): row
-            for row in PageAgentSettings.objects.filter(page__path__startswith=root.path).values(
+            for row in PageAgentSettings.objects.filter(related_filter).values(
                 "page_id", "excluded", "extra_frontmatter"
             )
         }
         ancestors = [
-            root.path[:length] for length in range(Page.steplen, len(root.path), Page.steplen)
+            tree_root.path[:length]
+            for tree_root in roots
+            for length in range(Page.steplen, len(tree_root.path), Page.steplen)
         ]
         self.restricted_paths = set(
-            PageViewRestriction.objects.filter(
-                Q(page__path__startswith=root.path) | Q(page__path__in=ancestors)
-            )
+            PageViewRestriction.objects.filter(related_filter | Q(page__path__in=ancestors))
             .exclude(restriction_type=PageViewRestriction.NONE)
             .values_list("page__path", flat=True)
         )
@@ -62,6 +76,13 @@ class SiteSnapshot:
         return [
             self.by_path[page.path[:length]]
             for length in range((root_depth + 1) * Page.steplen, len(page.path) + 1, Page.steplen)
+        ]
+
+    def ancestors(self, page):
+        return [
+            self.by_path[path]
+            for length in range(Page.steplen, len(page.path) + 1, Page.steplen)
+            if (path := page.path[:length]) in self.by_path
         ]
 
     def has_sibling_slug(self, page, slug):

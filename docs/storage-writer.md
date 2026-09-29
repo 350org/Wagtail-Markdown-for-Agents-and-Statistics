@@ -79,6 +79,13 @@ Already-open streams can finish reading their complete generation after deletion
 Callers may supply `site_id=` and `file_id=` to bind the opened file to previously
 checked ownership/metadata. A different generation then raises `FileNotFoundError`.
 
+If an existing storage alias's configuration changes, reads also report
+`FileNotFoundError`: negotiated requests fall back to HTML and direct exports return
+404 until regeneration. `agentmd_generate --site example.org --force` can rebuild
+against the new configuration. Old files remain in the cleanup inventory; cleanup
+never deletes their keys from the rebound backend. Restore the recorded backend
+configuration when cleaning up those retired objects.
+
 Parent pages, pages with hierarchy metadata, and pages receiving `navigation=` also
 capture the eligible site state. Set `depends_on_site=True` on `begin`/`generate`
 when a project hook includes computed listings or other site-dependent content.

@@ -7,6 +7,12 @@ the Wagtail release; identify the reviewer in that release's review record.
 
 ## Reviewed baseline and follow-ups
 
+- **Local hardening, 29 September 2026:** storage reconfiguration now permits
+  read fallback and regeneration while retaining cleanup guards. Wagtail locale
+  directories and translated-root snapshots prevent export collisions and missing
+  manifest entries. Evidence: [storage regressions](../tests/test_storage_reconfiguration.py)
+  and [multilingual regressions](../tests/test_multilingual.py). These are Wagtail
+  fixes under P07/P09/P10/D07, not a new upstream interval audit.
 - **Client rendering evidence, 25 September 2026:** the
   [output review](acceptance/17-rendering-output-review.md) maps existing generic
   contracts to tests and adds bounded 350.org goldens. Offline donation defaults

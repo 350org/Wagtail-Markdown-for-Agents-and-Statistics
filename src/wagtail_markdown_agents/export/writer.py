@@ -31,6 +31,10 @@ class StorageContractError(ValueError):
     """A backend or caller violated the managed publication contract."""
 
 
+class StorageConfigurationChanged(StorageContractError):
+    """A recorded object belongs to a different backend configuration."""
+
+
 class ConcurrentAggregateUpdate(StaleBuild):
     """Only aggregate publication advanced the scope; a pure updater may retry."""
 
@@ -436,7 +440,7 @@ class FileWriter:
     def _backend(self, file):
         backend, _, fingerprint = resolve_storage(file.storage_alias)
         if fingerprint != file.storage_fingerprint:
-            raise StorageContractError(
+            raise StorageConfigurationChanged(
                 "Export storage configuration changed; restore its recorded backend before cleanup"
             )
         validate_path(file.storage_key, objects=True)
@@ -559,7 +563,12 @@ class FileWriter:
             return False
 
     def _open_file(self, file):
-        backend = self._backend(file)
+        try:
+            backend = self._backend(file)
+        except StorageConfigurationChanged as exc:
+            # Reads may fall back or regenerate, but cleanup must still refuse
+            # to delete the recorded key from a different backend.
+            raise FileNotFoundError(file.logical_path) from exc
         if not backend.exists(file.storage_key):
             raise FileNotFoundError(file.logical_path)
         return backend.open(file.storage_key, "rb")

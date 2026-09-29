@@ -309,6 +309,16 @@ serving veto runs separately and must never be cached as export eligibility.
 {hostname}/manifest.json
 ```
 
+With `WAGTAIL_I18N_ENABLED=True`, all page paths include the page's locale code:
+`{hostname}/en/index.md`, `{hostname}/en/about.md`, `{hostname}/fr/index.md`.
+This applies to the default language too, preventing collisions between languages
+and page slugs. The site-level `index.md` is a synthetic directory index;
+`llms.txt` and `manifest.json` remain site-wide. Snapshots cover all translations of
+the configured site root, including their settings and inherited restrictions.
+The path hook receives the locale-prefixed default and can still relocate it.
+Enabling this setting or upgrading existing multilingual exports requires a full
+`agentmd_generate --site example.org --force` run to replace the previous paths.
+
 Rationale: Wagtail slugs are only unique per sibling, so `{type}/{slug}.md` collides;
 `url_path` is unique per site and matches what an agent hitting the HTML URL expects.
 The hostname prefix makes multi-site a config unlock (v0.2), not a layout migration.
@@ -358,6 +368,9 @@ an alias in `STORAGES`, defaulting to `FileSystemStorage` rooted at
 `BASE_DIR` is a `startproject` convention, not a Django setting: when it is absent and no
 `STORAGE` alias is set, a system check fails with a clear message rather than guessing.
 The writer uses `save/open/delete/exists` through a backend publication contract.
+An existing file whose recorded backend configuration no longer matches is treated
+as unavailable on reads, allowing HTML fallback and explicit regeneration. Cleanup
+still refuses deletion against the changed backend and retains the old inventory.
 These methods alone do not guarantee stable-name overwrite or atomic replacement:
 `save()` may choose a different name. Record returned storage keys, preserve stable
 logical export URLs and serialise concurrent updates to shared manifests/indexes.

@@ -9,6 +9,13 @@ The P16 dashboard row was updated on 24 September 2026 for the Top pages and
 access-method tables; the earlier full-suite evidence below remains tied to the
 22 September snapshot.
 
+P07/P09/P10 gained regression coverage on 29 September 2026 for storage
+reconfiguration recovery and translated Wagtail root trees. Internationalised sites
+use locale-prefixed export paths; manifests include all eligible translated trees.
+See [storage recovery tests](../tests/test_storage_reconfiguration.py),
+[multilingual tests](../tests/test_multilingual.py) and the
+[layout migration note](indexes.md). This does not advance the upstream audit baseline.
+
 The [historical audit](wordpress-parity-audit.md) pins WordPress 1.7.0 at
 `8ad646e826ccbc836863aca30745abe0c5198a53` and records the detailed behavioural
 requirements. Its original coverage column describes planning in September's

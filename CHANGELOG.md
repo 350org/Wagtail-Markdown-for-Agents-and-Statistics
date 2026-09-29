@@ -106,6 +106,12 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- Storage backend configuration changes now make existing exports unavailable on
+  reads instead of raising server errors, allowing generation (including `--force`)
+  to recover. Cleanup retains the old inventory without touching rebound keys.
+- Multilingual sites now allocate page exports under locale directories and include
+  translated site-root trees in snapshots, indexes, manifests and integration-setting
+  refreshes. Regenerate existing multilingual exports after upgrading.
 - An image next to a paragraph, heading, list, line break or other block element
   no longer gets a stray space, as in `Before.\n\n ![A](…)`. Only a neighbour
   that would run into the image is spaced.
