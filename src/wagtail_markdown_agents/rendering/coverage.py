@@ -403,7 +403,7 @@ def render_blocks(page) -> list[RenderedBlock]:
     template queries and embed fetches.
     """
     from .blocks import render_rich_text
-    from .context import render_context
+    from .context import page_language, render_context
     from .page import _published_page, _require_supported_page
 
     published = _published_page(page)
@@ -411,16 +411,18 @@ def render_blocks(page) -> list[RenderedBlock]:
     context = render_context(published)
     context["heading"] = published.title
     results: list[RenderedBlock] = []
-    for model_field in selected_fields(type(published)):
-        value = getattr(published, model_field.name)
-        if isinstance(model_field, StreamField):
-            _render_stream(value, model_field.name, context, results)
-        else:
-            entry = BlockEntry(
-                None, _dotted(type(model_field)), BUILT_IN, _dotted(render_rich_text)
-            )
-            location = model_field.name
-            _render_leaf(render_rich_text, model_field, value, context, location, entry, results)
+    with page_language(published):
+        for model_field in selected_fields(type(published)):
+            value = getattr(published, model_field.name)
+            if isinstance(model_field, StreamField):
+                _render_stream(value, model_field.name, context, results)
+            else:
+                entry = BlockEntry(
+                    None, _dotted(type(model_field)), BUILT_IN, _dotted(render_rich_text)
+                )
+                _render_leaf(
+                    render_rich_text, model_field, value, context, model_field.name, entry, results
+                )
     return results
 
 

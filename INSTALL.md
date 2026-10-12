@@ -74,7 +74,24 @@ WAGTAIL_MARKDOWN_AGENTS = {}
 ```
 
 Place the middleware directly after `SecurityMiddleware` and before
-`CommonMiddleware`; `manage.py check` reports a wrong order. Read
+`CommonMiddleware`; `manage.py check` reports a wrong order. On a multilingual site
+that lists `LocaleMiddleware` (or a project subclass of it), place the middleware
+after that instead, still before `CommonMiddleware`:
+
+```python
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
+    "wagtail_markdown_agents.middleware.AgentMarkdownMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    # …the rest of the site's middleware…
+]
+```
+
+Language-prefixed page URLs such as `/fr/about/` resolve through the request's
+language, which `LocaleMiddleware` activates. Listed before it, the middleware
+cannot find pages in other languages and their agents receive HTML (`E007`). Read
 the [negotiation guide](docs/negotiation.md) for the triggers, the requests it
 intercepts and the HTML fallback, and the [discovery guide](docs/discovery-headers.md)
 for the `Link`/`Vary: Accept` headers and the `{% agent_markdown_link %}` tag.
@@ -84,6 +101,17 @@ Two defaults are deliberately broad, so decide on them before the first generati
 automatically on publish** (`AUTO_GENERATE = True`). Set `PAGE_TYPES` to an explicit
 list on sites with page types that should stay HTML-only. The
 [checks guide](docs/system-checks.md) lists every setting's expected shape.
+
+Exports are written to `BASE_DIR / "markdown_export"` unless
+`WAGTAIL_MARKDOWN_AGENTS["STORAGE"]` names a `STORAGES` alias. That folder must
+survive deploys. On a host that replaces the filesystem on every deploy, the export
+records stay in the database while the files disappear: `agentmd_status` reports
+every page as `unavailable`, agents receive HTML and `llms.txt` returns 404, with no
+error. Use a persistent alias there, such as object storage, and keep it private
+and separate from public media: exports are served through the package's checked
+routes, and a publicly readable bucket would bypass restriction and exclusion
+checks. Otherwise run `python manage.py agentmd_generate` as a post-deploy step;
+agents receive HTML until it finishes. See the [storage guide](docs/storage-writer.md).
 
 Include `wagtail_markdown_agents.urls` before Wagtail's catch-all in the site's
 URLconf, for example at `path("markdown/", include("wagtail_markdown_agents.urls"))`.

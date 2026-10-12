@@ -17,6 +17,8 @@ from .serving import request_site
 #: Wagtail's catch-all page route; the only route the middleware considers.
 PAGE_ROUTE_NAME = "wagtail_serve"
 SAFE_METHODS = frozenset({"GET", "HEAD"})
+#: Where ``Page.route_for_request`` keeps its result for Wagtail's page view.
+ROUTE_CACHE = "_wagtail_route_for_request"
 
 
 def is_page_read(request: HttpRequest) -> bool:
@@ -49,6 +51,9 @@ def routed_page(request: HttpRequest, page_path: str | None = None) -> tuple[Sit
     never match. RoutablePage sub-routes and paths without a trailing slash do
     not match either: the routed page's own URL must equal the request path.
     Another host cannot borrow the default site's pages.
+
+    Language-prefixed URLs resolve through the active language, so the request
+    phase must run after ``LocaleMiddleware`` (system check ``E007``).
     """
     if page_path is None:
         page_path = routed_page_path(request)
@@ -57,10 +62,14 @@ def routed_page(request: HttpRequest, page_path: str | None = None) -> tuple[Sit
     site = request_site(request)
     if site is None:
         return None
+    cached = hasattr(request, ROUTE_CACHE)
     route = Page.route_for_request(request, page_path)
-    if route is None:
-        return None
-    page = route[0]
+    page = route[0] if route else None
     if not isinstance(page, Page) or page.get_url(request=request) != canonical_path(request):
+        if not cached and hasattr(request, ROUTE_CACHE):
+            # Wagtail's page view reuses this lookup. A lookup made before the
+            # request's language is active can miss a page that exists, and
+            # the cached miss would turn its HTML response into a 404.
+            delattr(request, ROUTE_CACHE)
         return None
     return site, page

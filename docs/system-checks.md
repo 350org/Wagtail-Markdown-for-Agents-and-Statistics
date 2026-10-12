@@ -11,6 +11,7 @@ exports.
 | `wagtail_markdown_agents.W001` | Warning | `AgentMarkdownMiddleware` is not in `MIDDLEWARE`. Negotiation at page URLs and discovery headers are off; the explicit routes still work. | Add it after `SecurityMiddleware` and before `CommonMiddleware`. |
 | `wagtail_markdown_agents.E002` | Error | The middleware is listed before `SecurityMiddleware`. | Move it after `SecurityMiddleware`. |
 | `wagtail_markdown_agents.E003` | Error | The middleware is listed after `CommonMiddleware`, so slash-appending redirects would run before negotiation. | Move it before `CommonMiddleware`. |
+| `wagtail_markdown_agents.E007` | Error | The middleware is listed before `LocaleMiddleware` or a subclass of it, so negotiated requests for pages in other languages fall back to HTML. | Move it after the locale middleware, still before `CommonMiddleware`. |
 | `wagtail_markdown_agents.E004` | Error | `WAGTAIL_MARKDOWN_AGENTS` is not a dict. | Use a dict; every key is optional. |
 | `wagtail_markdown_agents.W002` | Warning | A key in `WAGTAIL_MARKDOWN_AGENTS` is unknown and ignored (a misspelling such as `LINK_HEADERS`). The hint lists the known keys. | Correct or remove the key. |
 | `wagtail_markdown_agents.E005` | Error | A known key has the wrong shape; the message names the key and the expected shape. | See the table below. |

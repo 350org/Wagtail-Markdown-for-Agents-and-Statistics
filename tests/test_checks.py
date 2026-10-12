@@ -9,6 +9,8 @@ from wagtail_markdown_agents.rendering.registry import apply_setting_overrides
 SECURITY = "django.middleware.security.SecurityMiddleware"
 COMMON = "django.middleware.common.CommonMiddleware"
 SESSION = "django.contrib.sessions.middleware.SessionMiddleware"
+LOCALE = "django.middleware.locale.LocaleMiddleware"
+PROJECT_LOCALE = "tests.locale_middleware.ProjectLocaleMiddleware"
 
 
 def ids(messages):
@@ -33,6 +35,14 @@ def test_sandbox_configuration_passes_every_package_check():
             [COMMON, checks.MIDDLEWARE, SECURITY],
             ["wagtail_markdown_agents.E002", "wagtail_markdown_agents.E003"],
         ),
+        ([SECURITY, SESSION, LOCALE, checks.MIDDLEWARE, COMMON], []),
+        ([SECURITY, PROJECT_LOCALE, checks.MIDDLEWARE, COMMON], []),
+        ([SECURITY, checks.MIDDLEWARE, SESSION, LOCALE, COMMON], ["wagtail_markdown_agents.E007"]),
+        (
+            [SECURITY, checks.MIDDLEWARE, SESSION, PROJECT_LOCALE, COMMON],
+            ["wagtail_markdown_agents.E007"],
+        ),
+        ([SECURITY, checks.MIDDLEWARE, "missing.module.Middleware", COMMON], []),
     ],
 )
 def test_middleware_order(settings, middleware, expected):

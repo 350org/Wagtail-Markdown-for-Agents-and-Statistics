@@ -1,12 +1,14 @@
 """Source-preserving Markdown links to currently available owned exports (#14)."""
 
 import logging
+from contextlib import nullcontext
 from urllib.parse import parse_qsl, unquote, urljoin, urlsplit, urlunsplit
 
 from django.apps import apps
 from django.conf import settings
 from django.db.models import Q
 from django.urls import Resolver404, resolve
+from django.utils import translation
 from markdown_it import MarkdownIt
 from markdown_it.rules_inline import autolink, image, link
 from wagtail.models import Page, PageViewRestriction
@@ -43,6 +45,7 @@ class LinkResolver:
         self.base = page.full_url
         self.urls = {}
         self.targets = {}
+        self.trees = None
 
     def resolve(self, url):
         if url not in self.urls:
@@ -102,8 +105,12 @@ class LinkResolver:
                 if any(char in path for char in "\\\x00") or "%" in path or path in visited:
                     return None, "not_found"
                 visited.add(path)
+                trees = self._trees(path)
+                # Routes inside i18n_patterns resolve through the active language.
+                language = trees[0][2] if trees else None
                 try:
-                    route = resolve(path)
+                    with translation.override(language) if language else nullcontext():
+                        route = resolve(path)
                 except Resolver404:
                     route = None
                 if route and route.url_name == "wagtaildocs_serve":
@@ -117,14 +124,22 @@ class LinkResolver:
                     return None, reason
                 if route and route.url_name != "wagtail_serve":
                     return None, None  # A project/API route is not a canonical CMS page.
-                tree_path = self.site.root_page.url_path + path.lstrip("/")
-                page = Page.objects.filter(url_path=tree_path.rstrip("/") + "/").first()
-                if page is not None:
-                    canonical = page.specific.full_url
-                    if not canonical or unquote(urlsplit(canonical).path).rstrip(
+                found, page = False, None
+                for root_url, tree_root, _ in trees:
+                    tree_path = tree_root + path[len(root_url) :].lstrip("/")
+                    candidate = Page.objects.filter(url_path=tree_path.rstrip("/") + "/").first()
+                    if candidate is None:
+                        continue
+                    found = True
+                    canonical = candidate.specific.full_url
+                    if canonical and unquote(urlsplit(canonical).path).rstrip("/") == path.rstrip(
                         "/"
-                    ) != path.rstrip("/"):
-                        return None, None
+                    ):
+                        page = candidate
+                        break
+                if found and page is None:
+                    return None, None
+                if page is not None:
                     target, reason = self._export(page)
                     if target is PRIVATE:
                         return PRIVATE, reason
@@ -141,6 +156,34 @@ class LinkResolver:
             return None, "not_found"
         except (ValueError, UnicodeError):
             return None, "not_found"
+
+    def _trees(self, path):
+        """``(root URL path, root tree path, language)`` for trees that could hold ``path``.
+
+        A multilingual site has one page tree per translated root, each served
+        under its own URL prefix (``/fr/``, or whatever the project maps the
+        language to). Wagtail supplies each root's URL, so no prefix is
+        derived from a language code. The longest matching prefix comes first.
+        """
+        if self.trees is None:
+            root = self.site.root_page
+            multilingual = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+            roots = (
+                root.get_translations(inclusive=True).select_related("locale")
+                if multilingual
+                else [root]
+            )
+            trees = []
+            for tree_root in roots:
+                parts = tree_root.get_url_parts()
+                if parts and parts[0] == self.site.pk and parts[2]:
+                    language = tree_root.locale.language_code if multilingual else None
+                    trees.append((unquote(parts[2]), tree_root.url_path, language))
+            # A root Wagtail cannot route keeps the single-tree behaviour.
+            trees = trees or [("/", root.url_path, None)]
+            self.trees = sorted(trees, key=lambda tree: -len(tree[0]))
+        probe = path if path.endswith("/") else path + "/"
+        return [tree for tree in self.trees if probe.startswith(tree[0])]
 
     def _direct(self, path):
         logical = f"{self.site.hostname}/{path}"

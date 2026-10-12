@@ -15,6 +15,16 @@ and project context). Resolution uses the source page's canonical URL as its bas
 and the context site's configured hostname/port. It does not treat another origin
 or port as a site alias.
 
+## Multilingual sites
+
+With `WAGTAIL_I18N_ENABLED=True`, each page is rendered in its own language,
+whatever language is active for the editor or command that triggers generation.
+Wagtail then points a page link at the target's translation in that language, as
+it does on the HTML page. Links to pages in any of the site's language trees are
+rewritten to their exports. Each tree's URL prefix comes from Wagtail's URL for its
+translated root, so `/fr/`, an unprefixed default language and prefixes a project
+maps to something other than the language code all resolve.
+
 ## Targets and query strings
 
 Same-site canonical page links resolve through the CMS tree, current ExportPolicy

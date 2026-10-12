@@ -1,9 +1,11 @@
 """Translated site roots share ownership but must retain distinct export trees."""
 
 import json
+from urllib.parse import urlsplit
 
 import pytest
 from django.core.management import call_command
+from django.test import Client
 from django.utils import translation
 from wagtail.models import Locale, PageViewRestriction, Site
 
@@ -13,6 +15,8 @@ from wagtail_markdown_agents.export.policy import ExportPolicy
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
 from wagtail_markdown_agents.export.state import page_state
 from wagtail_markdown_agents.models import ExportArtifact, PageAgentSettings
+from wagtail_markdown_agents.rendering import render_page
+from wagtail_markdown_agents.rendering.links import rewrite_links
 
 pytestmark = pytest.mark.django_db(transaction=True)
 setup = test_indexes.setup
@@ -168,3 +172,102 @@ def test_multilingual_site_state_queries_stay_bounded(translated):
             site_state(site.pk)
         counts.append(len(queries))
     assert counts[1] <= counts[0] + 2, counts
+
+
+AGENT = "wagtail_markdown_agents.middleware.AgentMarkdownMiddleware"
+LOCALE = "django.middleware.locale.LocaleMiddleware"
+TRIGGERS = {
+    "query": ("?output_format=md", {}),
+    "accept": ("", {"HTTP_ACCEPT": "text/markdown"}),
+    "ua": ("", {"HTTP_USER_AGENT": "GPTBot/1.2"}),
+}
+
+
+def fetch(path, **extra):
+    # A new client per call: the handler keeps the middleware chain it first loads.
+    response = Client().get(path, HTTP_HOST="example.org", **extra)
+    try:
+        body = b"".join(response.streaming_content) if response.streaming else response.content
+        return response.status_code, response["Content-Type"].split(";")[0], body.decode()
+    finally:
+        response.close()
+
+
+@pytest.fixture
+def unprefixed(translated, settings):
+    settings.ROOT_URLCONF = "tests.i18n_unprefixed_urls"
+    return translated
+
+
+@pytest.mark.parametrize("trigger", TRIGGERS)
+def test_unprefixed_default_language_serves_each_tree(unprefixed, trigger):
+    writer, site, home, page, french_home, french_page = unprefixed
+    call_command("agentmd_generate", site=site.hostname)
+    suffix, extra = TRIGGERS[trigger]
+    # Whatever language the worker thread last served must not decide the result.
+    translation.activate("en")
+    status, content_type, body = fetch("/fr/article/" + suffix, **extra)
+    assert (status, content_type) == (200, "text/markdown")
+    assert "Contenu français." in body
+    translation.activate("fr")
+    status, content_type, body = fetch("/article/" + suffix, **extra)
+    assert (status, content_type) == (200, "text/markdown")
+    assert "article body." in body
+
+
+@pytest.mark.parametrize("urlconf", ["tests.i18n_urls", "tests.i18n_unprefixed_urls"])
+@pytest.mark.parametrize("trigger", TRIGGERS)
+def test_middleware_before_locale_falls_back_to_html_never_404(
+    translated, settings, urlconf, trigger
+):
+    writer, site, home, page, french_home, french_page = translated
+    settings.ROOT_URLCONF = urlconf
+    call_command("agentmd_generate", site=site.hostname)
+    order = [name for name in settings.MIDDLEWARE if name != LOCALE]
+    order.insert(order.index(AGENT) + 2, LOCALE)  # Security, Agent, Session, Locale
+    settings.MIDDLEWARE = order
+    suffix, extra = TRIGGERS[trigger]
+    translation.activate("en")
+    status, content_type, body = fetch("/fr/article/" + suffix, **extra)
+    assert status == 200
+    assert "Contenu français." in body
+
+
+@pytest.mark.parametrize("urlconf", ["tests.i18n_urls", "tests.i18n_unprefixed_urls"])
+@pytest.mark.parametrize("active", ["en", "fr"])
+def test_translated_page_renders_in_its_own_language(translated, settings, urlconf, active):
+    writer, site, home, page, french_home, french_page = translated
+    settings.ROOT_URLCONF = urlconf
+    call_command("agentmd_generate", site=site.hostname)
+    french_home.body = [
+        (
+            "paragraph",
+            f'<p><a linktype="page" id="{french_page.pk}">lien</a> and '
+            f'<a linktype="page" id="{page.pk}">link</a></p>',
+        )
+    ]
+    french_home.save_revision().publish()
+    target = "http://example.org/markdown/fr/article.md"
+    # Wagtail localises a page link to the active language, so the HTML page
+    # links both to the French article. The export must not depend on the caller.
+    with translation.override(active):
+        assert f"[lien]({target}) and [link]({target})" in render_page(french_home)
+        call_command("agentmd_generate", site=site.hostname)
+    assert f"[lien]({target}) and [link]({target})" in read(writer, "example.org/fr/index.md")
+
+
+@pytest.mark.parametrize("urlconf", ["tests.i18n_urls", "tests.i18n_unprefixed_urls"])
+def test_links_across_language_trees_reach_the_right_export(translated, settings, urlconf):
+    writer, site, home, page, french_home, french_page = translated
+    settings.ROOT_URLCONF = urlconf
+    call_command("agentmd_generate", site=site.hostname)
+    english = page.full_url
+    french = french_page.full_url
+    assert urlsplit(english).path != urlsplit(french).path
+    markdown = rewrite_links(
+        f"[en]({english}) [fr]({urlsplit(french).path}) [missing](/fr/absent/)", french_home
+    )
+    assert markdown == (
+        "[en](http://example.org/markdown/en/article.md) "
+        "[fr](http://example.org/markdown/fr/article.md) [missing](/fr/absent/)"
+    )

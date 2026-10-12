@@ -30,6 +30,8 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- INSTALL.md and the storage guide explain that the default export folder must
+  survive deploys, and what to configure on hosts without a persistent disk (#43).
 - The agent access report selects **Custom dates** when From or To is changed, so
   typed dates are no longer silently replaced by the preset range.
 - Agent registry `2026-09-28.2` (#19) adds four operator-documented siblings with
@@ -62,6 +64,18 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- A negotiated request can no longer turn an existing page into a 404. On a site
+  with language-prefixed URLs and the middleware listed before `LocaleMiddleware`,
+  a request for a page in another language cached a failed route lookup that
+  Wagtail's page view then reused. It now falls back to HTML. New system check
+  `E007` reports that order, and INSTALL.md and the negotiation guide say to list
+  the middleware after `LocaleMiddleware` on multilingual sites (#40).
+- Multilingual pages are rendered in their own language instead of the language
+  active for the editor or command that triggered generation. Page links in a
+  translated page pointed at the other language's pages (#41).
+- Links to pages at language-prefixed URLs are rewritten to their Markdown exports,
+  including an unprefixed default language and project-defined prefixes (#42).
+  Regenerate existing multilingual exports with `agentmd_generate --force`.
 - Storage backend configuration changes now make existing exports unavailable on
   reads instead of raising server errors, allowing generation (including `--force`)
   to recover. Cleanup retains the old inventory without touching rebound keys.
