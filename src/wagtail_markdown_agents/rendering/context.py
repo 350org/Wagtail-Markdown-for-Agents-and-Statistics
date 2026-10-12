@@ -5,7 +5,11 @@ templates cannot rely on an editor's request or on whichever site happens to
 be the default. The context is built from the published page and its site.
 """
 
+from contextlib import nullcontext
+
 from django.apps import apps
+from django.conf import settings
+from django.utils import translation
 
 
 def render_context(page, site=None) -> dict:
@@ -24,3 +28,15 @@ def render_context(page, site=None) -> dict:
 
         context["settings"] = SettingProxy(site)
     return context
+
+
+def page_language(page):
+    """Context manager activating ``page``'s own language while it is rendered.
+
+    Wagtail localises page links to the active language and templates translate
+    their strings into it. Generation is called from an editor's admin request
+    or a management command, whose language is not the page's.
+    """
+    if not getattr(settings, "WAGTAIL_I18N_ENABLED", False):
+        return nullcontext()
+    return translation.override(page.locale.language_code)

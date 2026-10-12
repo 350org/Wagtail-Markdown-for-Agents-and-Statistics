@@ -19,7 +19,7 @@ from .. import OKF_VERSION
 from ..settings import get_setting
 from . import frontmatter
 from .blocks import _join, render_plain_text, render_rich_text, render_stream
-from .context import render_context
+from .context import page_language, render_context
 from .links import rewrite_links
 
 POST_RENDER_HOOK = "markdown_post_render"
@@ -58,8 +58,16 @@ def render_page(page: Page, site=None, *, navigation: str = "", root_index: bool
     authored or generated. Empty body plus empty navigation raises, even when
     the page has a title. ``root_index=True`` adds the package OKF version to
     frontmatter after its hooks. Output ends with a single newline.
+
+    On a multilingual site the page is rendered in its own language, whatever
+    language is active for the caller.
     """
     published = _published_page(page)
+    with page_language(published):
+        return _render(published, site, navigation, root_index)
+
+
+def _render(published, site, navigation, root_index):
     fields = selected_fields(type(published))
     _require_supported_page(published)
     if not isinstance(navigation, str):

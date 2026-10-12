@@ -13,7 +13,9 @@ type="text/markdown"`` and merge ``Vary: Accept`` (see ``discovery.py``).
 
 Place it after ``SecurityMiddleware`` and before ``CommonMiddleware``, so
 negotiated requests are answered before slash-appending redirects and cached
-HTML processing; the system check in ``checks.py`` enforces that order.
+HTML processing. On a multilingual site it also goes after ``LocaleMiddleware``:
+language-prefixed page URLs resolve through the request's language. The system
+checks in ``checks.py`` enforce that order.
 """
 
 from collections.abc import Callable

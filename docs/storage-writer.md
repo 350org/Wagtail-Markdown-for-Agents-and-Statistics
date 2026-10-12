@@ -23,6 +23,12 @@ Run the package migrations first. By default, objects live below
 `WAGTAIL_MARKDOWN_AGENTS["STORAGE"]` to an explicit Django `STORAGES` alias to use
 another backend. Missing BASE_DIR/default configuration or an invalid alias is
 reported by Django system check `wagtail_markdown_agents.E001` and at runtime.
+
+The default folder suits hosts with a persistent disk. Where a deploy replaces the
+filesystem, the database keeps export records for files that no longer exist:
+`agentmd_status` reports the pages as `unavailable`, negotiated requests fall back
+to HTML and the explicit routes return 404. Configure a persistent, private alias
+on such hosts, or run `agentmd_generate` after each deploy.
 The v0.1 writer requires CMS and export tables on the same default database and
 rejects routers that send those reads or writes elsewhere, including replicas.
 

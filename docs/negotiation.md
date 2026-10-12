@@ -24,6 +24,25 @@ does. A negotiated request is then answered before slash-appending redirects and
 any downstream cache middleware. The [system checks](system-checks.md) enforce this
 order (`E002`/`E003`) and warn when the middleware is absent (`W001`).
 
+On a multilingual site, list it after `LocaleMiddleware` (or the project's subclass
+of it) and before `CommonMiddleware`:
+
+```python
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
+    "wagtail_markdown_agents.middleware.AgentMarkdownMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    # …the rest of the site's middleware…
+]
+```
+
+Page URLs inside `i18n_patterns` resolve through the request's language, which
+`LocaleMiddleware` activates. Before that, the middleware sees the language the
+worker last served, so a request for another language's page falls through to HTML.
+Check `E007` reports this order.
+
 ## Detection
 
 Three triggers are checked in a fixed order; the first enabled match wins and

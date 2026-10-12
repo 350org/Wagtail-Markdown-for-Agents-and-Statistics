@@ -5,16 +5,18 @@ or generate exports, so they are safe in every ``manage.py`` command.
 
 Messages: ``E001`` unusable export storage; ``W001`` middleware not installed;
 ``E002``/``E003`` middleware before ``SecurityMiddleware`` or after
-``CommonMiddleware``; ``E004`` ``WAGTAIL_MARKDOWN_AGENTS`` is not a dict;
-``W002`` unknown key; ``E005`` a key with the wrong shape; ``W003`` public routes
-not included; ``E006`` public routes not included while query negotiation is
-disabled, so no Markdown URL exists.
+``CommonMiddleware``; ``E007`` middleware before ``LocaleMiddleware``; ``E004``
+``WAGTAIL_MARKDOWN_AGENTS`` is not a dict; ``W002`` unknown key; ``E005`` a key
+with the wrong shape; ``W003`` public routes not included; ``E006`` public routes
+not included while query negotiation is disabled, so no Markdown URL exists.
 """
 
 from django.conf import settings
 from django.core.checks import Error, Tags, Warning, register
 from django.core.exceptions import ImproperlyConfigured
+from django.middleware.locale import LocaleMiddleware
 from django.urls import NoReverseMatch, reverse
+from django.utils.module_loading import import_string
 
 from .export.storage import resolve_storage
 from .public_urls import NAMESPACE
@@ -77,7 +79,28 @@ def check_middleware_order(app_configs, **kwargs):
                 id="wagtail_markdown_agents.E003",
             )
         )
+    messages.extend(
+        Error(
+            f"AgentMarkdownMiddleware must come after {name}.",
+            hint=(
+                "Language-prefixed page URLs resolve through the request's language. Until "
+                "it is active, negotiated requests for other languages fall back to HTML."
+            ),
+            id="wagtail_markdown_agents.E007",
+        )
+        for name in middleware[position + 1 :]
+        if _is_locale_middleware(name)
+    )
     return messages
+
+
+def _is_locale_middleware(name):
+    """Django's ``LocaleMiddleware`` or a project subclass of it."""
+    try:
+        middleware = import_string(name)
+    except ImportError:
+        return False
+    return isinstance(middleware, type) and issubclass(middleware, LocaleMiddleware)
 
 
 @register(Tags.compatibility)
