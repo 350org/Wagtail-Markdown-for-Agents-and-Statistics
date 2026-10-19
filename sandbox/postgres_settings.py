@@ -2,7 +2,7 @@
 
 import os
 
-from .settings import *  # noqa: F403
+from tests.settings import *  # noqa: F403 — the test settings, with the wtrx stand-in
 
 DATABASES = {
     "default": {

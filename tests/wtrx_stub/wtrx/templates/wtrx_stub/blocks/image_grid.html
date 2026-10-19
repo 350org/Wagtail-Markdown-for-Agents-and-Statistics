@@ -1,0 +1,10 @@
+{% load wagtailimages_tags %}
+<div>
+  {% if value.heading %}<h2>{{ value.heading }}</h2>{% endif %}
+  <div>
+    {% for item in value.images %}
+      {% image item.image fill-600x600 as img %}
+      <img src="{{ img.url }}" alt="{{ item.alt_text|default:img.alt }}">
+    {% endfor %}
+  </div>
+</div>

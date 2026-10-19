@@ -39,3 +39,26 @@ def isolate_lifecycle_receivers(request):
         yield
     finally:
         handlers.connect()
+
+
+WTRX_PROFILE = "wagtail_markdown_agents.profiles.wtrx"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def wtrx_profile_code():
+    """Register the 350.org profile's renderers, hooks and handlers once, as startup does.
+
+    The profile's settings stay off; tests that exercise the profile turn them
+    on with the ``wtrx_profile`` fixture.
+    """
+    from django.test import override_settings
+
+    from wagtail_markdown_agents import profile
+
+    with override_settings(WAGTAIL_MARKDOWN_AGENTS={"PROFILE": WTRX_PROFILE}):
+        profile.import_modules()
+
+
+@pytest.fixture
+def wtrx_profile(settings):
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "PROFILE": WTRX_PROFILE}

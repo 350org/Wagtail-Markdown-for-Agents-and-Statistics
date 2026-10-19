@@ -104,11 +104,38 @@ that needs no setting.
 ### `IMAGE_RENDITIONS`
 
 Which image size a block's images are exported at, as `{block class: filter
-spec}`. The innermost listed block that encloses the image wins, and a key
-matches its subclasses. Images are exported at their original size when no
-enclosing block is listed. Use the same filter as the block's template, so
-agents get the image visitors see. Blocks rendered through their own template
-already use the template's image.
+spec}`. Use the same filter as the block's template, so agents get the image
+visitors see. A key matches its subclasses. When several listed blocks enclose
+an image, the outermost wins: a container whose template draws its children's
+images, such as an accordion, sets their size. Images are exported at their
+original size when no enclosing block is listed. Blocks rendered through their
+own template already use the template's image.
+
+A page hook that renders an image itself, such as a page hero, can wrap it in
+`wagtail_markdown_agents.rendering.blocks.enclosing(page)`, so a page class
+can be a key too.
+
+## Keeping a profile in step with the site
+
+A profile names the site's models, fields and blocks, so a change to the site
+can leave it behind. `scripts/profile_drift.py` loads the site's real models
+from its source checkout with the profile turned on, without a database,
+cache or network, and compares what `agentmd_blocks` reports against a
+snapshot:
+
+```console
+$ python scripts/profile_drift.py ../mysite --settings mysite.settings.base \
+    --profile mysite_markdown --json > mysite_markdown/blocks.json
+$ python scripts/profile_drift.py ../mysite --settings mysite.settings.base \
+    --profile mysite_markdown
+```
+
+Run it in an environment with the site's dependencies and this package
+installed. The first command writes the snapshot; the second exits non-zero
+and lists the differences when a block, its renderer, its template hints or
+the fields inside a templated block have changed. A profile given as a package
+is compared against the `blocks.json` beside its `profile.yaml`. Review each
+difference, update the profile and its tests, then write a new snapshot.
 
 ## Shipped profiles
 
@@ -117,3 +144,11 @@ Each one describes **that site's** models and blocks and is not meant to be used
 as it stands anywhere else. To start a profile for a new site, copy one,
 remove what doesn't apply, and change the model, field and block names to your
 own.
+
+| Profile | Site | Notes |
+| --- | --- | --- |
+| `wagtail_markdown_agents.profiles.wtrx` | 350.org ([`350org/wagtail-wtr-350`](https://github.com/350org/wagtail-wtr-350), app `wtrx`) | Renderers for the site's blocks, the page hero, image credits, Post metadata, pages hidden from search, and a refresh when the site's integration settings change. The `350.org profile drift` workflow compares it with the site on demand. |
+
+A shipped profile is tested against a stand-in for its site's app
+(`tests/wtrx_stub` for 350.org), so the package's tests never need the site
+itself.

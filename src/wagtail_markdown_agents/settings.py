@@ -50,8 +50,8 @@ DEFAULTS: dict[str, Any] = {
     "FRONTMATTER_FIELDS": {},
     # Page attributes that, when true, make a page ineligible: ["hide_from_search"].
     "EXCLUDE_WHEN": [],
-    # Image rendition filter per enclosing block class; "original" otherwise:
-    # {"app.blocks.ImageBlock": "width-1600"}.
+    # Image rendition filter per enclosing block (or page) class, the outermost
+    # listed winning; "original" otherwise: {"app.blocks.ImageBlock": "width-1600"}.
     "IMAGE_RENDITIONS": {},
     # Sites to export: "default" (v0.1) | "all" | [hostname, ...] (v0.2).
     "SITES": "default",

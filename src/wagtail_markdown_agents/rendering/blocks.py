@@ -47,7 +47,11 @@ def render_block(block, value, context, block_name: str | None = None) -> str:
 
 @contextmanager
 def enclosing(block) -> Iterator[None]:
-    """Record ``block`` as enclosing everything rendered inside the ``with``."""
+    """Record ``block`` as enclosing everything rendered inside the ``with``.
+
+    A page hook can pass a page, so ``IMAGE_RENDITIONS`` can key images it
+    renders, such as a page hero's, by page class.
+    """
     token = _enclosing.set((*_enclosing.get(), type(block)))
     try:
         yield
@@ -56,14 +60,15 @@ def enclosing(block) -> Iterator[None]:
 
 
 def image_rendition_filter() -> str:
-    """The ``IMAGE_RENDITIONS`` filter for the innermost listed enclosing block.
+    """The ``IMAGE_RENDITIONS`` filter for the outermost listed enclosing block.
 
-    Keys are dotted block class paths and match subclasses. ``original`` when
-    no enclosing block is listed.
+    Keys are dotted class paths and match subclasses. The outermost wins
+    because a container whose template draws its children's images, such as
+    an accordion, sets their size there. ``original`` when nothing is listed.
     """
     renditions = get_setting("IMAGE_RENDITIONS")
     if renditions:
-        for block_class in reversed(_enclosing.get()):
+        for block_class in _enclosing.get():
             for cls in block_class.__mro__:
                 spec = renditions.get(f"{cls.__module__}.{cls.__qualname__}")
                 if spec:

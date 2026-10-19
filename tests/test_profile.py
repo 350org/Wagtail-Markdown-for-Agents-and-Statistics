@@ -19,6 +19,7 @@ from wagtail_markdown_agents import checks, profile
 from wagtail_markdown_agents.export.policy import ExportPolicy
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
 from wagtail_markdown_agents.rendering import render_block
+from wagtail_markdown_agents.rendering.blocks import enclosing
 from wagtail_markdown_agents.rendering.frontmatter import build
 from wagtail_markdown_agents.settings import get_setting
 
@@ -269,7 +270,7 @@ class PhotoBlock(blocks.StructBlock):
     photo = ImageChooserBlock()
 
 
-def test_images_use_the_innermost_listed_blocks_rendition(settings, image):
+def test_images_use_the_outermost_listed_blocks_rendition(settings, image):
     photo = PhotoBlock()
     value = photo.to_python({"photo": image.pk})
     assert ".original." in render_block(photo, value, {})
@@ -283,8 +284,15 @@ def test_images_use_the_innermost_listed_blocks_rendition(settings, image):
             f"{__name__}.PhotoBlock": "fill-40x30",
         },
     )
-    assert ".width-20." in render_block(photo, value, {})  # The chooser is innermost.
+    assert ".fill-40x30." in render_block(photo, value, {})  # The block's own template.
     assert ".width-20." in render_block(ImageChooserBlock(), image, {})
+
+
+def test_a_page_can_set_the_rendition_for_images_its_hooks_render(settings, image, news):
+    configure(settings, IMAGE_RENDITIONS={"sandbox.testapp.models.NewsPage": "fill-40x30"})
+    with enclosing(news):
+        assert ".fill-40x30." in render_block(ImageChooserBlock(), image, {})
+    assert ".original." in render_block(ImageChooserBlock(), image, {})
 
 
 def test_rendition_keys_match_subclasses(settings, image):

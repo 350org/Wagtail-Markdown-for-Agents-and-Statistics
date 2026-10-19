@@ -80,7 +80,7 @@ ignore = ["SIM108"]
 known-first-party = ["wagtail_markdown_agents"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "sandbox.settings"
+DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["."]
 testpaths = ["tests"]
 django_find_project = false

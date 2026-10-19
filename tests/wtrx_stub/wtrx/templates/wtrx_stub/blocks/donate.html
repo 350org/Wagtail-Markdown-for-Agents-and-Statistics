@@ -1,0 +1,19 @@
+{% load i18n wagtailcore_tags %}
+{% trans "Donate" as default_donate_text %}
+{% with donate_url=value.override_url|default:donation_base_url %}
+<div>
+  {{ value.content|richtext }}
+  <div>
+    {% if value.override_amounts %}
+      {% for amount in value.override_amounts %}
+        {% if donate_url %}<a href="{{ donate_url }}?amount={{ amount }}">${{ amount }}</a>{% else %}<span>${{ amount }}</span>{% endif %}
+      {% endfor %}
+    {% else %}
+      {% for amount in donation_suggested_amounts_list %}
+        {% if donate_url %}<a href="{{ donate_url }}?amount={{ amount }}">${{ amount }}</a>{% else %}<span>${{ amount }}</span>{% endif %}
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% if donate_url %}<a href="{{ donate_url }}">{{ value.button_text|default:default_donate_text }}</a>{% endif %}
+</div>
+{% endwith %}
