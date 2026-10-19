@@ -61,6 +61,30 @@ names a module that cannot be imported, raises `ImproperlyConfigured` at
 startup. The [system checks](system-checks.md) then validate each setting the
 profile supplies, exactly as if it were in Django settings.
 
+## Turning on or changing a profile
+
+Each export records the settings it was built with, and the site serves only
+exports built with the settings its web process is running now. This stops it
+serving Markdown built under settings that have since changed. So after you
+turn on a profile, edit its file, or change `WAGTAIL_MARKDOWN_AGENTS`, do both
+of these, in either order:
+
+1. Restart the web process (gunicorn, uWSGI or similar), so it reads the new
+   settings. A `manage.py` command reads them afresh each time it runs, but a
+   running web process doesn't.
+2. Run `python manage.py agentmd_generate`, so every export is rebuilt with the
+   new settings.
+
+Until both are done, agents get the HTML page instead of Markdown, and the
+`/markdown/` routes return 404. Nothing is lost: the HTML fallback is the same
+one used for any page without a current export. Before the restart, `manage.py
+agentmd_status` can report every page as `current` while the site still serves
+HTML, because the command is already using the new settings and the web
+process isn't.
+
+Run `python manage.py check` first, so a mistake in the profile shows up
+before the restart.
+
 ## Settings that are most useful in a profile
 
 These three settings are ordinary `WAGTAIL_MARKDOWN_AGENTS` keys. They are
