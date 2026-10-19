@@ -2,8 +2,9 @@
 
 The package registers Django system checks (#19/#29). They run with
 `python manage.py check`, at `runserver` start and before `migrate`; they read
-configuration only and never query the database, touch storage or generate
-exports.
+configuration only and never touch storage or generate exports. The one check
+that reads the database, `W005`, is a Django database check: it runs only with
+`python manage.py check --database default` and before `migrate`.
 
 | ID | Level | Condition | Fix |
 | --- | --- | --- | --- |
@@ -18,6 +19,7 @@ exports.
 | `wagtail_markdown_agents.W003` | Warning | `wagtail_markdown_agents.urls` is not included. Explicit export, `llms.txt` and `manifest.json` routes are unavailable. | Include the URLconf before Wagtail's catch-all. |
 | `wagtail_markdown_agents.E006` | Error | The URLconf is not included **and** `NEGOTIATE_QUERY_PARAM` is disabled, so no Markdown URL can be advertised or retrieved. | Include the URLconf, or enable query negotiation. |
 | `wagtail_markdown_agents.W004` | Warning | `FRONTMATTER_FIELDS` names a page type, or an attribute of one, that does not exist, so that key is never written. | Correct the model or attribute name. |
+| `wagtail_markdown_agents.W005` | Warning | Two or more exported Sites share a hostname (on different ports). The export directory is named by hostname only, so their pages can map to the same path; a page whose path is already taken is not exported, and generation reports it as failed. Nothing is overwritten. | Export only one of them with `SITES`, or give each its own hostname. |
 
 Silence a check you have deliberately chosen to ignore with Django's
 `SILENCED_SYSTEM_CHECKS`.
