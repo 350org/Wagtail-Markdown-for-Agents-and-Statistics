@@ -8,6 +8,12 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Check `W005` (a database check, run by `migrate` and `check --database default`)
+  warns when exported Sites share a hostname: they share one export directory, so
+  their pages can map to the same path, and the second page is not exported. The
+  writer's error for that case now says so.
+- Regression tests for pages that share a slug under different parents: each keeps
+  its own export file, manifest entry and served Markdown.
 - Site profiles: `PROFILE` names a YAML or JSON file that holds one site's
   package settings and the Python modules for its own blocks, so a site's
   configuration can be read, copied and removed in one place

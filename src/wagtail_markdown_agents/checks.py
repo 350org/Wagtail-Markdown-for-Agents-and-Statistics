@@ -1,7 +1,9 @@
 """Django system checks (#19/#29): storage, middleware order, settings shape, routes.
 
-Checks read configuration only. They never query the database, touch storage
-or generate exports, so they are safe in every ``manage.py`` command.
+Checks read configuration only. They never touch storage or generate exports,
+so they are safe in every ``manage.py`` command. The one database check,
+``W005``, is tagged ``database``: Django runs it only when asked for database
+checks, as ``migrate`` and ``check --database default`` do.
 
 Messages: ``E001`` unusable export storage; ``W001`` middleware not installed;
 ``E002``/``E003`` middleware before ``SecurityMiddleware`` or after
@@ -9,7 +11,8 @@ Messages: ``E001`` unusable export storage; ``W001`` middleware not installed;
 ``WAGTAIL_MARKDOWN_AGENTS`` is not a dict; ``W002`` unknown key; ``E005`` a key
 with the wrong shape; ``W003`` public routes not included; ``E006`` public routes
 not included while query negotiation is disabled, so no Markdown URL exists;
-``W004`` a ``FRONTMATTER_FIELDS`` page type or attribute that does not exist.
+``W004`` a ``FRONTMATTER_FIELDS`` page type or attribute that does not exist;
+``W005`` exported Sites that share a hostname, whose export trees would collide.
 """
 
 from django.conf import settings
@@ -49,6 +52,43 @@ def check_export_storage(app_configs, **kwargs):
     except (ImproperlyConfigured, TypeError, ValueError) as exc:
         return [Error(str(exc), id="wagtail_markdown_agents.E001")]
     return []
+
+
+@register(Tags.database)
+def check_shared_hostnames(app_configs, databases=None, **kwargs):
+    """Exported Sites sharing a hostname share one export directory.
+
+    The directory is named by hostname only, never the port, so two such Sites
+    can map pages to the same path. The writer refuses the second page rather
+    than overwrite the first, so that page is never exported.
+    """
+    if not databases or "default" not in databases:
+        return []
+    from django.db import DatabaseError
+    from wagtail.models import Site
+
+    from .export.policy import ExportPolicy
+
+    try:
+        sites = list(Site.objects.order_by("hostname", "port"))
+    except DatabaseError:
+        return []  # Not migrated yet.
+    shared = {}
+    for site in sites:
+        if ExportPolicy.site_enabled(site):
+            shared.setdefault(site.hostname.lower(), []).append(site)
+    return [
+        Warning(
+            f"Exported Sites {', '.join(f'{site.hostname}:{site.port}' for site in group)} "
+            f"share the hostname {hostname!r}, so their pages share one export directory "
+            "and can map to the same path. A page whose path is already taken is not "
+            "exported.",
+            hint="Export only one of them (the SITES setting), or give each its own hostname.",
+            id="wagtail_markdown_agents.W005",
+        )
+        for hostname, group in shared.items()
+        if len(group) > 1
+    ]
 
 
 @register(Tags.compatibility)

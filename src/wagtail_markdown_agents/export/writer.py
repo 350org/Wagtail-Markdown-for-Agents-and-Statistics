@@ -494,7 +494,12 @@ class FileWriter:
     def _swap(self, scope, token, file):
         self._backend(file)  # Recheck storage identity after upload too.
         occupied = ExportArtifact.objects.filter(logical_path=token.path).first()
-        if occupied and (occupied.scope_id != scope.pk or occupied.page_id != token.page_id):
+        if occupied and occupied.scope_id != scope.pk:
+            raise StorageContractError(
+                f"Path {token.path!r} is owned by another site's export; Sites sharing a "
+                "hostname share one export directory (check W005)"
+            )
+        if occupied and occupied.page_id != token.page_id:
             raise StorageContractError(f"Path {token.path!r} is owned by another page or aggregate")
         if token.page_id is not None:
             for record in ExportArtifact.objects.filter(scope=scope, page_id=token.page_id):
