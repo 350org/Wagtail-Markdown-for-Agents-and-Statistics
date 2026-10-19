@@ -1,10 +1,11 @@
 """Batched policy inputs for one fresh site-state calculation, never a persistent cache."""
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import BooleanField, Q
 from wagtail.models import Page, PageViewRestriction, Site
 
 from ..models import PageAgentSettings
+from .policy import excluded_by_attribute
 
 
 class SiteSnapshot:
@@ -46,6 +47,8 @@ class SiteSnapshot:
             for tree_root in roots
             for length in range(Page.steplen, len(tree_root.path), Page.steplen)
         ]
+        self._attribute_names = None
+        self._attribute_excluded = set()
         self.restricted_paths = set(
             PageViewRestriction.objects.filter(related_filter | Q(page__path__in=ancestors))
             .exclude(restriction_type=PageViewRestriction.NONE)
@@ -69,6 +72,31 @@ class SiteSnapshot:
     def is_excluded(self, page):
         return self.settings.get(page.pk, {}).get("excluded", False)
 
+    def is_excluded_by_attribute(self, page, names):
+        """``EXCLUDE_WHEN``, reading boolean fields in one query per page type."""
+        names = tuple(names)
+        if self._attribute_names != names:
+            self._attribute_names = names
+            self._attribute_excluded = self._pages_with_flags_set(names)
+        if page.pk in self._attribute_excluded:
+            return True
+        flags = _boolean_fields(type(page))
+        return excluded_by_attribute(page, [name for name in names if name not in flags])
+
+    def _pages_with_flags_set(self, names):
+        by_model = {}
+        for page in self.pages.values():
+            by_model.setdefault(type(page), []).append(page.pk)
+        pks = set()
+        for model, model_pks in by_model.items():
+            condition = Q()
+            for name in set(names) & _boolean_fields(model):
+                condition |= Q(**{name: True})
+            if condition:
+                rows = model.objects.filter(condition, pk__in=model_pks)
+                pks.update(rows.values_list("pk", flat=True))
+        return pks
+
     def has_live_children(self, page):
         return page.path in self.live_parents
 
@@ -87,3 +115,11 @@ class SiteSnapshot:
 
     def has_sibling_slug(self, page, slug):
         return (page.path[: -Page.steplen], slug) in self.sibling_slugs
+
+
+def _boolean_fields(model):
+    return {
+        field.name
+        for field in model._meta.concrete_fields
+        if isinstance(field, BooleanField) and not field.null
+    }

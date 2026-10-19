@@ -102,6 +102,13 @@ automatically on publish** (`AUTO_GENERATE = True`). Set `PAGE_TYPES` to an expl
 list on sites with page types that should stay HTML-only. The
 [checks guide](docs/system-checks.md) lists every setting's expected shape.
 
+A site's own configuration (page fields, frontmatter, exclusions, image sizes and
+renderers for its blocks) can live in a single YAML file named by `PROFILE`; see
+[site profiles](docs/site-profiles.md). The profiles shipped in
+`wagtail_markdown_agents/profiles/` were written for particular sites. Don't
+point `PROFILE` at one unless the site is that site: copy it and change it to
+match your own models.
+
 Exports are written to `BASE_DIR / "markdown_export"` unless
 `WAGTAIL_MARKDOWN_AGENTS["STORAGE"]` names a `STORAGES` alias. That folder must
 survive deploys. On a host that replaces the filesystem on every deploy, the export

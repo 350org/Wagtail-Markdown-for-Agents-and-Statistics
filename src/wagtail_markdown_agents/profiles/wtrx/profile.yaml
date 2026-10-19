@@ -1,0 +1,51 @@
+# Site profile for 350.org's Wagtail site (350org/wagtail-wtr-350, app "wtrx").
+#
+# This file describes THAT site's models and blocks. A new install should not
+# point PROFILE at it: copy this folder and change the model, field and block
+# names to match your own site. See docs/site-profiles.md.
+
+version: 1
+name: 350.org (wagtail-wtr-350)
+
+settings:
+  # Body fields per page type. The hero fields are left out because the
+  # profile's page hook renders the hero once, above the body (page.py).
+  # Blogs has no body: its export is its hero and the generated post listing.
+  page_fields:
+    wtrx.HomePage: [body]
+    wtrx.ContentPage: [body]
+    wtrx.IndexPage: [intro, body]
+    wtrx.Post: [body]
+    wtrx.Blogs: []
+
+  frontmatter_fields:
+    "*":
+      # Kept apart from permalink, which stays the page's own URL.
+      canonical: canonical_url
+    wtrx.Post:
+      author: author_display
+      date: published_at
+      categories: {each: categories, label: label_for(locale)}
+
+  # Pages hidden from site search and the sitemap are hidden from agents too.
+  exclude_when: [hide_from_search]
+
+  # The size each block's template shows the image at, so agents get the same
+  # image as visitors. Blocks exported through their own template already use
+  # the template's size. Page classes set the page hero's size. When blocks
+  # are nested the outermost listed one wins, as the accordion's template
+  # draws its items' images itself.
+  image_renditions:
+    wtrx.blocks.AccordionBlock: width-1200
+    wtrx.blocks.ImageBlock: width-1600
+    wtrx.blocks.CardBlock: fill-640x360
+    wtrx.blocks.HeroBlock: fill-1000x800
+    wtrx.blocks.DonateFundraiseUpBlock: fill-1200x1200
+    wtrx.blocks.SignupActionKitBlock: fill-1200x600
+    wtrx.models.BasePage: fill-1000x800
+    wtrx.models.HomePage: fill-1600x700
+
+modules:
+  - wagtail_markdown_agents.profiles.wtrx.renderers
+  - wagtail_markdown_agents.profiles.wtrx.page
+  - wagtail_markdown_agents.profiles.wtrx.handlers

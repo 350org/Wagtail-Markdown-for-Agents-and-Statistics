@@ -17,6 +17,7 @@ exports.
 | `wagtail_markdown_agents.E005` | Error | A known key has the wrong shape; the message names the key and the expected shape. | See the table below. |
 | `wagtail_markdown_agents.W003` | Warning | `wagtail_markdown_agents.urls` is not included. Explicit export, `llms.txt` and `manifest.json` routes are unavailable. | Include the URLconf before Wagtail's catch-all. |
 | `wagtail_markdown_agents.E006` | Error | The URLconf is not included **and** `NEGOTIATE_QUERY_PARAM` is disabled, so no Markdown URL can be advertised or retrieved. | Include the URLconf, or enable query negotiation. |
+| `wagtail_markdown_agents.W004` | Warning | `FRONTMATTER_FIELDS` names a page type, or an attribute of one, that does not exist, so that key is never written. | Correct the model or attribute name. |
 
 Silence a check you have deliberately chosen to ignore with Django's
 `SILENCED_SYSTEM_CHECKS`.
@@ -35,6 +36,10 @@ Silence a check you have deliberately chosen to ignore with Django's
 | `RENDERERS` | `{"dotted.BlockClass": "dotted.renderer"}` | `{}` |
 | `SITES` | `"default"`, `"all"` or a list of hostnames | `"default"` |
 | `STORAGE` | `None` or a `STORAGES` alias (checked by `E001`) | `None` |
+| `PROFILE` | `None`, a YAML/JSON file path or a package containing `profile.yaml`; an unreadable or malformed profile stops startup with `ImproperlyConfigured` ([site profiles](site-profiles.md)) | `None` |
+| `FRONTMATTER_FIELDS` | `{"app_label.ModelName" or "*": {key: source}}`, where a source is `"attribute"`, `"method(locale)"` or `{"each": source, "label": source}`; identity keys can't be mapped | `{}` |
+| `EXCLUDE_WHEN` | List of page attribute names | `[]` |
+| `IMAGE_RENDITIONS` | `{"dotted.BlockClass": "Wagtail image filter spec"}` | `{}` |
 
 ## Defaults worth knowing before the first deploy
 

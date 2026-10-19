@@ -18,10 +18,26 @@ omitted rather than written as ``null`` or ``""``.
 Sources and precedence, lowest first:
 
 1. the built-in fields;
-2. ``PageAgentSettings.extra_frontmatter`` — an editor's keys override the
+2. ``FRONTMATTER_FIELDS`` — page attributes named per page type, which add
+   keys before ``tags`` or replace a built-in such as ``date`` in place; an
+   empty value leaves the built-in as it is, and identity keys are never set;
+3. ``PageAgentSettings.extra_frontmatter`` — an editor's keys override the
    built-ins, except the identity keys ``id``, ``type``, ``permalink``,
    ``status`` and ``timestamp``, which are kept and the clash logged;
-3. the ``construct_markdown_frontmatter`` hook — code overrides anything.
+4. the ``construct_markdown_frontmatter`` hook — code overrides anything.
+
+``FRONTMATTER_FIELDS`` maps ``"app_label.ModelName"`` (or ``"*"`` for every
+page type; a type's own entry wins per key) to ``{key: source}``. A source is
+an attribute or field name, such as ``"published_at"`` or a property like
+``"author_display"``, or ``"name(locale)"`` to call a method with the page's
+locale. ``{"each": "categories", "label": "label_for(locale)"}`` reads a
+related manager or iterable and lists each item's label, without duplicates.
+A plain method is never called. A page type without the attribute gets
+nothing for that key. Values go through the same normaliser as every other
+field, so a model instance is rejected rather than written as its repr.
+Mapped values are read from the published revision; a change to a related
+object, such as a category's translated label, appears when the page is next
+exported.
 
 Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
@@ -41,11 +57,14 @@ name (ledger #84; the wp-mfa-plugin #20 and #21 failure classes).
 import datetime
 import decimal
 import logging
+import re
 import uuid
 from collections.abc import Callable, Mapping
 
 import yaml
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import QuerySet
+from django.db.models.manager import BaseManager
 from django.utils import timezone
 from django.utils.functional import Promise
 from taggit.managers import TaggableManager
@@ -64,6 +83,9 @@ FRONTMATTER_HOOK = "construct_markdown_frontmatter"
 
 #: Keys an editor's ``extra_frontmatter`` may not override.
 IDENTITY_KEYS = frozenset({"id", "type", "permalink", "status", "timestamp"})
+
+#: A ``FRONTMATTER_FIELDS`` source: an attribute, or a method called with the locale.
+SOURCE = re.compile(r"([A-Za-z][A-Za-z0-9_]*)(\(locale\))?")
 
 
 class FrontmatterValueError(TypeError):
@@ -106,6 +128,7 @@ def build(page, context: dict | None = None, *, is_eligible: Callable | None = N
         data.update(_hierarchy(page, is_eligible or _policy_is_eligible))
     if get_setting("INCLUDE_OWNER"):
         data["owner"] = _owner_name(page)
+    data.update(mapped_fields(page))
     data["tags"] = flat_tags(page, context)
     data["timestamp"] = timezone.now()
 
@@ -114,6 +137,59 @@ def build(page, context: dict | None = None, *, is_eligible: Callable | None = N
     for hook in hooks.get_hooks(FRONTMATTER_HOOK):
         hook(frontmatter, page, context)
     return {key: normalise(value, key) for key, value in frontmatter.items()}
+
+
+def mapped_fields(page) -> dict:
+    """The non-empty ``FRONTMATTER_FIELDS`` values for ``page``, in configured order."""
+    config = get_setting("FRONTMATTER_FIELDS")
+    if not config:
+        return {}
+    label = page._meta.label_lower
+    sources = dict(config.get("*") or {})
+    for model_label, fields in config.items():
+        if model_label != "*" and model_label.lower() == label:
+            sources.update(fields)
+    values = {}
+    for key, source in sources.items():
+        if key in IDENTITY_KEYS:
+            continue
+        value = _source_value(page, source, page)
+        if not _is_empty(value):
+            values[key] = value
+    return values
+
+
+def _source_value(page, source, obj):
+    if isinstance(source, Mapping):
+        related = _attribute(obj, source["each"], page)
+        if related is None:
+            return None
+        items = related.all() if isinstance(related, BaseManager) else related
+        labels = []
+        for item in items:
+            label = _attribute(item, source["label"], page) if source.get("label") else item
+            if not _is_empty(label) and label not in labels:
+                labels.append(label)
+        return labels
+    return _attribute(obj, source, page)
+
+
+def _attribute(obj, source: str, page):
+    match = SOURCE.fullmatch(source) if isinstance(source, str) else None
+    if match is None:
+        raise ImproperlyConfigured(f"FRONTMATTER_FIELDS source {source!r} is not valid")
+    name, with_locale = match.groups()
+    value = getattr(obj, name, None)
+    if value is None:
+        return None
+    if with_locale:
+        return value(page.locale)
+    if callable(value) and not isinstance(value, BaseManager):
+        raise ImproperlyConfigured(
+            f"FRONTMATTER_FIELDS source {source!r} is a method on {type(obj).__name__}; "
+            "name an attribute, field or property, or a method as 'name(locale)'"
+        )
+    return value
 
 
 def serialise(frontmatter: Mapping) -> str:

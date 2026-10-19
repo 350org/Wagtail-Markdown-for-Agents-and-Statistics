@@ -30,8 +30,10 @@ manual checks. It uses SQLite (`sandbox/db.sqlite3`, git-ignored), `DEBUG=True` 
 an insecure fixed secret key, so never deploy it. It installs the package the way a
 host project would: the middleware, the app and the public export routes under
 `/markdown/`. Example page models live in `sandbox/testapp/`.
-`sandbox.postgres_settings` points the test suite at PostgreSQL through the
-`AGENTMD_TEST_*` environment variables.
+The test suite runs with `tests.settings`: the sandbox plus `tests/wtrx_stub`, a
+stand-in for the 350.org site's `wtrx` app that the shipped 350.org profile is
+tested against. `sandbox.postgres_settings` points the test suite at PostgreSQL
+through the `AGENTMD_TEST_*` environment variables.
 
 Start it from this checkout:
 

@@ -8,7 +8,8 @@ Messages: ``E001`` unusable export storage; ``W001`` middleware not installed;
 ``CommonMiddleware``; ``E007`` middleware before ``LocaleMiddleware``; ``E004``
 ``WAGTAIL_MARKDOWN_AGENTS`` is not a dict; ``W002`` unknown key; ``E005`` a key
 with the wrong shape; ``W003`` public routes not included; ``E006`` public routes
-not included while query negotiation is disabled, so no Markdown URL exists.
+not included while query negotiation is disabled, so no Markdown URL exists;
+``W004`` a ``FRONTMATTER_FIELDS`` page type or attribute that does not exist.
 """
 
 from django.conf import settings
@@ -20,6 +21,7 @@ from django.utils.module_loading import import_string
 
 from .export.storage import resolve_storage
 from .public_urls import NAMESPACE
+from .rendering.frontmatter import IDENTITY_KEYS, SOURCE
 from .settings import DEFAULTS, get_setting
 
 MIDDLEWARE = "wagtail_markdown_agents.middleware.AgentMarkdownMiddleware"
@@ -141,6 +143,26 @@ def check_settings_shape(app_configs, **kwargs):
     sites = get_setting("SITES")
     if sites not in ("default", "all") and not _strings(sites):
         messages.append(_shape("SITES", "'default', 'all' or a list of hostnames"))
+    if not _frontmatter_fields(get_setting("FRONTMATTER_FIELDS")):
+        messages.append(
+            _shape(
+                "FRONTMATTER_FIELDS",
+                "{'app_label.ModelName' or '*': {key: 'attribute' or 'method(locale)' or "
+                "{'each': 'attribute', 'label': 'attribute'}}}, without the identity keys "
+                f"{', '.join(sorted(IDENTITY_KEYS))}",
+            )
+        )
+    else:
+        messages.extend(_missing_frontmatter_sources(get_setting("FRONTMATTER_FIELDS")))
+    if not _strings(get_setting("EXCLUDE_WHEN")) or not all(
+        _identifier(name) for name in get_setting("EXCLUDE_WHEN")
+    ):
+        messages.append(_shape("EXCLUDE_WHEN", "a list of page attribute names"))
+    renditions = get_setting("IMAGE_RENDITIONS")
+    if not _string_map(renditions) or not all(_filter_spec(spec) for spec in renditions.values()):
+        messages.append(
+            _shape("IMAGE_RENDITIONS", "{'dotted.path.BlockClass': 'Wagtail image filter spec'}")
+        )
     return messages
 
 
@@ -205,4 +227,70 @@ def _field_map(value):
 def _string_map(value):
     return isinstance(value, dict) and all(
         isinstance(key, str) and isinstance(item, str) for key, item in value.items()
+    )
+
+
+def _identifier(value):
+    return isinstance(value, str) and value.isidentifier() and not value.startswith("_")
+
+
+def _source(value):
+    if isinstance(value, dict):
+        return (
+            set(value) <= {"each", "label"}
+            and _source(value.get("each"))
+            and ("label" not in value or _source(value["label"]))
+        )
+    return isinstance(value, str) and SOURCE.fullmatch(value) is not None
+
+
+def _frontmatter_fields(value):
+    return isinstance(value, dict) and all(
+        isinstance(label, str)
+        and (label == "*" or label.count(".") == 1)
+        and isinstance(fields, dict)
+        and all(
+            isinstance(key, str) and key not in IDENTITY_KEYS and _source(source)
+            for key, source in fields.items()
+        )
+        for label, fields in value.items()
+    )
+
+
+def _filter_spec(spec):
+    from wagtail.images.exceptions import InvalidFilterSpecError
+    from wagtail.images.models import Filter
+
+    try:
+        Filter(spec).operations  # noqa: B018 — parsing validates the spec
+    except (InvalidFilterSpecError, ValueError, TypeError):
+        return False
+    return True
+
+
+def _missing_frontmatter_sources(value):
+    from django.apps import apps
+
+    messages = []
+    for label, fields in value.items():
+        if label == "*":
+            continue
+        try:
+            model = apps.get_model(label)
+        except (LookupError, ValueError):
+            messages.append(_missing(f"page type {label!r}"))
+            continue
+        for key, source in fields.items():
+            name = source["each"] if isinstance(source, dict) else source
+            name = SOURCE.fullmatch(name).group(1)
+            if not hasattr(model, name):
+                messages.append(_missing(f"attribute {label}.{name} (for {key!r})"))
+    return messages
+
+
+def _missing(what):
+    return Warning(
+        f"WAGTAIL_MARKDOWN_AGENTS['FRONTMATTER_FIELDS'] names {what}, which does not exist; "
+        "that key is never written.",
+        id="wagtail_markdown_agents.W004",
     )

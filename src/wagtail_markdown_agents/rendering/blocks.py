@@ -15,7 +15,9 @@ template instead, so its presentation-only fields do not leak (decision D12,
 see ``registry.resolve``).
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from django.apps import apps
 from django.utils.html import linebreaks
@@ -23,8 +25,12 @@ from wagtail import blocks as wagtail_blocks
 from wagtail.contrib.table_block.blocks import TableBlock
 from wagtail.contrib.typed_table_block.blocks import TypedTableBlock
 
+from ..settings import get_setting
 from .html import absolute_url, convert_html, expand_rich_text
 from .registry import register_renderer, resolve
+
+#: Classes of the blocks being rendered, outermost first.
+_enclosing: ContextVar[tuple[type, ...]] = ContextVar("agentmd_enclosing_blocks", default=())
 
 
 def render_block(block, value, context, block_name: str | None = None) -> str:
@@ -35,7 +41,39 @@ def render_block(block, value, context, block_name: str | None = None) -> str:
     ``block_name`` so name registrations apply, as the built-in StructBlock and
     StreamBlock renderers do.
     """
-    return resolve(block, block_name, value, context)(block, value, context)
+    with enclosing(block):
+        return resolve(block, block_name, value, context)(block, value, context)
+
+
+@contextmanager
+def enclosing(block) -> Iterator[None]:
+    """Record ``block`` as enclosing everything rendered inside the ``with``.
+
+    A page hook can pass a page, so ``IMAGE_RENDITIONS`` can key images it
+    renders, such as a page hero's, by page class.
+    """
+    token = _enclosing.set((*_enclosing.get(), type(block)))
+    try:
+        yield
+    finally:
+        _enclosing.reset(token)
+
+
+def image_rendition_filter() -> str:
+    """The ``IMAGE_RENDITIONS`` filter for the outermost listed enclosing block.
+
+    Keys are dotted class paths and match subclasses. The outermost wins
+    because a container whose template draws its children's images, such as
+    an accordion, sets their size there. ``original`` when nothing is listed.
+    """
+    renditions = get_setting("IMAGE_RENDITIONS")
+    if renditions:
+        for block_class in _enclosing.get():
+            for cls in block_class.__mro__:
+                spec = renditions.get(f"{cls.__module__}.{cls.__qualname__}")
+                if spec:
+                    return spec
+    return "original"
 
 
 def _join(parts: Iterable[str]) -> str:
@@ -155,7 +193,10 @@ def render_chooser_link(block, value, context) -> str:
 
 
 def render_image(block, value, context) -> str:
-    """Render a chosen image as ``![alt](url)`` at its original size.
+    """Render a chosen image as ``![alt](url)``.
+
+    The rendition is the original image unless ``IMAGE_RENDITIONS`` names a
+    filter for a block the image sits in; see :func:`image_rendition_filter`.
 
     Alt text follows Wagtail's own rendition rule: an ``ImageBlock``'s contextual
     alt text when the editor wrote one, else the image's default alt text
@@ -169,7 +210,7 @@ def render_image(block, value, context) -> str:
     if value is None or getattr(value, "decorative", False):
         return ""
     alt = getattr(value, "contextual_alt_text", None) or value.default_alt_text
-    rendition = get_rendition_or_not_found(value, "original")
+    rendition = get_rendition_or_not_found(value, image_rendition_filter())
     return f"![{_escape_link_text(str(alt))}]({absolute_url(rendition.url)})"
 
 

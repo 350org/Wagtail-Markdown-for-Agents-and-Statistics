@@ -433,6 +433,13 @@ def _render_stream(value, location, context, results):
 
 
 def _render(block, value, name, location, context, results):
+    from .blocks import enclosing
+
+    with enclosing(block):
+        _render_enclosed(block, value, name, location, context, results)
+
+
+def _render_enclosed(block, value, name, location, context, results):
     try:
         renderer = resolve(block, name, value, context)
         entry = _entry(block, name, renderer, value, context)

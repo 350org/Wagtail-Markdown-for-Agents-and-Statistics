@@ -1,0 +1,10 @@
+{% load wagtailcore_tags wagtailimages_tags %}
+<div>
+  {% image value.image fill-900x675 as img %}
+  <img src="{{ img.url }}" alt="{{ img.alt }}">
+  {% if value.eyebrow %}<p>{{ value.eyebrow }}</p>{% endif %}
+  <div>{{ value.content|richtext }}</div>
+  {% if value.link_text and value.link_page or value.link_text and value.link_url or value.link_text and value.anchor %}
+    <a href="{% if value.link_page %}{{ value.link_page.url }}{% elif value.link_url %}{{ value.link_url }}{% else %}#{{ value.anchor }}{% endif %}">{{ value.link_text }}<svg aria-hidden="true"><path d="M0 0L1 1"></path></svg></a>
+  {% endif %}
+</div>
