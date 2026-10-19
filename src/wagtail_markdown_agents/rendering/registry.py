@@ -175,11 +175,13 @@ def autodiscover() -> None:
     """Import every installed app's ``markdown_renderers`` module, then apply settings.
 
     Called from ``AppConfig.ready()``. Built-in renderers register first, then
-    project modules, then settings, so each layer overrides the one before
-    regardless of ``INSTALLED_APPS`` order.
+    the site profile's modules, then project modules, then settings, so each
+    layer overrides the one before regardless of ``INSTALLED_APPS`` order.
     """
+    from ..profile import import_modules
     from . import blocks  # noqa: F401 — importing registers the built-ins
 
+    import_modules()
     autodiscover_modules("markdown_renderers")
     apply_setting_overrides()
 

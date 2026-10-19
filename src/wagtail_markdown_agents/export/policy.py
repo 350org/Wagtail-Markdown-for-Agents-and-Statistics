@@ -7,7 +7,8 @@ linked, listed and served, or none of those.
 ``is_eligible(page)`` is deterministic for a page: live and below the tree
 root, in an exported site, of an enabled type (``PAGE_TYPES``), free of view
 restrictions (password, login or groups, own or inherited), not excluded
-through ``PageAgentSettings``, and not vetoed by the
+through ``PageAgentSettings``, with none of the ``EXCLUDE_WHEN`` attributes
+set (such as a site's own "hide from search" field), and not vetoed by the
 ``markdown_export_eligible`` hook. Any request-specific serving veto belongs
 in shared serving and is never cached as export eligibility.
 
@@ -83,7 +84,17 @@ class ExportPolicy:
         )
         if excluded:
             return False
+        if self._excluded_by_attribute(page):
+            return False
         return all(hook(page, site) is not False for hook in hooks.get_hooks(ELIGIBLE_HOOK))
+
+    def _excluded_by_attribute(self, page: Page) -> bool:
+        names = get_setting("EXCLUDE_WHEN")
+        if not names:
+            return False
+        if self.snapshot:
+            return self.snapshot.is_excluded_by_attribute(page, names)
+        return excluded_by_attribute(page.specific_deferred, names)
 
     def relative_path(self, page: Page) -> str:
         """The page's path in the export tree, ``{hostname}/...md``.
@@ -157,6 +168,11 @@ class ExportPolicy:
     @staticmethod
     def _type_enabled(page: Page) -> bool:
         return page_type_enabled(page.specific_class)
+
+
+def excluded_by_attribute(page: Page, names) -> bool:
+    """Whether any of the ``EXCLUDE_WHEN`` attributes is true on the specific ``page``."""
+    return any(getattr(page, name, False) for name in names)
 
 
 def page_type_enabled(model) -> bool:

@@ -4,7 +4,7 @@ rich text, heading, image, embed, table, and Struct/List/StreamBlock nesting.
 
 from django.db import models
 from modelcluster.contrib.taggit import ClusterTaggableManager
-from modelcluster.fields import ParentalKey
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from taggit.models import TaggedItemBase
 from wagtail import blocks
 from wagtail.admin.panels import FieldPanel
@@ -101,6 +101,46 @@ class ContentPage(Page):
     )
     intro = RichTextField(blank=True)
     body = StreamField(BodyBlock(), blank=True)
+
+
+class NewsCategory(models.Model):
+    """A category shared by every language, with per-locale labels (FRONTMATTER_FIELDS)."""
+
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def label_for(self, locale):
+        label = self.labels.filter(locale=locale).first()
+        return label.name if label else self.name
+
+
+class NewsCategoryLabel(models.Model):
+    category = models.ForeignKey(NewsCategory, related_name="labels", on_delete=models.CASCADE)
+    locale = models.ForeignKey("wagtailcore.Locale", on_delete=models.CASCADE, related_name="+")
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class NewsPage(Page):
+    """Page-level metadata that a site profile maps into frontmatter or uses to exclude."""
+
+    author_name = models.CharField(max_length=255, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    canonical_url = models.URLField(blank=True)
+    hide_from_search = models.BooleanField(default=False)
+    categories = ParentalManyToManyField(NewsCategory, blank=True)
+    body = StreamField(BodyBlock(), blank=True)
+
+    @property
+    def byline(self):
+        return self.author_name or None
 
 
 class FormPage(AbstractForm):

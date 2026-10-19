@@ -8,6 +8,18 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Site profiles: `PROFILE` names a YAML or JSON file that holds one site's
+  package settings and the Python modules for its own blocks, so a site's
+  configuration can be read, copied and removed in one place
+  (`docs/site-profiles.md`).
+- `FRONTMATTER_FIELDS` adds page attributes to the frontmatter per page type,
+  such as an author, a display date, translated category labels or a canonical
+  URL, and can replace a built-in field such as `date`. Check `W004` warns about
+  names that don't exist.
+- `EXCLUDE_WHEN` leaves out pages with a given attribute set, such as a site's
+  own "hide from search" field, and withdraws an existing export when it is set.
+- `IMAGE_RENDITIONS` sets the image size per enclosing block, instead of always
+  exporting the original image.
 - `markdown_page_fields` hooks let project integrations supply validated default
   field selections while explicit `PAGE_FIELDS` retains precedence.
 - `agentmd_blocks` management command, which reports how each block on exportable

@@ -340,7 +340,7 @@ def test_json_snapshot_round_trips_through_compare(tmp_path):
     assert data["format"] == 1
     assert data["page_types"][0] == "testapp.ArticlePage"
     raw = next(block for block in data["blocks"] if block["name"] == "raw_html")
-    assert raw["path"] == DEFAULT_TEMPLATE and len(raw["locations"]) == 3
+    assert raw["path"] == DEFAULT_TEMPLATE and len(raw["locations"]) == 4
     path = tmp_path / "blocks.json"
     path.write_text(json.dumps(data))
     assert run("--compare", str(path)) == f"Block coverage matches {path}.\n"
