@@ -73,6 +73,7 @@ Browse the [package guides](docs/README.md) or the separate
 | Plan simulated traffic and reconcile deployment evidence | [Agent traffic simulator](docs/agent-simulator.md) |
 | Fix a `manage.py check` message | [Configuration checks](docs/system-checks.md) |
 | Control how a page type or block becomes Markdown | [Page rendering](docs/page-rendering.md), [internal links](docs/internal-links.md) |
+| Keep a site's fields, frontmatter, exclusions, image sizes and block renderers in one YAML file | [Site profiles](docs/site-profiles.md) |
 | Add an exclusion checkbox to a page model's editor | [Editor exclusion panel](docs/editor-exclusion-panel.md) |
 | Change where and how export files are stored | [Managed export storage](docs/storage-writer.md) |
 

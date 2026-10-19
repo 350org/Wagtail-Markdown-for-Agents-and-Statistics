@@ -223,9 +223,16 @@ Install the new tag or commit, then from the site directory:
 ```bash
 python manage.py migrate wagtail_markdown_agents
 python manage.py check
-python manage.py agentmd_revoke_ineligible   # after changes to enabled page types or eligibility hooks
+python manage.py agentmd_revoke_ineligible   # after changes to page types, EXCLUDE_WHEN or eligibility hooks
+# restart the web process here, so it runs the new code and settings
+python manage.py agentmd_generate            # after changes to settings, a profile or rendering
 python manage.py agentmd_status
 ```
+
+Exports are served only when they were built with the settings the running web
+process has. After an upgrade or a settings change, agents get HTML until the
+web process has restarted and the exports have been rebuilt; see
+[site profiles](docs/site-profiles.md#turning-on-or-changing-a-profile).
 
 [CHANGELOG.md](CHANGELOG.md) records what changed, including new migrations and
 settings.

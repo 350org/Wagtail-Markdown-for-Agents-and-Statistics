@@ -136,8 +136,9 @@ change.
 
 ## Deploy and bulk eligibility changes
 
-`PAGE_TYPES` is deployment configuration, with no model save signal. When disabling
-types or tightening an eligibility hook, load the new configuration and run:
+`PAGE_TYPES` and `EXCLUDE_WHEN` are deployment configuration, with no model save
+signal. When disabling types, adding an `EXCLUDE_WHEN` attribute or tightening an
+eligibility hook, load the new configuration and run:
 
 ```bash
 python manage.py agentmd_revoke_ineligible
@@ -152,6 +153,14 @@ generates content. Eligible leaf ownership is preserved, though configuration
 fingerprints may require rebuilding those files before they are readable again.
 After successful revocation, use explicit `refresh_pages` to rebuild the selected
 eligible pages/discovery if needed. Re-enabling types likewise requires a refresh.
+
+Any setting that changes rendered documents works the same way, including a site
+profile and `FRONTMATTER_FIELDS` or `IMAGE_RENDITIONS`. Each export records the
+configuration it was built with, so existing exports stop being served once workers
+run the new configuration. Run `agentmd_generate` after the workers have restarted;
+until then agents get HTML (see [site profiles](site-profiles.md#turning-on-or-changing-a-profile)).
+An `EXCLUDE_WHEN` attribute set on a page is also applied when the page is next
+published, which withdraws its export immediately.
 
 The reusable `revoke_ineligible(using="default")` helper checks all owned page IDs
 against current full policy and returns IDs selected for withdrawal. It also handles
