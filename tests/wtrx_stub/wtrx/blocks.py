@@ -65,14 +65,6 @@ class PageCardsBlock(blocks.StructBlock):
     link_text = blocks.CharBlock(required=False, default="Read more")
 
 
-class HeroBlock(blocks.StructBlock):
-    headline = blocks.RichTextBlock(features=["br"])
-    content = blocks.RichTextBlock(required=False)
-    image = ImageChooserBlock(required=False)
-    image_caption = blocks.CharBlock(required=False)
-    banner_color = blocks.ChoiceBlock(choices=[("navy", "Navy")], default="navy")
-
-
 class DonateFundraiseUpBlock(blocks.StructBlock):
     content = blocks.RichTextBlock(required=False)
     image = ImageChooserBlock(required=False)
@@ -288,7 +280,6 @@ class SectionContentBlock(blocks.StreamBlock):
     lead_text = LeadTextBlock()
     heading = HeadingBlock()
     image = BodyImageBlock()
-    hero = HeroBlock()
     page_cards = PageCardsBlock()
     donate_fundraiseup = DonateFundraiseUpBlock()
     video = BodyVideoBlock()

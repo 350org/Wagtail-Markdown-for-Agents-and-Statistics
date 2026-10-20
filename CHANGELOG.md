@@ -28,8 +28,7 @@ versioning: [SemVer](https://semver.org/).
   always exporting the original image.
 - A site profile for 350.org's Wagtail site (`wagtail_markdown_agents.profiles.wtrx`),
   replacing the add-on removed on 29 September. On top of the renderers agreed on
-  #14, and as 350.org asked in October 2026, it exports the page and body hero
-  image, Post author, date and translated categories, a separate `canonical` URL,
+  #14, and as 350.org asked in October 2026, it exports the page hero image, Post author, date and translated categories, a separate `canonical` URL,
   ActionKit's own intro and petition text when a signup block has no copy of its
   own, card modal content, and donation amounts as `$10 USD`. Images use the size
   of each block's template, and pages hidden from search are not exported. Rich
