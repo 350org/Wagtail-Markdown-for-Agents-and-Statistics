@@ -302,28 +302,6 @@
       ]
     },
     {
-      "name": "hero",
-      "block_class": "wtrx.blocks.HeroBlock",
-      "path": "built_in",
-      "renderer": "wagtail_markdown_agents.profiles.wtrx.renderers.render_hero",
-      "by_name": false,
-      "template": "wtrx/components/streamfield/blocks/hero_block.html",
-      "fields": [
-        "headline: wagtail.blocks.field_block.RichTextBlock",
-        "content: wagtail.blocks.field_block.RichTextBlock",
-        "image: wagtail.images.blocks.ImageChooserBlock",
-        "image_caption: wagtail.blocks.field_block.CharBlock",
-        "banner_color: wagtail.blocks.field_block.ChoiceBlock"
-      ],
-      "hints": [],
-      "locations": [
-        "wtrx.ContentPage.body > hero",
-        "wtrx.HomePage.body > hero",
-        "wtrx.IndexPage.body > hero",
-        "wtrx.Post.body > hero"
-      ]
-    },
-    {
       "name": "image",
       "block_class": "wtrx.blocks.BodyImageBlock",
       "path": "built_in",
@@ -749,12 +727,6 @@
         "content > callout > link_url: wagtail.blocks.field_block.URLBlock",
         "content > callout > color: wagtail.blocks.field_block.ChoiceBlock",
         "content > callout > image: wagtail.images.blocks.ImageChooserBlock",
-        "content > hero: wtrx.blocks.HeroBlock",
-        "content > hero > headline: wagtail.blocks.field_block.RichTextBlock",
-        "content > hero > content: wagtail.blocks.field_block.RichTextBlock",
-        "content > hero > image: wagtail.images.blocks.ImageChooserBlock",
-        "content > hero > image_caption: wagtail.blocks.field_block.CharBlock",
-        "content > hero > banner_color: wagtail.blocks.field_block.ChoiceBlock",
         "content > donate: wtrx.blocks.DonateBlock",
         "content > donate > content: wagtail.blocks.field_block.RichTextBlock",
         "content > donate > button_text: wagtail.blocks.field_block.CharBlock",
@@ -1171,12 +1143,6 @@
         "years > item > content > callout > link_url: wagtail.blocks.field_block.URLBlock",
         "years > item > content > callout > color: wagtail.blocks.field_block.ChoiceBlock",
         "years > item > content > callout > image: wagtail.images.blocks.ImageChooserBlock",
-        "years > item > content > hero: wtrx.blocks.HeroBlock",
-        "years > item > content > hero > headline: wagtail.blocks.field_block.RichTextBlock",
-        "years > item > content > hero > content: wagtail.blocks.field_block.RichTextBlock",
-        "years > item > content > hero > image: wagtail.images.blocks.ImageChooserBlock",
-        "years > item > content > hero > image_caption: wagtail.blocks.field_block.CharBlock",
-        "years > item > content > hero > banner_color: wagtail.blocks.field_block.ChoiceBlock",
         "years > item > content > donate: wtrx.blocks.DonateBlock",
         "years > item > content > donate > content: wagtail.blocks.field_block.RichTextBlock",
         "years > item > content > donate > button_text: wagtail.blocks.field_block.CharBlock",

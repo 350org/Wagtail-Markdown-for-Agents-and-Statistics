@@ -39,7 +39,6 @@ settings:
     wtrx.blocks.AccordionBlock: width-1200
     wtrx.blocks.ImageBlock: width-1600
     wtrx.blocks.CardBlock: fill-640x360
-    wtrx.blocks.HeroBlock: fill-1000x800
     wtrx.blocks.DonateFundraiseUpBlock: fill-1200x1200
     wtrx.blocks.SignupActionKitBlock: fill-1200x600
     wtrx.models.BasePage: fill-1000x800

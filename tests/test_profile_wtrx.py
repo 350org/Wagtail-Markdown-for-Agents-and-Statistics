@@ -97,21 +97,6 @@ def test_page_cards_links_only_the_index_without_reading_children(context, form_
     )
 
 
-def test_body_hero_has_h2_copy_and_caption(context):
-    assert (
-        render(
-            wtrx.HeroBlock,
-            {
-                "headline": "People power",
-                "content": "<p>Act together.</p>",
-                "image_caption": "Photo: Ada",
-            },
-            context,
-        )
-        == "## People power\n\nAct together.\n\nPhoto: Ada"
-    )
-
-
 def test_fundraiseup_keeps_content_image_and_caption_only(context, image):
     output = render(
         wtrx.DonateFundraiseUpBlock,
@@ -151,7 +136,7 @@ def test_image_credit_follows_the_caption_as_authored(context, image, credits):
     assert render(wtrx.ImageBlock, raw, context).endswith("\n\nNairobi, 2026")
 
 
-def test_card_fundraiseup_actionkit_and_hero_images_carry_their_credit(
+def test_card_fundraiseup_and_actionkit_images_carry_their_credit(
     context, actionkit_context, image, credits
 ):
     credits[image.pk] = "Photo: Ada"
@@ -165,11 +150,6 @@ def test_card_fundraiseup_actionkit_and_hero_images_carry_their_credit(
     assert "\n\nCaption\n\nPhoto: Ada\n\n[Take action](" in render(
         wtrx.SignupActionKitBlock, signup, actionkit_context
     )
-    # The body hero's image sits beside its headline, at the hero template's size.
-    hero = {"headline": "People power", "image": image.pk, "image_caption": "Caption"}
-    output = render(wtrx.HeroBlock, hero, context)
-    assert output.startswith("## People power\n\n![Rally](")
-    assert ".fill-1000x800." in output and output.endswith(")\n\nCaption\n\nPhoto: Ada")
 
 
 def test_page_hero_image_credit_follows_its_caption(hero_page, image, credits):
@@ -291,10 +271,7 @@ def hero_page(home):
             hero_copy="<p>Hero copy.</p>",
             hero_image_caption="Hero caption",
             hero_cta=[("button", {"text": "Join", "link_url": "https://example.org/join"})],
-            body=[
-                ("text", "<p>Body content.</p>"),
-                ("hero", {"headline": "Body hero", "image_caption": "Body caption"}),
-            ],
+            body=[("text", "<p>Body content.</p>")],
         )
     )
     page.save_revision().publish()
@@ -308,7 +285,7 @@ def body_of(page):
 def test_page_hero_is_assembled_once_before_body(hero_page):
     assert body_of(hero_page) == (
         "# Hero headline\n\nOur campaign\n\nHero copy.\n\n[Join](https://example.org/join)"
-        "\n\nHero caption\n\nBody content.\n\n## Body hero\n\nBody caption"
+        "\n\nHero caption\n\nBody content."
     )
 
 
@@ -317,9 +294,7 @@ def test_hide_hero_uses_published_state_and_omits_entire_page_hero(hero_page):
     hero_page.save_revision()
     assert "Hero copy." in body_of(hero_page)  # A newer draft cannot hide the live hero.
     hero_page.save_revision().publish()
-    assert body_of(hero_page) == (
-        "# Document title\n\nBody content.\n\n## Body hero\n\nBody caption"
-    )
+    assert body_of(hero_page) == ("# Document title\n\nBody content.")
 
 
 def test_explicit_hero_fields_fail_instead_of_duplicating_or_leaking(hero_page, settings):
@@ -693,8 +668,6 @@ def test_rich_text_headlines_become_one_plain_line(hero_page, context):
     hero_page.hero_headline = "<p>Stop fossil fuels<br/>Build the <b>future</b></p><p>&amp; now</p>"
     hero_page.save_revision().publish()
     assert body_of(hero_page).startswith("# Stop fossil fuels Build the future & now\n\n")
-    hero = {"headline": "<p>People<br/>power</p>", "content": "<p>Act.</p>"}
-    assert render(wtrx.HeroBlock, hero, context) == "## People power\n\nAct."
     hero_page.hero_headline = "<p></p>"
     hero_page.save_revision().publish()
     assert body_of(hero_page).startswith("# Document title\n\n")

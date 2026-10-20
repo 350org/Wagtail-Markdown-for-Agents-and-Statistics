@@ -35,7 +35,6 @@ from wtrx.blocks import (
     DonateBlock,
     DonateFundraiseUpBlock,
     FeaturePanelBlock,
-    HeroBlock,
     HeroSignupActionKitBlock,
     ImageBlock,
     LogoGridBlock,
@@ -151,22 +150,6 @@ def render_page_cards(block, value, context):
     url = target(value, "index_page")
     label = child(block, value, "link_text", context) or gettext("Read more")
     return join(child(block, value, "content", context), link(label, url) if url else "")
-
-
-@register_renderer(HeroBlock)
-def render_hero(block, value, context):
-    # An authored body section; hide_hero applies to the page header only.
-    headline = render_block(CharBlock(), plain_headline(value.get("headline")), context)
-    return join(
-        heading(2, headline),
-        child(block, value, "content", context),
-        pictured(
-            child(block, value, "image", context),
-            child(block, value, "image_caption", context),
-            value.get("image"),
-            context,
-        ),
-    )
 
 
 @register_renderer(DonateFundraiseUpBlock)
