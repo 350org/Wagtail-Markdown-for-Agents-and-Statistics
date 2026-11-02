@@ -1,12 +1,14 @@
 """StreamField → Markdown rendering.
 
 Public API: register_renderer (decorator), render_block (render a child block
-from a renderer), render_page and PageRenderError. See docs/custom-blocks.md.
+from a renderer), in_bulk_run (whether a command is generating many pages),
+render_page and PageRenderError. See docs/custom-blocks.md.
 """
 
+from .offline import in_bulk_run
 from .registry import register_renderer
 
-__all__ = ["PageRenderError", "register_renderer", "render_block", "render_page"]
+__all__ = ["PageRenderError", "in_bulk_run", "register_renderer", "render_block", "render_page"]
 
 
 def __getattr__(name):

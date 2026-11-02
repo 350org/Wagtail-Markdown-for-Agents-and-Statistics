@@ -170,6 +170,13 @@ request. There is no `request`, no logged-in user and no session. Don't fetch fr
 the network: the output would depend on a third party at export time. Page URLs,
 `{% pageurl %}`, `{% image %}` and site settings all work without a request.
 
+If a renderer has to call an external service, skip the call when
+`in_bulk_run()` is true (`from wagtail_markdown_agents.rendering import
+in_bulk_run`). It is true while `agentmd_generate` or `agentmd_generate_indexes`
+runs. Those commands render many pages in a fresh process, so every call would
+reach the service, and a slow service would hold up the whole run. Publishing a
+page is never a bulk run.
+
 The output is part of a larger document. Start headings at `##` or below, because
 the page title is the document's `#` heading. Links to other pages are rewritten to
 their Markdown exports after rendering, so link to the page's normal URL.

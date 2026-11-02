@@ -4,6 +4,7 @@ from wagtail.models import Site
 from ...export.indexes import IndexBatch
 from ...export.writer import FileWriter
 from ...models import ExportArtifact
+from ...rendering.offline import bulk_run
 from ...rendering.page import PageRenderError
 from ..export_commands import add_scope_arguments, inspect_page, report, require_autocommit, select
 
@@ -21,6 +22,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        # Renderers leave out calls to external services in a bulk run (#52).
+        with bulk_run():
+            self._handle(**options)
+
+    def _handle(self, **options) -> None:
         selection = select(options, operation="generate")
         writer = FileWriter()
         dry_run = options["dry_run"]

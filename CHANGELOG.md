@@ -55,9 +55,18 @@ versioning: [SemVer](https://semver.org/).
 - `render_block` is now public (`from wagtail_markdown_agents.rendering import
   render_block`), so a project renderer can render its child blocks exactly as export
   does.
+- `in_bulk_run()` (`from wagtail_markdown_agents.rendering import in_bulk_run`)
+  is true while `agentmd_generate` or `agentmd_generate_indexes` runs, so a
+  renderer can leave out calls to an external service there (#52).
 
 ### Changed
 
+- 350.org profile: the ActionKit signup block no longer fetches the campaign's
+  intro from ActionKit during `agentmd_generate` or `agentmd_generate_indexes`.
+  Each command starts with an empty cache, so it called ActionKit once per
+  campaign, with up to 5 seconds per slow response. Those runs export the
+  editor's copy and the campaign link; publishing a page still exports
+  ActionKit's intro (#52).
 - INSTALL.md and the storage guide explain that the default export folder must
   survive deploys, and what to configure on hosts without a persistent disk (#43).
 - The agent access report selects **Custom dates** when From or To is changed, so

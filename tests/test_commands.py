@@ -15,6 +15,7 @@ from wagtail.models import Page, Site
 from tests import test_indexes
 from tests.test_indexes import article, read
 from wagtail_markdown_agents.export.indexes import IndexBatch
+from wagtail_markdown_agents.export.lifecycle import refresh_pages
 from wagtail_markdown_agents.export.storage import resolve_storage
 from wagtail_markdown_agents.export.writer import FileWriter
 from wagtail_markdown_agents.models import (
@@ -23,6 +24,7 @@ from wagtail_markdown_agents.models import (
     ExportScope,
     PageAgentSettings,
 )
+from wagtail_markdown_agents.rendering import in_bulk_run
 
 pytestmark = pytest.mark.django_db(transaction=True)
 setup = test_indexes.setup
@@ -81,6 +83,33 @@ def test_generate_exports_lists_and_serves_live_pages_without_a_revision(setup, 
     imported.save_revision().publish()  # a first publication supersedes the row state
     output = run("agentmd_generate", "--page-id", str(imported.pk))
     assert "generated=1" in output
+
+
+def test_generation_commands_are_bulk_runs_and_publishing_is_not(setup, monkeypatch):
+    # #52: renderers leave out external calls in commands, not on publish.
+    writer, site, home = setup
+    page = article(home, "article")
+    seen = []
+    generate, finalise = IndexBatch.generate, IndexBatch.finalise
+
+    def record_generate(self, *args, **kwargs):
+        seen.append(("generate", in_bulk_run()))
+        return generate(self, *args, **kwargs)
+
+    def record_finalise(self):
+        seen.append(("finalise", in_bulk_run()))
+        return finalise(self)
+
+    monkeypatch.setattr(IndexBatch, "generate", record_generate)
+    monkeypatch.setattr(IndexBatch, "finalise", record_finalise)
+    run("agentmd_generate", "--page-id", str(page.pk), "--force")
+    run("agentmd_generate_indexes", "--site", site.hostname)
+    assert seen and all(bulk for _, bulk in seen)
+    assert {step for step, _ in seen} == {"generate", "finalise"}
+    seen.clear()
+    refresh_pages([page.pk])
+    assert seen and not any(bulk for _, bulk in seen)
+    assert not in_bulk_run()
 
 
 def test_freshness_skip_force_and_missing_file_repair(setup):

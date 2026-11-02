@@ -52,7 +52,7 @@ from wtrx.blocks import (
 
 from wagtail_markdown_agents.rendering import register_renderer, render_block
 from wagtail_markdown_agents.rendering.html import absolute_url, convert_html
-from wagtail_markdown_agents.rendering.offline import offline_embeds
+from wagtail_markdown_agents.rendering.offline import in_bulk_run, offline_embeds
 from wagtail_markdown_agents.rendering.registry import BlockRenderError, render_fallback
 
 
@@ -247,10 +247,15 @@ def actionkit_intro(value, context):
     HTML page shows. It changes in ActionKit without a Wagtail publish, so the
     export can lag until the page is next published. When the fetch fails the
     export keeps only the campaign link, as the page shows no intro either.
+
+    A bulk run from a management command never fetches (#52): the site caches
+    the form in each process, so a fresh command would call ActionKit once per
+    campaign. Those exports keep the editor's copy and the campaign link; the
+    intro returns when the page is next published.
     """
     shortname = value.get("short_form_id")
     hostname = actionkit_hostname(context)
-    if not shortname or not hostname:
+    if not shortname or not hostname or in_bulk_run():
         return None
     from wtrx.integrations import actionkit
 

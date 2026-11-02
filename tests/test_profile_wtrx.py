@@ -13,6 +13,7 @@ from wtrx import blocks as wtrx
 
 from wagtail_markdown_agents.rendering import render_block, render_page
 from wagtail_markdown_agents.rendering.context import render_context
+from wagtail_markdown_agents.rendering.offline import bulk_run
 
 YOUTUBE = "https://www.youtube.com/watch?v=abc123"
 
@@ -742,6 +743,28 @@ def test_actionkit_without_an_intro_or_hostname_keeps_only_what_it_has(
     actionkit.FETCHES.clear()
     assert render(wtrx.SignupActionKitBlock, {"short_form_id": "climate"}, context) == ""
     assert actionkit.FETCHES == []
+
+
+def test_actionkit_is_not_fetched_in_a_bulk_run(actionkit_context, actionkit_intros):
+    from wtrx.integrations import actionkit
+
+    # #52: a command's fresh process would call ActionKit once per campaign.
+    actionkit_intros[("campaigns.example.org", "climate")] = {
+        **INTRO,
+        "petition_html": "<p>We, the undersigned, call on the minister.</p>",
+    }
+    raw = {"short_form_id": "climate", "content": "<h2>Sign now</h2>"}
+    with bulk_run():
+        assert render(wtrx.SignupActionKitBlock, raw, actionkit_context) == (
+            "## Sign now\n\n[Take action](https://campaigns.example.org/act/climate/)"
+        )
+        assert render(
+            wtrx.SignupActionKitBlock, {"short_form_id": "climate"}, actionkit_context
+        ) == ("[Take action](https://campaigns.example.org/act/climate/)")
+    assert actionkit.FETCHES == []
+    assert "Stop the pipeline" in render(
+        wtrx.SignupActionKitBlock, {"short_form_id": "climate"}, actionkit_context
+    )
 
 
 def test_image_blocks_use_the_templates_size(context, image):

@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from wagtail.models import Site
 
 from ...export.indexes import IndexBatch
+from ...rendering.offline import bulk_run
 from ..export_commands import add_scope_arguments, report, require_autocommit, select
 
 
@@ -15,6 +16,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        # Renderers leave out calls to external services in a bulk run (#52).
+        with bulk_run():
+            self._handle(**options)
+
+    def _handle(self, **options) -> None:
         selection = select(options, operation="indexes")
         if not options["dry_run"]:
             require_autocommit()

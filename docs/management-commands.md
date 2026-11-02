@@ -69,6 +69,12 @@ target availability while rendering. Initial generation can therefore retain HTM
 links to pages generated later in the run. A subsequent `--force` run can rewrite
 those links once the target records exist; there is no automatic second link pass.
 
+Both generation commands are bulk runs, as are the rebuilds below. A renderer that
+calls an external service can leave that call out of them (see
+[the renderer contract](custom-blocks.md#the-renderer-contract)), so its exports can
+lack what only that service supplies until the page is next published. Publishing
+a page is never a bulk run.
+
 ## Rebuild discovery
 
 ```bash

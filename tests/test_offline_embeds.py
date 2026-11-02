@@ -9,8 +9,9 @@ from wagtail.embeds.blocks import EmbedBlock
 from wagtail.embeds.exceptions import EmbedException
 from wagtail.embeds.models import Embed
 
+from wagtail_markdown_agents.rendering import in_bulk_run
 from wagtail_markdown_agents.rendering.blocks import render_block
-from wagtail_markdown_agents.rendering.offline import offline_embeds
+from wagtail_markdown_agents.rendering.offline import bulk_run, offline_embeds
 
 URL = "https://www.youtube.com/watch?v=abc123"
 
@@ -119,3 +120,11 @@ def test_the_guard_does_not_reach_other_threads(finder_calls):
         thread.join()
 
     assert results == ["<p>Fetched</p>"]
+
+
+def test_a_bulk_run_is_flagged_only_inside_it():
+    assert not in_bulk_run()
+    with pytest.raises(RuntimeError), bulk_run():
+        assert in_bulk_run()
+        raise RuntimeError
+    assert not in_bulk_run()

@@ -13,6 +13,11 @@ that links the URL is how media reliably reaches the export.
 
 Wagtail's own page rendering is unaffected: the guard applies only inside
 :func:`offline_embeds`, in the current thread or task.
+
+:func:`bulk_run` marks a run that generates many pages at once, from the
+``agentmd_generate`` and ``agentmd_generate_indexes`` commands (#52). A
+renderer that calls an external service checks :func:`in_bulk_run` and leaves
+the call out there, so a large run never waits on that service.
 """
 
 from contextlib import contextmanager
@@ -21,6 +26,7 @@ from contextvars import ContextVar
 from django.apps import apps
 
 _offline = ContextVar("wagtail_markdown_agents_offline_embeds", default=False)
+_bulk = ContextVar("wagtail_markdown_agents_bulk_run", default=False)
 
 
 @contextmanager
@@ -31,6 +37,21 @@ def offline_embeds():
         yield
     finally:
         _offline.reset(token)
+
+
+@contextmanager
+def bulk_run():
+    """Within this block, generation is a bulk run started from a command."""
+    token = _bulk.set(True)
+    try:
+        yield
+    finally:
+        _bulk.reset(token)
+
+
+def in_bulk_run() -> bool:
+    """Whether the current render is part of a bulk run; see :func:`bulk_run`."""
+    return _bulk.get()
 
 
 def install() -> None:
