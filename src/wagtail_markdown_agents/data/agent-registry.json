@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2026-09-28.2",
+  "version": "2026-11-06.1",
   "agents": [
     {
       "label": "GPTBot",
@@ -226,6 +226,23 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Browser navigation and actions on user request; recognise it but preserve HTML needed by browser workflows."
+    },
+    {
+      "label": "Claude-Agent",
+      "operator": "Anthropic",
+      "tokens": [
+        "Claude-Agent"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "sources": [
+        "https://support.claude.com/en/articles/18234133-how-do-anthropic-hosted-browsers-identify-themselves-when-they-browse-the-web-on-a-user-s-behalf",
+        "https://claude.com/.well-known/sail"
+      ],
+      "reviewed": "2026-11-06",
+      "notes": "Hosted Chrome browser that navigates, clicks and fills forms on a user's behalf; recognise it but preserve HTML needed by browser workflows."
     },
     {
       "label": "Amazonbot",

@@ -13,6 +13,7 @@ from wagtail_markdown_agents.data.agents import (
     REGISTRY_VERSION,
     identify_agent,
 )
+from wagtail_markdown_agents.data.operators import operator_for_agent
 from wagtail_markdown_agents.negotiation import detect, detect_agent
 from wagtail_markdown_agents.stats import agent_label, categorise_agent
 
@@ -52,7 +53,15 @@ def test_all_identities_have_bounded_matching_and_independent_serving(agent):
             assert identify_agent(ua) is None
 
 
-@pytest.mark.parametrize("ua", ["Applebot/0.1", "bingbot/2.0", "Googlebot/2.1", "OAI-AdsBot/1.0"])
+CLAUDE_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko; compatible; "
+    "Claude-Agent/1.0) Chrome/154.0.0.0 Safari/537.36"
+)
+
+
+@pytest.mark.parametrize(
+    "ua", ["Applebot/0.1", "bingbot/2.0", "Googlebot/2.1", "OAI-AdsBot/1.0", CLAUDE_AGENT]
+)
 def test_recognition_only_agents_can_explicitly_request_markdown(ua, settings):
     assert detect_agent(ua)
     assert detect(RequestFactory().get("/", HTTP_USER_AGENT=ua)) is None
@@ -242,3 +251,19 @@ def test_restored_labels_correct_historical_categories_at_read_time():
     assert categorise_agent("CloudflareBrowserRenderingCrawler") == "mixed"
     assert categorise_agent("ShapBot/") == "search"
     assert categorise_agent("Nava/") == "on-demand"
+
+
+def test_anthropics_hosted_browser_is_an_on_demand_agent_served_html():
+    # Verbatim header from Anthropic's hosted-browser article (2026-11-06).
+    agent = identify_agent(CLAUDE_AGENT)
+    assert (agent.label, agent.operator, agent.category) == (
+        "Claude-Agent",
+        "Anthropic",
+        "on-demand",
+    )
+    assert not agent.auto_markdown
+    assert "Claude-Agent" not in MARKDOWN_UA_STRINGS
+    assert operator_for_agent("Claude-Agent") == "anthropic"
+    # Claude Code still counts as Claude-User.
+    claude_code = "Claude-User (claude-code/2.1.284; +https://support.anthropic.com/)"
+    assert detect_agent(claude_code) == "Claude-User"

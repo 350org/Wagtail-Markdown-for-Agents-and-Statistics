@@ -1,6 +1,6 @@
 # Agent registry
 
-Registry `2026-09-28.2` contains 71 recognised HTTP identities and enables
+Registry `2026-11-06.1` contains 72 recognised HTTP identities and enables
 automatic Markdown for 23. It builds on the bounded `2026-09-22.1` baseline, which
 had 23 identities. Every one of the 69 strings inherited from the WordPress plugin now
 has a recorded disposition:
@@ -50,6 +50,8 @@ non-AI tooling (purpose `other`), are recognition-only. `2026-09-28.2` adds four
 operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` and
 `Shap-User` (on-demand), and `Kimi-SearchBot` (search). See the
 [review](contributing/agent-registry-review.md#additions-in-2026-09-282).
+`2026-11-06.1` adds Anthropic's hosted browser, `Claude-Agent`, as recognition-only; see
+[the review](contributing/agent-registry-review.md#additions-in-2026-11-061).
 
 | Stored label | Estimated purpose | Automatic Markdown |
 | --- | --- | --- |
@@ -67,6 +69,7 @@ operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` a
 | `MistralAI-User` | on-demand | Yes |
 | `DuckAssistBot` | on-demand | Yes |
 | `Google-Agent` | on-demand | No |
+| `Claude-Agent` | on-demand | No |
 | `Amazonbot` | training | No |
 | `CCBot` | training | No |
 | `FacebookBot` | training | No |
