@@ -33,8 +33,8 @@ python -m wagtail_markdown_agents.cloudflare --host www.example.org
 From a source checkout, prefix the command with `PYTHONPATH=src`. This prints the
 expression and does not contact Cloudflare. The generator uses only automatic
 Markdown-serving identities, not every recognised agent. For example, Googlebot,
-Applebot, bingbot and Google-Agent remain normal HTML clients unless they explicitly
-request Markdown. Registry version `2026-09-28.2` enables 23 automatic identities
+Applebot, bingbot, Google-Agent and Claude-Agent remain normal HTML clients unless they
+explicitly request Markdown. Registry version `2026-11-06.1` enables 23 automatic identities
 (24 tokens).
 
 In **Caching → Cache Rules**, edit the existing Markdown **Bypass cache** rule,

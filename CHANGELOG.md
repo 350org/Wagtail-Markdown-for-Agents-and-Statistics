@@ -58,6 +58,10 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- Agent registry `2026-11-06.1` recognises Anthropic's hosted browser, `Claude-Agent`,
+  as an on-demand agent, without serving it Markdown automatically, like
+  `Google-Agent`. That makes 72 identities, still 23 served automatically, so the
+  Cloudflare cache-bypass expression is unchanged.
 - INSTALL.md and the storage guide explain that the default export folder must
   survive deploys, and what to configure on hosts without a persistent disk (#43).
 - The agent access report selects **Custom dates** when From or To is changed, so

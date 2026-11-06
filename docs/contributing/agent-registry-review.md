@@ -160,6 +160,25 @@ identity, and none as a browser that navigates, clicks or fills forms.
 Registry `2026-09-28.2` recognises 71 identities and serves Markdown automatically to
 23. None of these labels has historical counters.
 
+## Additions in 2026-11-06.1
+
+Anthropic documents a hosted Chrome browser that browses on a user's behalf. It sends
+a full Chrome User-Agent with a `Claude-Agent` product token, and Anthropic publishes
+its source addresses in a [SAIL](https://claude.com/.well-known/sail) file
+(`draft-kelley-webbotauth-sail`). It is recognised but not served Markdown
+automatically, like `Google-Agent`: it navigates, clicks and fills forms, so it needs
+the normal page. It can still ask for Markdown with `Accept: text/markdown` or
+`?output_format=md`.
+
+| Stored label | HTTP token | Operator | Purpose | Evidence | Operator description |
+| --- | --- | --- | --- | --- | --- |
+| `Claude-Agent` | `Claude-Agent` | Anthropic | on-demand | [1](https://support.claude.com/en/articles/18234133-how-do-anthropic-hosted-browsers-identify-themselves-when-they-browse-the-web-on-a-user-s-behalf) [2](https://claude.com/.well-known/sail) | Hosted browser acting on a user's request |
+
+Registry `2026-11-06.1` recognises 72 identities and still serves Markdown
+automatically to 23, so the Cloudflare cache-bypass expression is unchanged. The label
+has no historical counters. The SAIL addresses are recorded as evidence only: this
+package does not check where a request comes from.
+
 ## Read-time category changes
 
 Categories are calculated when reports are read, so these corrections apply to
