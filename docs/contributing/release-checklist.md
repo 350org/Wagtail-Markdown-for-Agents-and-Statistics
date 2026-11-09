@@ -45,6 +45,10 @@ repository review/CI policy remains
 - [ ] Build and inspect the distribution artefacts; verify packaged migrations,
   templates, static assets, licence and installation against the supported setup.
   Record deployment/cache checks separately from local package tests.
+- [ ] Build from a clean checkout of the release revision, and compare the sdist's
+  file list with the tracked files: `tar tzf dist/*.tar.gz | sed 's#^[^/]*/##' | sort`
+  against `git ls-files | sort`. Apart from `PKG-INFO`, the sdist must contain only
+  tracked files, so nothing untracked or private from a local checkout is published.
 - [ ] Confirm the selected revision, reviewer and remaining issues are recorded
   before the release/tag/publication step. Follow the project's agreed release
   workflow; completing this checklist does not itself publish or deploy anything.

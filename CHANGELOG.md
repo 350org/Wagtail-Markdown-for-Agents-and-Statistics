@@ -96,6 +96,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- The source distribution no longer picks up untracked files from a local checkout.
+  The sdist `include` entries in `pyproject.toml` were unanchored, so hatch matched
+  `docs` and `README.md` at any depth and packaged any untracked folder holding
+  them. Each entry is now anchored to the project root, and the release checklist
+  says to compare the sdist's file list with the tracked files before publishing.
 - A negotiated request can no longer turn an existing page into a 404. On a site
   with language-prefixed URLs and the middleware listed before `LocaleMiddleware`,
   a request for a page in another language cached a failed route lookup that

@@ -62,9 +62,12 @@ dev = [
 packages = ["src/wagtail_markdown_agents"]
 
 [tool.hatch.build.targets.sdist]
+# Leading slashes anchor each entry to the project root. Unanchored, hatch matches
+# "docs" or "README.md" at any depth, so an untracked folder in a local checkout
+# (such as private review material) would be packaged.
 include = [
-    "src", "tests", "sandbox", "scripts", "docs", "tox.ini",
-    "README.md", "INSTALL.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md",
+    "/src", "/tests", "/sandbox", "/scripts", "/docs", "/tox.ini",
+    "/README.md", "/INSTALL.md", "/LICENSE", "/CHANGELOG.md", "/CONTRIBUTING.md", "/SECURITY.md",
 ]
 
 [tool.ruff]
