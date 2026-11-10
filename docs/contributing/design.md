@@ -305,10 +305,14 @@ serving veto runs separately and must never be cached as export eligibility.
 {hostname}/manifest.json
 ```
 
-With `WAGTAIL_I18N_ENABLED=True`, all page paths include the page's locale code:
+With `WAGTAIL_I18N_ENABLED=True`, all page paths start with a language code:
 `{hostname}/en/index.md`, `{hostname}/en/about.md`, `{hostname}/fr/index.md`.
 This applies to the default language too, preventing collisions between languages
-and page slugs. The site-level `index.md` is a synthetic directory index;
+and page slugs. The code is the locale of the translated site root the page sits
+under, the same tree that gives the page its URL prefix, not the page's own
+locale. A page whose locale doesn't match its tree (for example an English page
+placed under the French root) therefore exports under `fr/`, and cannot claim the
+path of the same slug in the English tree. The site-level `index.md` is a synthetic directory index;
 `llms.txt` and `manifest.json` remain site-wide. Snapshots cover all translations of
 the configured site root, including their settings and inherited restrictions.
 The path hook receives the locale-prefixed default and can still relocate it.

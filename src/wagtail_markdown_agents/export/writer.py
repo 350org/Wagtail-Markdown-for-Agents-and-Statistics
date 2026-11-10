@@ -500,7 +500,12 @@ class FileWriter:
                 "hostname share one export directory (check W005)"
             )
         if occupied and occupied.page_id != token.page_id:
-            raise StorageContractError(f"Path {token.path!r} is owned by another page or aggregate")
+            owner = (
+                f"page {occupied.page_id}"
+                if occupied.page_id is not None
+                else "a site index or discovery file"
+            )
+            raise StorageContractError(f"Path {token.path!r} is owned by {owner}")
         if token.page_id is not None:
             for record in ExportArtifact.objects.filter(scope=scope, page_id=token.page_id):
                 self._retire(
