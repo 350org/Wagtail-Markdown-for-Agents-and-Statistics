@@ -2,10 +2,16 @@ from django.core.management.base import BaseCommand, CommandError
 from wagtail.models import Site
 
 from ...export.indexes import IndexBatch
+from ...export.state import StaleBuild
 from ...export.writer import FileWriter
 from ...models import ExportArtifact
 from ...rendering.page import PageRenderError
 from ..export_commands import add_scope_arguments, inspect_page, report, require_autocommit, select
+
+#: Builds per page (and per site finalisation) before a superseded build fails.
+#: The writer rejects any build that a concurrent publication, revocation or
+#: aggregate update overtook; a long bulk run on a live site meets a few.
+BUILD_ATTEMPTS = 3
 
 
 class Command(BaseCommand):
@@ -75,7 +81,7 @@ class Command(BaseCommand):
                         pending_indexes.append(page_id)
                         continue
                     try:
-                        batch.generate(page)
+                        skipped = self._generate(batch, page_id, page, writer)
                     except PageRenderError as exc:
                         if exc.reason not in {"unsupported_page", "empty_body"}:
                             raise
@@ -83,8 +89,12 @@ class Command(BaseCommand):
                         counts["skipped"] += 1
                         self.stdout.write(f"Page {page_id}: skipped ({exc.reason})")
                     else:
-                        counts["generated"] += 1
-                        self.stdout.write(f"Page {page_id}: generated {path}")
+                        if skipped:
+                            counts["skipped"] += 1
+                            self.stdout.write(f"Page {page_id}: skipped ({skipped})")
+                        else:
+                            counts["generated"] += 1
+                            self.stdout.write(f"Page {page_id}: generated {path}")
                 except Exception as exc:
                     counts["failed"] += 1
                     site_failed = True
@@ -112,7 +122,7 @@ class Command(BaseCommand):
                 ):
                     batch.mark_dirty(site.pk)
                 if batch.dirty:
-                    batch.finalise()
+                    self._retry(batch.finalise, f"Site {site.hostname}: retrying discovery")
                     counts["discovery_scopes"] += 1
                 for page_id in pending_indexes:
                     state, _, _ = inspect_page(page_id, writer)
@@ -126,3 +136,30 @@ class Command(BaseCommand):
         report(self, counts, dry_run=dry_run)
         if counts["failed"] or counts["failed_scopes"]:
             raise CommandError("Export generation failed; see page/site results above.")
+
+    def _generate(self, batch, page_id, page, writer):
+        """Build one page, rebuilding from fresh state if another change overtook it.
+
+        Returns a skip reason when the page stopped being exportable meanwhile
+        (its revocation already withdrew any export), otherwise ``None``.
+        """
+        for attempt in range(1, BUILD_ATTEMPTS + 1):
+            try:
+                batch.generate(page)
+                return None
+            except StaleBuild as exc:
+                state, _, _ = inspect_page(page_id, writer)
+                if state in {"missing_page", "ineligible", "unsupported"}:
+                    return state
+                if attempt == BUILD_ATTEMPTS:
+                    raise
+                self.stdout.write(f"Page {page_id}: retrying ({exc})")
+
+    def _retry(self, build, message):
+        for attempt in range(1, BUILD_ATTEMPTS + 1):
+            try:
+                return build()
+            except StaleBuild as exc:
+                if attempt == BUILD_ATTEMPTS:
+                    raise
+                self.stdout.write(f"{message} ({exc})")

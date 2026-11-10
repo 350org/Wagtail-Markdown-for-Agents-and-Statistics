@@ -96,6 +96,19 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- A page whose locale differs from the language tree it sits in (for example an
+  English page under the French root) was exported under its own locale. It
+  then claimed the same path as the matching page in that locale's tree, so one
+  of the two failed with "owned by another page or aggregate", and the failed
+  site's section indexes, `llms.txt` and manifest were never built. The language
+  directory now follows the page's tree, as its URL prefix does. Pages in this
+  situation move to their tree's directory on the next `agentmd_generate`; run it
+  with `--force` so links to them are rewritten too.
+- `agentmd_generate` no longer fails a page, or a site's discovery files, when an
+  editor's publication elsewhere on the site lands mid-build ("A page publication
+  or revocation superseded this site build"). It rebuilds from fresh state, up to
+  three attempts.
+- The "owned by another page" error now names the page that owns the path.
 - The source distribution no longer picks up untracked files from a local checkout.
   The sdist `include` entries in `pyproject.toml` were unanchored, so hatch matched
   `docs` and `README.md` at any depth and packaged any untracked folder holding

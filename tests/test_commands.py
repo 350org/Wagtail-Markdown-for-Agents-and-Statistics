@@ -462,3 +462,105 @@ def test_all_delete_dry_run_with_yes_preserves_inventory_and_never_prompts(setup
     output = run("agentmd_delete", "--all", "--yes", "--dry-run")
     assert "Dry run" in output and "discovery_scopes=0" in output
     assert inventory() == before
+
+
+def _overtake_render(monkeypatch, module, page_id, times, site_id, action=None):
+    """Make another site change land while ``page_id`` renders, ``times`` times."""
+    import wagtail_markdown_agents.rendering as rendering
+
+    target = (
+        rendering
+        if module == "rendering"
+        else __import__("wagtail_markdown_agents.export.indexes", fromlist=["render_page"])
+    )
+    original = target.render_page
+    calls = {"overtaken": 0}
+
+    def render(page, *args, **kwargs):
+        if page.pk == page_id and calls["overtaken"] < times:
+            calls["overtaken"] += 1
+            if action is not None:
+                action()
+            else:
+                # Withdrawing an unrelated page bumps the site's content version,
+                # exactly like an editor's publication elsewhere on the site.
+                FileWriter().delete_page(0, site_id=site_id)
+        return original(page, *args, **kwargs)
+
+    monkeypatch.setattr(target, "render_page", render)
+    return calls
+
+
+def test_generate_rebuilds_a_page_overtaken_by_another_publication(setup, monkeypatch):
+    writer, site, home = setup
+    first, second = article(home, "first"), article(home, "second")
+    calls = _overtake_render(monkeypatch, "rendering", second.pk, 1, site.pk)
+    output = run("agentmd_generate", "--site", site.hostname)
+    assert calls["overtaken"] == 1
+    assert f"Page {second.pk}: retrying (A page publication or revocation" in output
+    assert "failed=0" in output and "failed_scopes=0" in output
+    assert writer.exists("example.org/second.md")
+    manifest = json.loads(read(writer, "example.org/manifest.json"))
+    assert {entry["id"] for entry in manifest["documents"]} == {home.pk, first.pk, second.pk}
+
+
+def test_generate_fails_a_page_still_overtaken_after_every_attempt(setup, monkeypatch):
+    from wagtail_markdown_agents.management.commands.agentmd_generate import BUILD_ATTEMPTS
+
+    writer, site, home = setup
+    article(home, "first")
+    second = article(home, "second")
+    calls = _overtake_render(monkeypatch, "rendering", second.pk, BUILD_ATTEMPTS, site.pk)
+    output = StringIO()
+    with pytest.raises(CommandError):
+        call_command("agentmd_generate", stdout=output, stderr=output)
+    assert calls["overtaken"] == BUILD_ATTEMPTS
+    assert f"Page {second.pk}: failed (A page publication or revocation" in output.getvalue()
+    assert not writer.exists("example.org/manifest.json")
+
+
+def test_generate_skips_a_page_excluded_while_it_was_being_built(setup, monkeypatch):
+    writer, site, home = setup
+    first, second = article(home, "first"), article(home, "second")
+
+    def exclude():
+        PageAgentSettings.objects.create(page=second, excluded=True)
+
+    _overtake_render(monkeypatch, "rendering", second.pk, 1, site.pk, action=exclude)
+    output = run("agentmd_generate", "--site", site.hostname)
+    assert f"Page {second.pk}: skipped (ineligible)" in output
+    assert "failed=0" in output
+    assert not writer.exists("example.org/second.md")
+    manifest = json.loads(read(writer, "example.org/manifest.json"))
+    assert {entry["id"] for entry in manifest["documents"]} == {home.pk, first.pk}
+
+
+def test_generate_retries_site_discovery_overtaken_by_another_publication(setup, monkeypatch):
+    writer, site, home = setup
+    article(home, "first")
+    calls = _overtake_render(monkeypatch, "indexes", home.pk, 1, site.pk)
+    output = run("agentmd_generate", "--site", site.hostname)
+    assert calls["overtaken"] == 1
+    assert f"Site {site.hostname}: retrying discovery" in output
+    assert "failed=0" in output and "failed_scopes=0" in output
+    assert writer.exists("example.org/index.md")
+    assert writer.exists("example.org/manifest.json")
+
+
+def test_path_conflict_names_the_page_that_owns_the_path(setup):
+    from wagtail_markdown_agents.export.policy import EXPORT_PATH_HOOK
+    from wagtail_markdown_agents.export.writer import StorageContractError
+
+    writer, site, home = setup
+    first = article(home, "first")
+    writer.generate(first)
+    second = article(home, "second")
+
+    def clash(path, page, site):
+        return "first.md" if page.pk == second.pk else None
+
+    with (
+        hooks.register_temporarily(EXPORT_PATH_HOOK, clash),
+        pytest.raises(StorageContractError, match=f"is owned by page {first.pk}$"),
+    ):
+        writer.generate(second)

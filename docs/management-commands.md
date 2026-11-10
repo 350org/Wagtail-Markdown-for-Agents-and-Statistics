@@ -64,6 +64,12 @@ Already-published pages remain available when their state is current. Discovery
 failures are reported separately; any page/site failure makes the command exit
 nonzero. Fix the error and rerun the same selection to repair missing work.
 
+On a live site an editor's publication, unpublication or deletion can land while a
+page or the site's indexes are being built. The writer then rejects that build as
+superseded. `agentmd_generate` rebuilds it from fresh state, up to three attempts,
+and logs each `retrying` line. A page that became ineligible meanwhile is reported
+as skipped. Only a build overtaken on every attempt counts as failed.
+
 [Link rewriting](internal-links.md#missing-targets-and-generation-order) checks
 target availability while rendering. Initial generation can therefore retain HTML
 links to pages generated later in the run. A subsequent `--force` run can rewrite

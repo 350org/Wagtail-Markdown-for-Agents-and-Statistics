@@ -120,21 +120,32 @@ class ExportPolicy:
     def _default_path(self, page: Page, site: Site) -> str:
         root_depth = site.root_page.depth
         multilingual = getattr(settings, "WAGTAIL_I18N_ENABLED", False)
+        language = None
         if multilingual:
             # Translated site roots may occupy a different position in the tree.
             ancestors = (
                 self.snapshot.ancestors(page)
                 if self.snapshot
-                else page.get_ancestors(inclusive=True)
+                else page.get_ancestors(inclusive=True).select_related("locale")
             )
-            root_depth = next(
+            tree_root = next(
                 (
-                    ancestor.depth
+                    ancestor
                     for ancestor in ancestors
                     if ancestor.translation_key == site.root_page.translation_key
                 ),
-                root_depth,
+                None,
             )
+            if tree_root is not None:
+                # The language directory follows the tree the page sits in, as
+                # its URL prefix does. A page whose own locale differs from its
+                # tree (e.g. an English page under the French root) would
+                # otherwise claim the same path as its counterpart in the
+                # English tree.
+                root_depth = tree_root.depth
+                language = tree_root.locale.language_code
+            else:
+                language = page.locale.language_code
         lineage = (
             self.snapshot.lineage(page, root_depth)
             if self.snapshot
@@ -144,7 +155,7 @@ class ExportPolicy:
                 if ancestor.depth > root_depth
             ]
         )
-        segments = ([page.locale.language_code] if multilingual else []) + [
+        segments = ([language] if multilingual else []) + [
             _segment(ancestor, self.snapshot) for ancestor in lineage
         ]
         has_children = (

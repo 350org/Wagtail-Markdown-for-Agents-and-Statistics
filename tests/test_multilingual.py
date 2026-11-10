@@ -84,6 +84,42 @@ def test_generation_manifest_and_serving_include_both_languages(translated, clie
     assert "article body." in read(writer, expected[page.pk])
 
 
+def test_page_whose_locale_differs_from_its_tree_exports_under_that_tree(translated, client):
+    """An English-locale page under the French root must not claim English paths.
+
+    Sites can end up with such pages (moved or created across trees). The path
+    follows the tree, as the page's URL prefix does, so it cannot collide with
+    the same slug in the English tree.
+    """
+    from wagtail.models import Page
+
+    writer, site, home, page, french_home, french_page = translated
+    english_cookies = article(home, "cookies")
+    stray = article(french_home, "cookies")
+    Page.objects.filter(pk=stray.pk).update(locale=home.locale)
+    stray.refresh_from_db()
+    assert stray.locale.language_code == "en"
+    assert urlsplit(stray.full_url).path.startswith("/fr/")
+    call_command("agentmd_generate", site=site.hostname)
+    paths = dict(
+        ExportArtifact.objects.exclude(page_id=None).values_list("page_id", "logical_path")
+    )
+    assert paths[english_cookies.pk] == "example.org/en/cookies.md"
+    assert paths[stray.pk] == "example.org/fr/cookies.md"
+    snapshot = SiteSnapshot(site)
+    for candidate in (english_cookies, stray):
+        assert ExportPolicy(snapshot).relative_path(candidate) == paths[candidate.pk]
+        assert ExportPolicy().relative_path(candidate) == paths[candidate.pk]
+    response = client.get(
+        urlsplit(stray.full_url).path + "?output_format=md", HTTP_HOST="example.org"
+    )
+    try:
+        assert response["Content-Type"].startswith("text/markdown")
+        assert "cookies body." in b"".join(response.streaming_content).decode()
+    finally:
+        response.close()
+
+
 @pytest.mark.parametrize("change", ["exclude", "restrict", "metadata", "publish"])
 def test_translated_changes_invalidate_site_state_and_match_live_policy(translated, change):
     writer, site, home, page, french_home, french_page = translated
