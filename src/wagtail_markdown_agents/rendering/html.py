@@ -94,6 +94,31 @@ def _code_language(pre) -> str | None:
 
 
 class _Converter(MarkdownConverter):
+    def convert_a(self, el, text, parent_tags):
+        # Markdown link text may only hold inline content. A link that wraps a
+        # whole card (image, heading, tags, summary) would otherwise put blank
+        # lines inside the brackets, and parsers end the link at the first
+        # one. Keep the text on one line; the block elements below drop their
+        # markers inside a link, so nothing but the line breaks is lost.
+        if el.get("href") and "_noformat" not in parent_tags:
+            text = " ".join(text.split())
+        return super().convert_a(el, text, parent_tags)
+
+    def convert_hN(self, n, el, text, parent_tags):
+        if _inside_link(el):
+            return f" {text.strip()} "
+        return super().convert_hN(n, el, text, parent_tags)
+
+    def convert_li(self, el, text, parent_tags):
+        if _inside_link(el):
+            return f" {text.strip()} "
+        return super().convert_li(el, text, parent_tags)
+
+    def convert_blockquote(self, el, text, parent_tags):
+        if _inside_link(el):
+            return f" {(text or '').strip()} "
+        return super().convert_blockquote(el, text, parent_tags)
+
     def convert_template(self, el, text, parent_tags):
         # A browser never renders <template> content: it is inert markup for
         # scripts to clone. Other hidden markup is kept, because the HTML alone
@@ -113,6 +138,16 @@ class _Converter(MarkdownConverter):
         before = " " if _touches_text(el.previous_sibling, at_end=True) else ""
         after = " " if _touches_text(el.next_sibling, at_end=False) else ""
         return f"{before}{markdown}{after}"
+
+
+def _inside_link(el) -> bool:
+    """Whether ``el`` sits inside a link, whose text must stay inline.
+
+    An ``<a>`` without ``href`` (a named anchor) is not a link: it converts to
+    its plain content, so headings and lists inside it keep their markers.
+    """
+    link = el.find_parent("a")
+    return link is not None and bool(link.get("href"))
 
 
 # Elements that start or end their own line in Markdown, so an image beside one

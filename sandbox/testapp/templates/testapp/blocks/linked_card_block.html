@@ -1,0 +1,19 @@
+{% load wagtailcore_tags %}
+<a class="card" href="{% pageurl page %}">
+    <div class="card__banner">
+        <span class="card__badge">{{ value.badge }}</span>
+    </div>
+    <div class="card__content">
+        <ul class="card__tags" role="list">
+            {% for tag in value.tags %}<li>#{{ tag }}</li>{% endfor %}
+        </ul>
+        <h3 class="card__heading">
+            {{ value.heading }}
+        </h3>
+        <p class="card__excerpt">{{ value.summary }}</p>
+        <blockquote>{{ value.quote }}</blockquote>
+        <div class="card__footer">
+            <span aria-hidden="true">Read →</span>
+        </div>
+    </div>
+</a>
