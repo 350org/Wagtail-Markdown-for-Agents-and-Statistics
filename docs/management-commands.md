@@ -284,7 +284,7 @@ iterated, and no page, export or report state is touched. Pruning is explicit: n
 schedules it, and the report keeps showing history until it is pruned. Run it from
 cron or a scheduled job with `--yes` if retention should be enforced routinely. It does
 not need autocommit and can run inside a caller transaction. The runtime-editable
-retention setting remains v0.2 (#38).
+retention setting remains v0.2 ([old tracker #38](https://github.com/dogwonder/wagtail-markdown-for-agents/issues/38)).
 [Volume benchmarks](contributing/agent-stats-benchmarks.md) cover pruning and query budgets (#66).
 
 ## Dry runs

@@ -701,7 +701,8 @@ filter and aggregation contract. **Implemented in #36:** `agentmd_prune_stats`
 deletes counters dated strictly before today's UTC date minus `--days` (default
 `STATS_RETENTION_DAYS`, 90) with positive-days validation of either source, a typed
 confirmation unless `--yes`, `--dry-run` and deleted/retained counts, in one indexed
-`DELETE`. Nothing schedules it; runtime editing of the period stays #38.
+`DELETE`. Nothing schedules it; runtime editing of the period stays
+[old tracker #38](https://github.com/dogwonder/wagtail-markdown-for-agents/issues/38).
 
 ### Deployment verification
 

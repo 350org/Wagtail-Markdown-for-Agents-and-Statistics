@@ -84,7 +84,7 @@ count and cutoff, prompts for `yes` unless `--yes` is given, and reports deleted
 retained counts; `--dry-run` only counts. Deletion is a single indexed `DELETE`, so
 large tables are pruned without loading rows. See the
 [command reference](management-commands.md#prune-statistics). Schedule it with `--yes`
-if retention must be enforced routinely; runtime editing of the period is v0.2 (#38).
+if retention must be enforced routinely; runtime editing of the period is v0.2 ([old tracker #38](https://github.com/dogwonder/wagtail-markdown-for-agents/issues/38)).
 For example, run `python manage.py agentmd_prune_stats --days 90 --yes` daily
 through the host's scheduler. Apply appropriate request limits at the reverse
 proxy/CDN: bounded labels limit row growth, but each served GET still performs a
@@ -208,7 +208,7 @@ or a proven human-triggered request. Pruning is the explicit command above;
 [volume benchmarks](contributing/agent-stats-benchmarks.md) document report and prune query
 budgets (#66). The report does not schedule retention or add runtime settings.
 
-### Historical classification versus runtime detection (#38)
+### Historical classification versus serving policy
 
 Treat the shipped category map and project overrides as append-only historical
 classification data. Removing a substring can move existing counters to unknown;
@@ -216,10 +216,13 @@ changing its category or precedence can relabel all matching history. Even addin
 an overlapping substring can reclassify old rows. Review these changes explicitly;
 there is no stored category snapshot or migration to preserve the old result.
 
-Runtime detection-list removals are a separate concern: they can stop future
-UA-triggered serving and change future recorded labels, but do not erase existing
-labels or remove historical category mappings. Keep the historical map when an
-agent is disabled for detection. Runtime settings themselves remain #38.
+Which agents get automatic Markdown is decided per entry in the registry
+(`auto_markdown`), not per site. There is deliberately no per-site agent list, so a
+site cannot drift from the shipped registry; `NEGOTIATE_USER_AGENT = False` is the
+only site-level switch. Turning an entry's `auto_markdown` off stops future
+UA-triggered serving but must not erase existing labels or remove historical
+category mappings. Runtime-editable settings are tracked in [old tracker #38](https://github.com/dogwonder/wagtail-markdown-for-agents/issues/38); the agent list
+is not among them.
 
 ### Independent registry — 22 September 2026
 
