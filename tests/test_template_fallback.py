@@ -16,6 +16,7 @@ from wagtail_markdown_agents.rendering.context import render_context
 from wagtail_markdown_agents.rendering.html import (
     CONVERTER_OPTIONS_HOOK,
     PRE_CONVERT_HOOK,
+    convert_html,
 )
 from wagtail_markdown_agents.rendering.registry import BlockRenderError, register_renderer
 
@@ -58,6 +59,19 @@ class SectionBlock(blocks.StructBlock):
         template = "testapp/blocks/section_block.html"
 
 
+class LinkedCardBlock(blocks.StructBlock):
+    """A card whose template wraps everything in one link (#63)."""
+
+    badge = blocks.CharBlock()
+    tags = blocks.ListBlock(blocks.CharBlock())
+    heading = blocks.CharBlock()
+    summary = blocks.CharBlock()
+    quote = blocks.CharBlock()
+
+    class Meta:
+        template = "testapp/blocks/linked_card_block.html"
+
+
 @pytest.fixture
 def page(db):
     home = Site.objects.get(is_default_site=True).root_page
@@ -83,6 +97,53 @@ def test_unregistered_block_renders_through_its_template(page):
 
 def test_script_in_a_template_is_removed_with_its_content(page):
     assert "trackPromo" not in promo(render_context(page))
+
+
+def test_link_wrapping_a_card_stays_one_inline_link(page):
+    block = LinkedCardBlock()
+    value = block.to_python(
+        {
+            "badge": "Campaign",
+            "tags": ["climate", "finance"],
+            "heading": "Divest now",
+            "summary": "Move the money.",
+            "quote": "It works.",
+        }
+    )
+
+    assert render_block(block, value, render_context(page)) == (
+        "[Campaign #climate #finance Divest now Move the money. It works. Read →](/get-involved/)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        (
+            '<a href="/x"><p>2024. A year</p><p># not a heading</p></a>',
+            "[2024. A year # not a heading](/x)",
+        ),
+        (
+            '<a href="/x"><img src="https://350.org/card.png" alt="Card"><h2>Title</h2></a>',
+            "[![Card](https://350.org/card.png) Title](/x)",
+        ),
+        ('<a href="/x">one<br>two</a>', "[one two](/x)"),
+        (
+            '<p>Join <a href="https://350.org/">350</a> today.</p>',
+            "Join [350](https://350.org/) today.",
+        ),
+        ('<a href="https://350.org/">https://350.org/</a>', "<https://350.org/>"),
+        ('<a id="top"><h2>Heading</h2><ul><li>one</li></ul></a>', "## Heading\n\n- one"),
+    ],
+)
+def test_link_text_is_kept_on_one_line(html, expected):
+    assert convert_html(html, None, {}) == expected
+
+
+def test_headings_and_lists_outside_links_keep_their_markers():
+    html = "<h2>Title</h2><ul><li>one</li></ul><blockquote>Q</blockquote>"
+
+    assert convert_html(html, None, {}) == "## Title\n\n- one\n\n> Q"
 
 
 @pytest.mark.parametrize(

@@ -96,6 +96,13 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- A block template that wraps a whole card in one link (image, tags, heading,
+  summary) exported as a broken Markdown link: the headings, list items and blank
+  lines inside the brackets made parsers end the link early, so the card's title
+  and summary lost their link and a stray `](url)` was left behind. Link text now
+  stays on one line, and headings, list items and blockquotes inside a link become
+  plain text. All text and images are kept, and other links are unchanged. Run
+  `agentmd_generate --force` to fix pages already exported (#63).
 - A page whose locale differs from the language tree it sits in (for example an
   English page under the French root) was exported under its own locale. It
   then claimed the same path as the matching page in that locale's tree, so one
