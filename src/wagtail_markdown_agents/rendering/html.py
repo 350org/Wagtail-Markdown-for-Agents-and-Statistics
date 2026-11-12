@@ -17,6 +17,8 @@ Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 Exceptions raised by a hook propagate.
 """
 
+import re
+
 from django.conf import settings
 from django.utils.html import escape
 from markdownify import ATX, MarkdownConverter
@@ -28,6 +30,9 @@ PRE_CONVERT_HOOK = "markdown_pre_convert"
 CONVERTER_OPTIONS_HOOK = "construct_markdown_converter_options"
 
 _CODE_LANGUAGE_PREFIXES = ("language-", "lang-")
+
+# ASCII whitespace only, so a non-breaking space in link text survives.
+_WHITESPACE_RUN = re.compile(r"[ \t\n\r\f\v]+")
 
 
 def convert_html(html: str, block, context) -> str:
@@ -100,8 +105,13 @@ class _Converter(MarkdownConverter):
         # lines inside the brackets, and parsers end the link at the first
         # one. Keep the text on one line; the block elements below drop their
         # markers inside a link, so nothing but the line breaks is lost.
+        #
+        # Runs of whitespace become one space but are not trimmed: the parent's
+        # chomp() moves a space at either end outside the brackets, so
+        # `material<a> carbon footprint </a>threshold` keeps its word breaks.
+        # Non-breaking spaces are not whitespace here and are kept.
         if el.get("href") and "_noformat" not in parent_tags:
-            text = " ".join(text.split())
+            text = _WHITESPACE_RUN.sub(" ", text)
         return super().convert_a(el, text, parent_tags)
 
     def convert_hN(self, n, el, text, parent_tags):
