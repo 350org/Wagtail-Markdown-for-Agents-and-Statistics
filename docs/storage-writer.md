@@ -104,6 +104,15 @@ check: pages, sites, restrictions and export settings. Built-in policy queries s
 bounded as pages are added; CPU and memory still grow with site size. Custom hooks
 and routing overrides may issue additional queries. A leaf publication with no site
 dependencies avoids this scan. This is not a dependency graph or persistent cache.
+
+A caller that checks many exports of one site reads the site once with
+`state.site_freshness(site_id)` and passes it to `open(..., freshness=...)`. Each
+export is then checked against that one reading rather than a fresh scan. Without
+it, checking every page-owned index meant one scan each, so listing a large site
+grew quadratically (#66). Keep a reading only for the operation that made it; the
+commit-time checks in `publish` still read the site afresh. Likewise
+`begin(page, depends_on_site=True, dependency_state=...)` takes a site state digest
+the caller has just read instead of reading it again.
 Ordinary changes to images, snippets and external settings still need the rebuild
 procedure in the [publish lifecycle guide](publish-lifecycle.md).
 

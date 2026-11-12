@@ -14,7 +14,7 @@ from markdown_it.rules_inline import autolink, image, link
 from wagtail.models import Page, PageViewRestriction
 
 from ..export.paths import ExportPathError
-from ..export.state import StaleBuild, page_state
+from ..export.state import StaleBuild, page_state, site_freshness
 from ..export.writer import FileWriter
 from ..models import ExportArtifact
 from ..public_urls import export_url
@@ -40,12 +40,36 @@ def _private(page):
 class LinkResolver:
     """One render's URL/result cache; never reused across builds or requests."""
 
-    def __init__(self, page, context):
+    def __init__(self, page, context, freshness=None):
         self.site = context.get("site")
         self.base = page.full_url
         self.urls = {}
         self.targets = {}
         self.trees = None
+        site_id = self.site.pk if self.site else None
+        # A batch's reading of the site checks every target (an index lists
+        # all its children); without one, a reading is made only when needed.
+        self.batch = freshness if freshness and freshness.site.pk == site_id else None
+        self.freshness = self.batch
+
+    def _open(self, path, record):
+        """Open a link target's export, checking it as the writer does.
+
+        Checking an index or discovery file reads the whole site, so one
+        reading serves every such target in this render (#66). Without a
+        batch's reading, leaf exports keep the cheaper per-page check.
+        """
+        freshness = self.batch
+        if freshness is None and (record.page_id is None or record.dependency_state):
+            if self.freshness is None:
+                try:
+                    self.freshness = site_freshness(self.site.pk)
+                except StaleBuild as exc:
+                    raise FileNotFoundError(path) from exc
+            freshness = self.freshness
+        return FileWriter().open(
+            path, site_id=self.site.pk, file_id=record.file_id, freshness=freshness
+        )
 
     def resolve(self, url):
         if url not in self.urls:
@@ -198,7 +222,7 @@ class LinkResolver:
             page = Page.objects.filter(pk=record.page_id).first()
             return self._export(page) if page else (None, "not_found")
         try:
-            with FileWriter().open(logical, site_id=self.site.pk, file_id=record.file_id):
+            with self._open(logical, record):
                 return export_url(record), None
         except (FileNotFoundError, ExportPathError):
             return None, "not_found"
@@ -207,7 +231,12 @@ class LinkResolver:
         if page.pk in self.targets:
             return self.targets[page.pk]
         try:
-            current, _, path, _ = page_state(page.pk, self.site.pk)
+            current, _, path, _ = page_state(
+                page.pk,
+                self.site.pk,
+                snapshot=self.batch.snapshot if self.batch else None,
+                config=self.batch.config if self.batch else None,
+            )
         except (StaleBuild, ExportPathError):
             # Public pages outside the export keep their HTML URL; private ones
             # would be revealed by it.
@@ -224,7 +253,7 @@ class LinkResolver:
                 result = (None, "not_found")
             else:
                 try:
-                    with FileWriter().open(path, site_id=self.site.pk, file_id=record.file_id):
+                    with self._open(path, record):
                         target = export_url(record)
                     result = (target, None)
                 except (FileNotFoundError, ExportPathError):
@@ -278,15 +307,16 @@ def _source_positions(content, line_map, lines, offsets):
     return positions
 
 
-def rewrite_links(markdown, page, context=None):
+def rewrite_links(markdown, page, context=None, *, freshness=None):
     """Edit recognised destinations, preserving surrounding Markdown bytes.
 
     Reference uses become inline links; definitions and images stay untouched.
     Code/HTML blocks and inline code are excluded by the Markdown parser. A link
     to a private page is replaced by its label, and an autolink to one removed.
+    ``freshness`` is a batch's reading of the site, reused to check targets.
     """
     context = context if context is not None else render_context(page)
-    resolver = LinkResolver(page, context)
+    resolver = LinkResolver(page, context, freshness)
     edits = []
     lines = markdown.splitlines(keepends=True)
     offsets, offset = [], 0

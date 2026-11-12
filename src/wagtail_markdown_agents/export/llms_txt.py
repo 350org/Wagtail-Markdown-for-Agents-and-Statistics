@@ -8,7 +8,7 @@ from ..settings import get_setting
 from .listings import directory_entries, markdown_text, readable_page_entries
 from .paths import ExportPathError
 from .policy import ExportPolicy
-from .state import StaleBuild, site_state
+from .state import StaleBuild, site_freshness
 from .writer import FileWriter, _after_commit_required
 
 
@@ -27,7 +27,8 @@ class LlmsTxtGenerator:
         description = get_setting("LLMS_TXT_DESCRIPTION")
         if not isinstance(description, str):
             raise ImproperlyConfigured("LLMS_TXT_DESCRIPTION must be a plain-text string")
-        site, baseline = site_state(site_id)
+        fresh = site_freshness(site_id)
+        site, baseline = fresh.site, fresh.state
         if not ExportPolicy.site_enabled(site):
             return None
         token = self.writer.begin_site(site_id, f"{site.hostname}/llms.txt")
@@ -39,10 +40,11 @@ class LlmsTxtGenerator:
 
         root_path = f"{site.hostname}/index.md"
         entries = directory_entries(
-            readable_page_entries(self.writer, site, urlconf=self.urlconf), root_path
+            readable_page_entries(self.writer, site, urlconf=self.urlconf, freshness=fresh),
+            root_path,
         )
         lines = []
-        root_url = self._root_url(site, root_path)
+        root_url = self._root_url(site, root_path, fresh)
         if root_url:
             lines.append(self._link("Site index", root_url, "Browse available content."))
         lines.extend(self._link(entry.title, entry.url, entry.description) for entry in entries)
@@ -52,7 +54,7 @@ class LlmsTxtGenerator:
             parts.append("No exported pages are available.")
         return self.writer.publish(token, "\n\n".join(parts) + "\n")
 
-    def _root_url(self, site, path):
+    def _root_url(self, site, path, freshness):
         record = (
             ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=path)
             .select_related("scope", "file")
@@ -61,7 +63,9 @@ class LlmsTxtGenerator:
         if record is None:
             return None
         try:
-            with self.writer.open(path, site_id=site.pk, file_id=record.file_id):
+            with self.writer.open(
+                path, site_id=site.pk, file_id=record.file_id, freshness=freshness
+            ):
                 pass
             return export_url(record, urlconf=self.urlconf)
         except (FileNotFoundError, ExportPathError):

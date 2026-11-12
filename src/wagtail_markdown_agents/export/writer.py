@@ -21,7 +21,7 @@ from ..models import ExportArtifact, ExportFile, ExportScope, PageAgentSettings
 from ..settings import get_setting
 from ..signals import markdown_deleted, markdown_generated
 from .paths import ExportPathError, site_path, validate_path
-from .state import StaleBuild, page_state, site_state
+from .state import StaleBuild, page_state, site_freshness, site_state
 from .storage import resolve_storage
 
 logger = logging.getLogger(__name__)
@@ -130,8 +130,13 @@ class FileWriter:
                     "The v0.1 export writer requires CMS and export records on the default database"
                 )
 
-    def begin(self, page, *, depends_on_site=False) -> BuildToken:
-        """Capture before rendering; a supplied page contributes only its ID."""
+    def begin(self, page, *, depends_on_site=False, dependency_state=None) -> BuildToken:
+        """Capture before rendering; a supplied page contributes only its ID.
+
+        ``dependency_state`` is a site state digest the caller has just read, used
+        as the build's dependency instead of reading the site again. Publication
+        still compares it with the site's state at commit (#66).
+        """
         if isinstance(page, Page) and page._state.db not in {None, DEFAULT_DB_ALIAS}:
             raise ImproperlyConfigured("The export page must come from the default database")
         page_id = page.pk if isinstance(page, Page) else page
@@ -144,7 +149,7 @@ class FileWriter:
                 or get_setting("INCLUDE_HIERARCHY")
                 or current.get_children().live().exists()
             ):
-                _, dependency = site_state(site.pk)
+                dependency = dependency_state or site_state(site.pk)[1]
             return BuildToken(
                 site.pk, scope.version, page_id, path, state, dependency, scope.content_version
             )
@@ -248,13 +253,22 @@ class FileWriter:
                 if attempt == 2:
                     raise
 
-    def open(self, path: str, *, site_id: int | None = None, file_id: int | None = None):
+    def open(
+        self,
+        path: str,
+        *,
+        site_id: int | None = None,
+        file_id: int | None = None,
+        freshness=None,
+    ):
         """Open a current owned logical path or raise FileNotFoundError.
 
         Public routes must also apply request-specific serving gates. Never
         expose a Storage.url() or client-provided raw storage key directly.
         Optional site/file IDs bind a caller's ownership and metadata checks to
         the opened generation; a replacement becomes a miss for that caller.
+        ``freshness`` (from ``site_freshness``) lets a caller that reads many
+        of one site's exports check them all against one reading of the site.
         """
         validate_path(path)
         for _ in range(3):
@@ -263,7 +277,7 @@ class FileWriter:
                 record is None
                 or (site_id is not None and record.scope.site_id != site_id)
                 or (file_id is not None and record.file_id != file_id)
-                or not _retry_locked(lambda record=record: self._current(record))
+                or not _retry_locked(lambda record=record: self._current(record, freshness))
             ):
                 raise FileNotFoundError(path)
             try:
@@ -277,7 +291,7 @@ class FileWriter:
                     latest
                     and latest.file_id == record.file_id
                     and latest.scope_id == record.scope_id
-                    and _retry_locked(lambda latest=latest: self._current(latest))
+                    and _retry_locked(lambda latest=latest: self._current(latest, freshness))
                 ):
                     keep = True
                     return stream
@@ -388,10 +402,14 @@ class FileWriter:
         cannot be deleted. Missing storage objects remain safe read misses.
         """
         with _locked(site_id) as scope:
+            try:
+                freshness = site_freshness(site_id)
+            except StaleBuild:
+                freshness = None  # The site is gone: every record is obsolete.
             obsolete = [
                 record.pk
                 for record in ExportArtifact.objects.filter(scope=scope).select_related("scope")
-                if not self._current(record)
+                if not self._current(record, freshness)
             ]
             if obsolete:
                 self._retire(ExportArtifact.objects.filter(pk__in=obsolete), notify=True)
@@ -557,17 +575,33 @@ class FileWriter:
         except Exception:
             logger.exception("Failed build left candidate %s for operator recovery", file.pk)
 
-    def _current(self, record):
+    def _current(self, record, freshness=None):
+        """Whether ``record`` was built from its page's and site's current inputs.
+
+        ``freshness`` is one reading of the record's site, shared by a caller
+        checking many records; without it every check reads the site afresh.
+        """
+        site_id = record.scope.site_id
+        if freshness is not None and freshness.site.pk != site_id:
+            freshness = None
+
+        def site_digest():
+            return freshness.state if freshness else site_state(site_id)[1]
+
         try:
             if record.page_id is None:
-                _, state = site_state(record.scope.site_id)
+                state = site_digest()
             else:
-                _, _, path, state = page_state(record.page_id, record.scope.site_id)
+                _, _, path, state = page_state(
+                    record.page_id,
+                    site_id,
+                    snapshot=freshness.snapshot if freshness else None,
+                    config=freshness.config if freshness else None,
+                )
                 if path != record.logical_path:
                     return False
             return state == record.source_state and (
-                not record.dependency_state
-                or site_state(record.scope.site_id)[1] == record.dependency_state
+                not record.dependency_state or site_digest() == record.dependency_state
             )
         except StaleBuild:
             return False
