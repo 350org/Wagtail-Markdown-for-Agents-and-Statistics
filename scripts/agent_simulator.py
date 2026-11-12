@@ -61,6 +61,12 @@ def parser():
     plan.add_argument("--rate", type=float, default=1)
     plan.add_argument("--discovery-limit", type=int, default=200)
     plan.add_argument("--cache-profile", choices=["strict", "cloudflare-free"], default="strict")
+    plan.add_argument(
+        "--no-count-html",
+        dest="count_html",
+        action="store_false",
+        help="The site sets COUNT_HTML = False: expect no HTML read counters",
+    )
     run = commands.add_parser(
         "run", help="Execute one reviewed plan; every retry consumes its budget"
     )
@@ -78,6 +84,12 @@ def parser():
     report.add_argument("--after", type=Path, required=True)
     report.add_argument("--output", type=Path, required=True)
     report.add_argument("--tolerance", type=int, default=0)
+    report.add_argument(
+        "--no-count-html",
+        dest="count_html",
+        action="store_false",
+        help="The site sets COUNT_HTML = False: background HTML reads are not counted",
+    )
     return root
 
 
@@ -129,6 +141,7 @@ def plan_command(args):
         rate=args.rate,
         cache_profile=args.cache_profile,
         manifest_url=manifest_url,
+        count_html=args.count_html,
     )
     write_json(args.output, plan)
     print(json.dumps(plan["coverage"], sort_keys=True))
@@ -202,6 +215,7 @@ def main(argv=None):
             read_json(args.after),
             tolerance=args.tolerance,
             input_warnings=log_warnings + origin_warnings,
+            count_html=args.count_html,
         )
         write_json(args.output, report)
         print(report["status"])

@@ -67,7 +67,8 @@ def origin_interval(row):
     return end - timedelta(seconds=duration), end
 
 
-def origin_kind(row):
+def origin_kind(row, *, html=False):
+    """Classify one origin row; ``html`` selects an HTML read (#61), not Markdown."""
     if row["method"] != "GET":
         return "excluded"
     if int(row["status"]) == 499 or int(row["status"]) >= 500:
@@ -76,7 +77,7 @@ def origin_kind(row):
         return "uncertain"  # Revalidation may have consulted the application.
     if int(row["status"]) != 200:
         return "excluded"
-    if content_type(row["content_type"]) != "text/markdown":
+    if content_type(row["content_type"]) != ("text/html" if html else "text/markdown"):
         return "excluded"
     if row.get("upstream_cache_status", "").upper() in CACHE_HITS:
         return "origin_cache_hits"
@@ -87,7 +88,7 @@ def origin_kind(row):
     return "selected"
 
 
-def reconcile(log, origins, before, after, *, tolerance=0, input_warnings=()):
+def reconcile(log, origins, before, after, *, tolerance=0, input_warnings=(), count_html=True):
     if type(tolerance) is not int or tolerance < 0:
         raise ValueError("Tolerance must be a non-negative count per bucket")
     start, baseline = snapshot(before)
@@ -232,7 +233,7 @@ def reconcile(log, origins, before, after, *, tolerance=0, input_warnings=()):
             uncertain(attempt, first, last)
             continue
         try:
-            kind = origin_kind(match)
+            kind = origin_kind(match, html=attempt["access_method"] == "html")
         except (KeyError, TypeError, ValueError):
             kind = "uncertain"
         if kind == "uncertain":
@@ -261,7 +262,12 @@ def reconcile(log, origins, before, after, *, tolerance=0, input_warnings=()):
             name = "vendor" if verified_vendor else "background"
             counts[name] += 1
             path = row["uri"].split("?", 1)[0]
-            kind = origin_kind(row)
+            html = (
+                count_html
+                and content_type(row.get("content_type", "")) == "text/html"
+                and bool(detect_agent(row["user_agent"]))
+            )
+            kind = origin_kind(row, html=html)
             if kind == "uncertain":
                 counts["background_uncertain"] += 1
                 warnings.append("Background origin selections are uncertain")
@@ -284,6 +290,8 @@ def reconcile(log, origins, before, after, *, tolerance=0, input_warnings=()):
             query = parse_qs(urlsplit(row["uri"]).query)
             if template is row:
                 access_method = row["access_method"]  # Independently verified page/method mapping.
+            elif html:
+                access_method = "html"
             elif template["access_method"] == "export-url":
                 access_method = "export-url"
             elif query.get("output_format", [""])[0].strip().lower() in {"md", "markdown"}:

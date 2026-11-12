@@ -23,6 +23,8 @@ METHOD_QUERY_PARAM = "query-param"
 METHOD_ACCEPT_HEADER = "accept-header"
 METHOD_USER_AGENT = "ua"
 METHOD_EXPORT_URL = "export-url"
+#: Not a negotiation outcome: an HTML page read by a registry agent (#61).
+METHOD_HTML = "html"
 
 QUERY_PARAM = "output_format"
 QUERY_VALUES = frozenset({"md", "markdown"})

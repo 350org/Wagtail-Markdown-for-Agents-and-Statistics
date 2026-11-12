@@ -160,10 +160,11 @@ def test_report_volume(seed, client, admin_user, pages):
         elapsed = perf_counter() - started
         assert response.status_code == 200
         # The access-method table needs one distinct-page aggregate. Top pages
-        # still reuse the existing capped per-page totals query.
+        # still reuse the existing capped per-page totals query. HTML reads by
+        # agent (#61) add one grouped agent query and one capped page query.
         # Page queries include one title lookup and Wagtail admin navigation.
         data_queries = [q["sql"] for q in queries if TABLE in q["sql"]]
-        assert len(data_queries) <= 7, data_queries
+        assert len(data_queries) <= 9, data_queries
         page_queries = [q["sql"] for q in queries if "wagtailcore_page" in q["sql"]]
         assert len(page_queries) <= 4, page_queries
         # Bound the entire rendered/authenticated request too, allowing framework variation.

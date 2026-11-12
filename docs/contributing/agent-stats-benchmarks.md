@@ -32,9 +32,10 @@ The suite verifies:
   explicit custom endpoints, empty results, and grain transitions. Fixture-record
   sums independently reconcile tiles, chart bars, every bucket and the exact
   ordered page of records. Future and out-of-range dates are excluded.
-- Reports use at most **seven counter queries** (distinct pages, distinct agents,
+- Reports use at most **nine counter queries** (distinct pages, distinct agents,
   pagination count, at most 50 records, SQL-grouped time/agent totals, per-page
-  totals and method breakdown), **four page queries** (one title lookup plus admin
+  totals, method breakdown, and the two grouped queries for HTML reads by agent
+  and by page, #61), **four page queries** (one title lookup plus admin
   navigation), and **25 queries overall**.
   These are ceilings at both volumes, including authentication and rendered admin
   HTML. Empty results can omit the record query. Classification and displayed page titles never add per-row

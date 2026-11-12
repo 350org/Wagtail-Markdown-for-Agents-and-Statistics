@@ -72,7 +72,7 @@ def make_plan(client, checks):
     return sim.build_plan(pages, TARGET, fixtures=checks, max_requests=PLAN_BUDGET), pages
 
 
-def test_six_fixtures_have_real_page_state_and_no_counter_increments(corpus, client):
+def test_six_fixtures_have_real_page_state_and_no_markdown_counter_increments(corpus, client):
     site, checks = corpus
     by_kind = {check["kind"]: check for check in checks}
     assert PageAgentSettings.objects.get(page_id=by_kind["excluded"]["page_id"]).excluded
@@ -90,9 +90,15 @@ def test_six_fixtures_have_real_page_state_and_no_counter_increments(corpus, cli
     }
     assert plan["coverage"]["suite_complete"]
     assert plan["coverage"]["missing_fixtures"] == []
-    before = list(AgentAccess.objects.order_by("pk").values())
+    markdown = AgentAccess.objects.exclude(access_method="html").order_by("pk")
+    before = list(markdown.values())
     specs = [row for row in plan["requests"] if row["scenario"] in REQUIRED_FIXTURES]
     assert len(specs) == 12
+    # Page fixtures answered with HTML are HTML reads by a registry agent (#61).
+    html_reads = [row for row in specs if row["countable"]]
+    assert {(row["scenario"], row["method"], row["access_method"]) for row in html_reads} == {
+        (kind, "GET", "html") for kind in ("fallback", "excluded")
+    }
     for row in specs:
         spec = sim.RequestSpec.from_dict(row)
         status, headers, body = fetch(client, spec)
@@ -104,7 +110,11 @@ def test_six_fixtures_have_real_page_state_and_no_counter_increments(corpus, cli
             assert body == b""
         if spec.scenario == "navigation-index" and spec.method == "GET":
             assert b"public-child.md" in body
-        assert list(AgentAccess.objects.order_by("pk").values()) == before
+        assert list(markdown.values()) == before
+    html = AgentAccess.objects.filter(access_method="html")
+    assert sorted(html.values_list("page_id", "count")) == sorted(
+        (row["page_id"], 1) for row in html_reads
+    )
 
 
 def test_preview_really_uses_wagtail_preview_and_never_reads_draft(corpus, client, monkeypatch):

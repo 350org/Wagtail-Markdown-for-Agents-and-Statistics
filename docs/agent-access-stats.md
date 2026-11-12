@@ -1,6 +1,8 @@
 # Agent access statistics
 
 Successful page Markdown GETs record daily `AgentAccess` counters (#32/#33).
+HTML page reads by agents in the registry are counted in the same table, as their
+own access method (#61).
 Apply migrations through `0006_anonymize_unknown_agents` with `python manage.py migrate` before serving
 traffic. App startup connects the recorder automatically; no extra middleware or
 settings are required.
@@ -12,11 +14,51 @@ eligibility and response-header checks succeed. Negotiated requests use
 `query-param`, `accept-header` or `ua` in that precedence. Direct page-export GETs
 always use `export-url`, regardless of query or negotiation headers.
 
-HTML, missing-file fallback, errors, vetoes, HEAD and previews are excluded.
-Navigation-only indexes, `llms.txt` and manifests are excluded. An `index.md`
+Missing-file fallback, errors, vetoes, HEAD and previews are excluded from
+Markdown counts. HTML is counted separately, as below. Navigation-only indexes, `llms.txt` and manifests are excluded. An `index.md`
 owned by a page is counted like any other page export. Consuming or closing the
 stream does not increment again. Selecting a response is not proof that the client
 received every byte, and a later streaming failure does not undo its count.
+
+## HTML reads by registry agents (#61)
+
+The middleware's response phase records `html` when it returns a successful HTML
+page to a request whose User-Agent matches the [agent registry](agent-registry.md):
+
+- **GET only, HTTP 200, `text/html`**, at a page's canonical URL on an enabled
+  site (the same page-read rules as [discovery headers](discovery-headers.md)).
+  HEAD, redirects, errors, previews and non-page routes are not counted.
+- **Registry agents only.** Browsers, curl and every other client are never
+  counted as HTML, so HTML counts can't become visitor analytics. The recorder
+  refuses an `html` row without a registry label.
+- **Every registry agent, whatever its serving policy.** That includes agents
+  set to `auto_markdown: false`, such as `Claude-Agent`, which only ever read HTML,
+  and agents that get Markdown but asked for a page with no export.
+- **One count per response.** A request answered with Markdown is never also
+  counted as HTML.
+
+It's on by default, on the same footing as the Markdown counts: daily totals, no
+IP addresses or User-Agent headers. Settings:
+
+| Key | Default | Effect |
+| --- | --- | --- |
+| `COUNT_HTML` | `True` | `False` stops recording HTML reads. Counts already recorded stay until pruned. |
+| `COUNT_HTML_EXCLUDE` | `[]` | Registry labels (`"GPTBot"`) or purposes (`"training"`, `"search"`, `"on-demand"`, `"mixed"`, `"unknown"`) whose HTML reads aren't recorded, case-insensitive. For busy sites that don't want a counter write for every crawler page view. |
+
+Neither setting changes rendered documents, so changing them doesn't trigger
+regeneration.
+
+**HTML counts are a lower bound.** Pages answered by a page cache, Cloudflare (#50)
+or another CDN never reach Django and aren't counted. Requests refused upstream
+(HTTP 429) aren't counted either. On one WordPress site, about 42% of
+ChatGPT-User's page loads were cache hits. Agents that don't name themselves in
+the User-Agent (for example an `X-Agent` header or a Web Bot Auth
+`Signature-Agent`) aren't recognised yet.
+
+**Cost.** Each counted read is the same single upsert as a Markdown hit. Requests
+from browsers and other clients only add a User-Agent match against the registry:
+no routing work and no database query. Rows grow by at most one per page, registry
+agent and UTC date, and `agentmd_prune_stats` removes them with the rest.
 
 ## Stored data
 
@@ -67,7 +109,7 @@ must monitor those errors: the counters are best effort, not an audit ledger.
 
 Requests served by static hosting or a CDN without reaching Django cannot produce
 application counters. A cached HTML response that bypasses negotiation likewise
-does not count. The [traffic simulator](agent-simulator.md) (#59) and live deployment reconciliation (#64) must
+does not count, as Markdown or as an HTML read. The [traffic simulator](agent-simulator.md) (#59) and live deployment reconciliation (#64) must
 distinguish these requests using their own traffic and cache evidence; application
 totals must not be presented as total edge traffic.
 
@@ -237,7 +279,8 @@ counter contributes once to the total and once to the mixed bucket.
 
 All intent labels describe estimated purposes, not what a particular request will
 actually do. Recognition does not verify identity. Recognition-only bots are counted
-when they explicitly obtain page Markdown; their normal HTML visits are not counted.
+under a Markdown method when they explicitly obtain page Markdown, and as `html`
+when they read a page as HTML (#61).
 
 The frozen WordPress fixture and `data/legacy_agents.py` retain provenance and
 historical categories. Migration `0006` keeps its original frozen labels; it must

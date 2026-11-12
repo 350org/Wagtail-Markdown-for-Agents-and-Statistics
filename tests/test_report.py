@@ -294,7 +294,7 @@ def test_empty_states(report):
     assert "No recorded page requests yet" in report().content.decode()
     counter(access_date=date(2020, 1, 1))
     response = report()
-    assert "No page requests match these filters" in response.content.decode()
+    assert "No Markdown requests match these filters" in response.content.decode()
     assert "No pages requested in this range." in response.content.decode()
     assert response.context["summary"]["top_pages"] == []
     assert all(
@@ -571,3 +571,92 @@ def test_historical_operator_labels_do_not_change_serving_or_purpose(report):
     ]
     # The independently reviewed Wagtail registry currently marks GoogleOther unknown.
     assert summary["tiles"][-1]["count"] == 6
+
+
+def test_html_reads_stay_out_of_the_markdown_sections(report):
+    counter(page_id=111, agent="GPTBot", access_method="ua", count=4)
+    counter(page_id=222, agent="Claude-Agent", access_method="html", count=50)
+    response = report()
+    summary = response.context["summary"]
+    assert summary["tiles"][0]["count"] == 4
+    assert sum(bar["count"] for bar in summary["bars"]) == 4
+    assert [row["page_id"] for row in summary["top_pages"]] == [111]
+    assert [card["count"] for card in summary["operator_cards"]] == [4]
+    assert summary["agent_leader"]["names"] == [("GPTBot", "GPTBot")]
+    assert {row["access_method"] for row in summary["method_rows"]} == {"ua"}
+    assert [row.access_method for row in response.context["object_list"]] == ["ua"]
+    assert "html" not in dict(response.context["report_form"].fields["method"].choices)
+
+
+def test_html_reads_by_agent_put_both_formats_side_by_side(report, settings):
+    counter(page_id=111, agent="GPTBot", access_method="ua", count=6)
+    counter(page_id=111, agent="GPTBot", access_method="export-url", count=3)
+    counter(page_id=111, agent="GPTBot", access_method="html", count=1)
+    counter(page_id=222, agent="GPTBot", access_method="html", count=2)
+    counter(page_id=111, agent="Claude-Agent", access_method="html", count=8)
+    counter(page_id=111, agent="ClaudeBot", access_method="ua", count=5)
+    counter(page_id=111, agent="", access_method="accept-header", count=7)
+    counter(page_id=111, agent="Applebot-Extended", access_method="ua", count=1)
+    response = report()
+    formats = response.context["summary"]["formats"]
+    assert [
+        (row["agent"], row["serves_markdown"], row["markdown"], row["html"], row["share"])
+        for row in formats["rows"]
+    ] == [
+        ("Claude-Agent", False, 0, 8, "0%"),
+        ("GPTBot", True, 9, 3, "75%"),
+        ("ClaudeBot", True, 5, 0, "100%"),
+        ("Applebot-Extended", None, 1, 0, "100%"),
+    ]
+    assert [row["html_pages"] for row in formats["rows"]] == [1, 2, 0, 0]
+    assert (formats["markdown_total"], formats["html_total"], formats["share_total"]) == (
+        15,
+        11,
+        "58%",
+    )
+    assert [(row["page_id"], row["html"], row["markdown"]) for row in formats["pages"]] == [
+        (111, 9, 15),
+        (222, 2, 0),
+    ]
+    content = response.content.decode()
+    assert content.index("Agents by access method") < content.index("HTML reads by agent")
+    assert content.index("HTML reads by agent") < content.index("Daily records")
+    settings.WAGTAIL_MARKDOWN_AGENTS = {"NEGOTIATE_USER_AGENT": False}
+    rows = report().context["summary"]["formats"]["rows"]
+    assert {row["agent"]: row["serves_markdown"] for row in rows}["GPTBot"] is False
+
+
+def test_html_reads_follow_the_report_filters_except_access_method(report):
+    counter(page_id=111, agent="GPTBot", access_method="ua", count=6)
+    counter(page_id=111, agent="GPTBot", access_method="html", count=2)
+    counter(page_id=222, agent="GPTBot", access_method="html", count=5)
+    counter(page_id=111, agent="Claude-Agent", access_method="html", count=8)
+    counter(
+        page_id=111,
+        agent="GPTBot",
+        access_method="html",
+        access_date=TODAY - timedelta(days=30),
+        count=100,
+    )
+
+    def table(**params):
+        rows = report(**params).context["summary"]["formats"]["rows"]
+        return [(row["agent"], row["markdown"], row["html"]) for row in rows]
+
+    assert table() == [("Claude-Agent", 0, 8), ("GPTBot", 6, 7)]
+    assert table(page_id="111") == [("Claude-Agent", 0, 8), ("GPTBot", 6, 2)]
+    assert table(agent="label:GPTBot") == [("GPTBot", 6, 7)]
+    assert table(operator="anthropic") == [("Claude-Agent", 0, 8)]
+    assert table(intent="training") == [("GPTBot", 6, 7)]
+    assert table(method="export-url") == [("Claude-Agent", 0, 8), ("GPTBot", 6, 7)]
+    assert table(preset="90") == [("GPTBot", 6, 107), ("Claude-Agent", 0, 8)]
+
+
+def test_html_section_states_and_off_switch(report, settings):
+    response = report()
+    assert "No reads by named agents in this range." in response.content.decode()
+    counter(page_id=111, agent="Claude-Agent", access_method="html", count=1)
+    settings.WAGTAIL_MARKDOWN_AGENTS = {"COUNT_HTML": False}
+    content = report().content.decode()
+    assert "HTML reads aren't being counted on this site" in content
+    assert "No Markdown requests match these filters" in content

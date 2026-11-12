@@ -147,7 +147,11 @@ Apply all package migrations before serving traffic. `0005_agentaccess` adds the
 [daily statistics](docs/agent-access-stats.md) table; `0006_anonymize_unknown_agents`
 merges legacy arbitrary User-Agent labels into the unknown bucket without losing
 request totals. Pause workers running the older code during upgrade. Recording is
-connected automatically for successful page Markdown GETs. Counters are kept until you run
+connected automatically for successful page Markdown GETs. HTML page reads by
+agents in the registry are also counted, on by default
+([HTML reads](docs/agent-access-stats.md#html-reads-by-registry-agents-61)); set
+`COUNT_HTML = False` in `WAGTAIL_MARKDOWN_AGENTS` to turn that off. Browsers and
+other visitors are never counted. Counters are kept until you run
 `python manage.py agentmd_prune_stats`; schedule it with `--yes` if the
 `STATS_RETENTION_DAYS` period should be enforced routinely.
 

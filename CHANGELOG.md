@@ -8,6 +8,23 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- **HTML page reads by registry agents are counted, on by default** (#61). A
+  successful HTML page GET whose User-Agent matches the agent registry records
+  one daily `html` counter in `AgentAccess`, using the same upsert, row shape and
+  retention as Markdown counts. Browsers and other clients are never counted.
+  Turn it off with `COUNT_HTML = False`, or leave out some agents or purposes with
+  `COUNT_HTML_EXCLUDE` (for example `["training"]`). Page caches and CDNs hide
+  HTML reads that never reach Django, so these counts are a lower bound. No
+  migration is needed.
+- The agent access report has a new **HTML reads by agent** section: Markdown and
+  HTML side by side for each named agent, with its Markdown share and whether it
+  gets Markdown by User-Agent, plus the pages read most as HTML. The report filters
+  apply, except the access method. The headline tiles, purpose chart, operator
+  cards, top pages and daily records stay Markdown-only, so upgrading doesn't
+  look like a traffic spike.
+- The agent simulator expects `html` counters for registry-agent HTML reads;
+  `--no-count-html` on `plan` and `report` matches a site that turns them off.
+
 - Check `W005` (a database check, run by `migrate` and `check --database default`)
   warns when exported Sites share a hostname: they share one export directory, so
   their pages can map to the same path, and the second page is not exported. The

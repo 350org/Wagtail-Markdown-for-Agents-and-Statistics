@@ -40,6 +40,7 @@ BOOLEAN_SETTINGS = (
     "NEGOTIATE_ACCEPT_HEADER",
     "NEGOTIATE_USER_AGENT",
     "LINK_HEADER",
+    "COUNT_HTML",
     "INCLUDE_HIERARCHY",
     "INCLUDE_OWNER",
 )
@@ -168,6 +169,8 @@ def check_settings_shape(app_configs, **kwargs):
         )
     if not _positive_int(get_setting("STATS_RETENTION_DAYS")):
         messages.append(_shape("STATS_RETENTION_DAYS", "a positive whole number of days"))
+    if not _strings(get_setting("COUNT_HTML_EXCLUDE")):
+        messages.append(_shape("COUNT_HTML_EXCLUDE", "a list of agent labels or purposes"))
     if not _non_negative_number(get_setting("DISCOVERY_CACHE_TIMEOUT")):
         messages.append(_shape("DISCOVERY_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
     if not isinstance(get_setting("LLMS_TXT_DESCRIPTION"), str):

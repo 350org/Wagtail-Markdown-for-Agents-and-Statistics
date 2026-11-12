@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 from scripts import agent_simulator as sim
+from scripts.traffic_simulator.planning import BROWSER_UA
 
 from wagtail_markdown_agents.data.agents import AGENTS
 from wagtail_markdown_agents.stats import agent_label
@@ -110,7 +111,8 @@ def test_export_links_are_followed_only_to_manifested_pages():
     assert links and all(r["url"] == pages[0]["export_url"] for r in links)
 
 
-def test_explicit_exclusion_fixtures_do_not_count():
+@pytest.mark.parametrize("count_html", [True, False])
+def test_explicit_exclusion_fixtures_count_only_html_page_reads(count_html):
     fixtures = [
         {
             "kind": "fallback",
@@ -127,9 +129,15 @@ def test_explicit_exclusion_fixtures_do_not_count():
             "page_id": 9,
         },
     ]
-    plan = sim.build_plan(inventory(), TARGET, fixtures=fixtures, max_requests=1000)
+    plan = sim.build_plan(
+        inventory(), TARGET, fixtures=fixtures, max_requests=1000, count_html=count_html
+    )
     checks = [r for r in plan["requests"] if r["scenario"] in {"fallback", "private-export"}]
-    assert checks and all(not r["countable"] for r in checks)
+    counted = [(r["scenario"], r["method"], r["access_method"]) for r in checks if r["countable"]]
+    # A 200 HTML page fixture is a registry agent's HTML read (#61); errors and HEAD never count.
+    assert len(checks) == 4
+    assert counted == ([("fallback", "GET", "html")] if count_html else [])
+    assert plan["count_html"] is count_html
 
 
 @pytest.mark.parametrize(
@@ -696,11 +704,45 @@ def test_unlisted_and_browser_stats_fallback_labels_match_application():
 def test_background_html_does_not_make_counter_attribution_uncertain():
     log, origins, before, after = evidence()
     origins.append(
-        dict(origins[0], run_id="", request_id="", uri="/unrelated/", content_type="text/html")
+        dict(
+            origins[0],
+            run_id="",
+            request_id="",
+            uri="/unrelated/",
+            content_type="text/html",
+            user_agent=BROWSER_UA,
+        )
     )
     result = sim.reconcile(log, origins, before, after)
     assert result["status"] == "matched"
     assert result["counts"]["background_excluded"] == 1
+
+
+@pytest.mark.parametrize("count_html,status", [(True, "inconclusive"), (False, "matched")])
+def test_background_registry_agent_html_is_a_counted_read(count_html, status):
+    log, origins, before, after = evidence()
+    origins.append(
+        dict(origins[0], run_id="", request_id="", uri="/unrelated/", content_type="text/html")
+    )
+    result = sim.reconcile(log, origins, before, after, count_html=count_html)
+    # An HTML read of an unsimulated page moves a counter the run can't attribute.
+    assert result["status"] == status
+    key = "unmapped_background" if count_html else "background_excluded"
+    assert result["counts"][key] == 1
+
+
+def test_background_registry_agent_html_on_a_simulated_page_is_expected_background():
+    log, origins, before, after = evidence()
+    page = next(a for a in log if a.get("page_id") is not None)
+    origins.append(
+        dict(origins[0], run_id="", request_id="", uri="/news/", content_type="text/html")
+    )
+    row = dict(after["rows"][0], page_id=page["page_id"], access_method="html", count=1)
+    after["rows"].append(row)
+    result = sim.reconcile(log, origins, before, after)
+    bucket = next(b for b in result["buckets"] if b["access_method"] == "html")
+    assert (bucket["background"], bucket["residual"]) == (1, 0)
+    assert result["status"] == "matched"
 
 
 def test_verified_vendor_page_can_be_separate_from_simulated_inventory():
@@ -740,10 +782,12 @@ def test_recognition_only_fleet_expects_html_and_does_not_hash_it_as_markdown():
         r for r in plan["requests"] if r["scenario"] == "fleet" and r["agent"] == "Applebot"
     ]
     assert len(controls) == 4
+    # Applebot gets HTML by User-Agent, so that GET is an HTML read (#61).
+    assert sum(row["access_method"] == "html" for row in controls) == 1
     for row in controls:
-        if row["access_method"] == "ua":
+        if row["access_method"] == "html":
             assert row["expected_type"] == "text/html"
-            assert not row["countable"] and not row["full_hash"]
+            assert row["countable"] and not row["full_hash"]
             outcome = sim.assess(
                 sim.RequestSpec.from_dict(row), 200, {"content-type": "text/html"}, b"normal HTML"
             )

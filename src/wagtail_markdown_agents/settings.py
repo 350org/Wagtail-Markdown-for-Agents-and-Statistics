@@ -41,6 +41,10 @@ DEFAULTS: dict[str, Any] = {
     "DISCOVERY_CACHE_TIMEOUT": 60,
     # Days of agent access statistics kept by agentmd_prune_stats (#36).
     "STATS_RETENTION_DAYS": 90,
+    # Count HTML page reads by registry agents, next to Markdown (#61).
+    "COUNT_HTML": True,
+    # Registry agent labels or purposes ("training", ...) whose HTML is not counted.
+    "COUNT_HTML_EXCLUDE": [],
     # Frontmatter toggles (parity with the WordPress plugin).
     "INCLUDE_HIERARCHY": False,
     "INCLUDE_OWNER": False,
@@ -66,6 +70,8 @@ NON_CONTENT_SETTINGS = frozenset(
         "LINK_HEADER",
         "DISCOVERY_CACHE_TIMEOUT",
         "STATS_RETENTION_DAYS",
+        "COUNT_HTML",
+        "COUNT_HTML_EXCLUDE",
     }
 )
 

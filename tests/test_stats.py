@@ -205,9 +205,10 @@ def test_known_agent_label_with_ua_negotiation_disabled(corpus, client, settings
     }
     writer.generate(page)
     assert is_html(get(client, "/article/", HTTP_USER_AGENT=GPTBOT))
-    assert not AgentAccess.objects.exists()
+    # The HTML it got is an HTML read (#61), not a Markdown count.
+    assert not AgentAccess.objects.exclude(access_method="html").exists()
     body(get(client, "/article/?output_format=md", HTTP_USER_AGENT=GPTBOT))
-    assert AgentAccess.objects.get().agent == "GPTBot"
+    assert AgentAccess.objects.get(access_method="query-param").agent == "GPTBot"
 
 
 def test_page_deletion_preserves_history(corpus, client):

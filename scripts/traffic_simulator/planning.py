@@ -245,7 +245,10 @@ def build_plan(
     rate=1,
     cache_profile="strict",
     manifest_url=None,
+    count_html=True,
 ):
+    """``count_html`` mirrors the site's ``COUNT_HTML``: registry-agent HTML GETs
+    of a page then expect one ``html`` counter (#61)."""
     target = target_origin(target)
     for value, name in ((max_requests, "max_requests"), (duration, "duration"), (rate, "rate")):
         positive(value, name)
@@ -265,7 +268,12 @@ def build_plan(
             url = query_url(url)
         full_hash = page.get("full_hash", "")
         if trigger == "ua" and not agent.get("auto_markdown", True):
-            extra.update(expected_type="text/html", countable=False)
+            # A registry agent's HTML GET counts as an HTML read; HEAD never does.
+            countable = count_html and extra.get("method", "GET") == "GET"
+            extra.setdefault("countable", countable)
+            extra.update(expected_type="text/html")
+            if countable:
+                trigger = "html"
             full_hash = ""  # The manifest hash describes Markdown, not the HTML control.
         return RequestSpec(
             safe_url(url, target),
@@ -354,16 +362,26 @@ def build_plan(
         ):
             raise ValueError("A manifested index belongs to a page, not a navigation-only fixture")
         for method in ("GET", "HEAD"):
+            # A page fixture answered with HTML is an HTML read by a registry agent.
+            # Previews never count, and neither does anything that isn't a 200.
+            html_read = (
+                count_html
+                and method == "GET"
+                and kind != "preview"
+                and page_id is not None
+                and fixture["status"] == 200
+                and fixture["content_type"] == "text/html"
+            )
             suite.append(
                 RequestSpec(
                     safe_url(fixture["url"], target),
                     page_id=page_id,
                     ua=agents[0]["ua"],
                     method=method,
-                    access_method=fixture.get("access_method", "ua"),
+                    access_method="html" if html_read else fixture.get("access_method", "ua"),
                     expected_status=fixture["status"],
                     expected_type=fixture["content_type"],
-                    countable=False,
+                    countable=html_read,
                     scenario=kind,
                 )
             )
@@ -424,6 +442,7 @@ def build_plan(
         "duration": duration,
         "rate": rate,
         "cache_profile": cache_profile,
+        "count_html": count_html,
         "requests": [request.as_dict() for request in requests],
         "coverage": {
             "suite_complete": max_requests >= required_count,
