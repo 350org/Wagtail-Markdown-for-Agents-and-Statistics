@@ -35,8 +35,15 @@ described in [internal links](internal-links.md).
 ## Listing policy
 
 Entries come only from current, readable **page-owned** exports in the owning site.
-Every candidate passes the writer's fresh ExportPolicy/state checks and a storage
-open bound to its exact file. Titles and search descriptions come from the live
+Every candidate passes the writer's ExportPolicy/state checks and a storage open
+bound to its exact file. The checks for one listing share one reading of the site
+(`site_freshness`), so listing costs grow with the number of exports.
+`IndexGenerator.generate` lists the exports once, after withdrawing obsolete ones,
+and updates that list as it publishes each page index. Every publication still
+compares the site's state with the batch's starting state when it commits. If
+another process publishes or withdraws a page export after the listing, the next
+index build raises `StaleBuild` ("Another page publication changed the listed
+exports") and `agentmd_generate` retries the site (#66). Titles and search descriptions come from the live
 revision, never a newer draft or the caller's instance. An entry uses `export_url`,
 including any relocated path. `IndexGenerator(urlconf=...)` and
 `IndexBatch(urlconf=...)` support offline generation with an explicit URLconf.

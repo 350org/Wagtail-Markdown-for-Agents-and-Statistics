@@ -40,7 +40,14 @@ class PageRenderError(ValueError):
         super().__init__(f"Cannot render {page._meta.label} page {page.pk}: {message}")
 
 
-def render_page(page: Page, site=None, *, navigation: str = "", root_index: bool = False) -> str:
+def render_page(
+    page: Page,
+    site=None,
+    *,
+    navigation: str = "",
+    root_index: bool = False,
+    freshness=None,
+) -> str:
     """Render a published page as YAML frontmatter and a Markdown body.
 
     PAGE_FIELDS selects ordered StreamField/RichTextField body fields; absent
@@ -61,13 +68,17 @@ def render_page(page: Page, site=None, *, navigation: str = "", root_index: bool
 
     On a multilingual site the page is rendered in its own language, whatever
     language is active for the caller.
+
+    ``freshness`` is a batch's reading of the site (``site_freshness``), used to
+    check links to indexes and discovery files instead of reading the site
+    again. The batch's publication must still check the site's state (#66).
     """
     published = _published_page(page)
     with page_language(published):
-        return _render(published, site, navigation, root_index)
+        return _render(published, site, navigation, root_index, freshness)
 
 
-def _render(published, site, navigation, root_index):
+def _render(published, site, navigation, root_index, freshness=None):
     fields = selected_fields(type(published))
     _require_supported_page(published)
     if not isinstance(navigation, str):
@@ -92,7 +103,7 @@ def _render(published, site, navigation, root_index):
     if heading:
         heading = render_plain_text(None, " ".join(heading.splitlines()), context)
         body = _join([f"# {heading}", body])
-    body = rewrite_links(body, published, context)
+    body = rewrite_links(body, published, context, freshness=freshness)
     metadata = frontmatter.build(published, context)
     if root_index:
         metadata["okf_version"] = OKF_VERSION

@@ -1,5 +1,6 @@
 """Managed root/directory navigation and explicit batch finalisation (#20)."""
 
+from contextlib import suppress
 from pathlib import PurePosixPath
 
 from django.db.models import Q
@@ -7,16 +8,22 @@ from wagtail import hooks
 from wagtail.models import Page
 
 from .. import OKF_VERSION
-from ..models import ExportArtifact
+from ..models import ExportArtifact, ExportScope
 from ..rendering import frontmatter, render_page
 from ..rendering.page import PageRenderError, _published_page
 from .listings import IndexEntry as IndexEntry
-from .listings import directory_entries, markdown_text, readable_page_entries
+from .listings import (
+    directory_entries,
+    markdown_text,
+    page_entry,
+    readable_page_entries,
+    sort_entries,
+)
 from .llms_txt import LlmsTxtGenerator
 from .manifest import ManifestGenerator
+from .paths import ExportPathError
 from .policy import ExportPolicy
-from .snapshot import SiteSnapshot
-from .state import StaleBuild, site_state
+from .state import StaleBuild, site_freshness, site_state
 from .writer import FileWriter, _after_commit_required
 
 INDEX_CONTENT_HOOK = "markdown_index_content"
@@ -37,6 +44,11 @@ class IndexGenerator:
         ``exclude_page_ids`` prevents an explicit deletion's discovery repair
         from recreating the selected page documents in this batch.
         A concurrent source change aborts; callers may schedule a fresh batch.
+
+        The readable exports are listed once and kept up to date as each page
+        index is published, so the work grows with the number of pages, not
+        with pages times indexes (#66). Every publication still checks the
+        site's state, so a concurrent change aborts as before.
         """
         _after_commit_required()
         site, baseline = site_state(site_id)
@@ -48,12 +60,23 @@ class IndexGenerator:
             ).values_list("page_id", "logical_path")
         )
         self.writer.delete_stale(site_id)
-        snapshot = SiteSnapshot(site)
-        policy = ExportPolicy(snapshot)
+        fresh = site_freshness(site_id)
+        self._check_state(fresh.state, baseline)
+        # Each page publication or withdrawal advances content_version by one.
+        # Read it before listing: any other change after this point makes a
+        # later token disagree with the listing and aborts the batch.
+        listed_version = ExportScope.objects.get(site_id=site_id).content_version
+        listed = {
+            entry.page_id: entry
+            for entry in readable_page_entries(
+                self.writer, site, urlconf=self.urlconf, freshness=fresh
+            )
+        }
+        policy = ExportPolicy(fresh.snapshot)
         requested = set(page_ids)
         excluded = set(exclude_page_ids)
         candidates = []
-        for page in snapshot.pages.values():
+        for page in fresh.snapshot.pages.values():
             if page.pk in excluded or not policy.is_eligible(page):
                 continue
             owner = policy.site_for_page(page)
@@ -78,27 +101,37 @@ class IndexGenerator:
             )
         )
         for path, page in candidates:
-            token = self.writer.begin(page, depends_on_site=True)
-            self._check_state(token.dependency_state, baseline)
+            token = self.writer.begin(page, depends_on_site=True, dependency_state=baseline)
+            self._check_listing(token, listed_version)
             navigation = ""
             if path.endswith("/index.md"):
-                navigation, _ = self._navigation(site, path, _published_page(page))
+                navigation, _ = self._navigation(
+                    site, path, _published_page(page), sort_entries(listed.values())
+                )
             try:
                 content = render_page(
                     page,
                     site=site,
                     navigation=navigation,
                     root_index=path == f"{site.hostname}/index.md",
+                    freshness=fresh,
                 )
             except PageRenderError as exc:
                 if exc.reason not in {"unsupported_page", "empty_body"}:
                     raise
                 continue
-            self.writer.publish(token, content, replace_index=path.endswith("/index.md"))
+            record = self.writer.publish(token, content, replace_index=path.endswith("/index.md"))
+            listed_version += 1
+            # The publication replaced any earlier export of this page.
+            listed.pop(record.page_id, None)
+            with suppress(ExportPathError, PageRenderError):
+                listed[record.page_id] = page_entry(record, urlconf=self.urlconf)
 
         # Every synthetic directory is derived from a readable owned page path.
         # Never derive a title or excerpt from an unexported/private ancestor.
-        entries = readable_page_entries(self.writer, site, urlconf=self.urlconf)
+        # Standalone indexes are not page exports, so publishing them leaves
+        # this list unchanged.
+        entries = sort_entries(listed.values())
         directories = self._directories(site, entries)
         for directory in sorted(directories, key=lambda path: (-path.count("/"), path)):
             path = f"{directory}/index.md"
@@ -108,7 +141,8 @@ class IndexGenerator:
                 continue  # A page's complete document owns this slot.
             token = self.writer.begin_site(site_id, path)
             self._check_state(token.source_state, baseline)
-            navigation, count = self._navigation(site, path, None)
+            self._check_listing(token, listed_version)
+            navigation, count = self._navigation(site, path, None, entries)
             metadata = {"title": "Markdown exports", "count": count}
             if directory == site.hostname:
                 metadata["okf_version"] = OKF_VERSION
@@ -118,9 +152,7 @@ class IndexGenerator:
             self.writer.publish(token, content)
         token = self.writer.begin_site(site_id, f"{site.hostname}/index.md")
         self._check_state(token.source_state, baseline)
-        directories = self._directories(
-            site, readable_page_entries(self.writer, site, urlconf=self.urlconf)
-        )
+        self._check_listing(token, listed_version)
         self.writer.prune_indexes(token, {f"{directory}/index.md" for directory in directories})
         return list(
             ExportArtifact.objects.filter(
@@ -134,6 +166,12 @@ class IndexGenerator:
             raise StaleBuild("Site content changed during index finalisation")
 
     @staticmethod
+    def _check_listing(token, listed_version):
+        """Abort when a page export changed after the exports were listed."""
+        if token.content_version != listed_version:
+            raise StaleBuild("Another page publication changed the listed exports")
+
+    @staticmethod
     def _directories(site, entries):
         directories = {site.hostname}
         for entry in entries:
@@ -143,10 +181,10 @@ class IndexGenerator:
                 parent = parent.parent
         return directories
 
-    def _navigation(self, site, path, page):
-        entries = tuple(
-            directory_entries(readable_page_entries(self.writer, site, urlconf=self.urlconf), path)
-        )
+    def _navigation(self, site, path, page, listed):
+        """The ``## Pages`` list for ``path`` from ``listed``, the site's readable
+        page exports sorted by title."""
+        entries = tuple(directory_entries(listed, path))
         content = f"## Pages ({len(entries)})\n\n"
         if entries:
             lines = []

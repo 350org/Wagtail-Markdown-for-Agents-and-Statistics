@@ -11,8 +11,7 @@ from ..models import ExportArtifact, ExportScope
 from ..public_urls import export_url
 from ..rendering.frontmatter import normalise
 from .policy import ExportPolicy
-from .snapshot import SiteSnapshot
-from .state import StaleBuild, site_state
+from .state import StaleBuild, site_freshness, site_state
 from .writer import FileWriter, _after_commit_required
 
 SCHEMA_VERSION = "0.1"
@@ -94,12 +93,13 @@ class ManifestGenerator:
 
         def update(previous):
             nonlocal next_state
-            if site_state(site_id)[1] != source_state:
+            fresh = site_freshness(site_id)
+            if fresh.state != source_state:
                 raise StaleBuild("Site content changed before manifest generation")
             # The public pointer is normally already withdrawn by page writes.
             # Read the private baseline inside each optimistic update attempt.
             baseline = _baseline(ExportScope.objects.get(site_id=site_id).manifest_state)
-            snapshot = SiteSnapshot(site)
+            snapshot = fresh.snapshot
             policy = ExportPolicy(snapshot)
             eligible = {
                 page.pk
@@ -125,7 +125,10 @@ class ManifestGenerator:
                     if record is None:
                         raise FileNotFoundError
                     with self.writer.open(
-                        record.logical_path, site_id=site_id, file_id=record.file_id
+                        record.logical_path,
+                        site_id=site_id,
+                        file_id=record.file_id,
+                        freshness=fresh,
                     ) as stream:
                         text = stream.read().decode("utf-8")
                 except FileNotFoundError:

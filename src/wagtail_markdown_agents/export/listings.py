@@ -10,6 +10,7 @@ from ..models import ExportArtifact
 from ..public_urls import export_url
 from ..rendering.page import PageRenderError, _published_page
 from .paths import ExportPathError
+from .state import StaleBuild, site_freshness
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,17 @@ def markdown_text(value):
     return escape(text, quote=False)
 
 
-def readable_page_entries(writer, site, *, urlconf=None):
+def readable_page_entries(writer, site, *, urlconf=None, freshness=None):
+    """Every page export of ``site`` that is current and readable, sorted by title.
+
+    Each export is checked against one reading of the site (``freshness``,
+    read here when not given), not a fresh reading per export (#66).
+    """
+    if freshness is None:
+        try:
+            freshness = site_freshness(site.pk)
+        except StaleBuild:
+            return []
     entries = []
     records = ExportArtifact.objects.filter(
         scope__site_id=site.pk, page_id__isnull=False
@@ -35,17 +46,29 @@ def readable_page_entries(writer, site, *, urlconf=None):
         try:
             # Binding the exact file avoids mixing a replacement's bytes
             # with the old record's path or published-page metadata.
-            with writer.open(record.logical_path, site_id=site.pk, file_id=record.file_id):
+            with writer.open(
+                record.logical_path,
+                site_id=site.pk,
+                file_id=record.file_id,
+                freshness=freshness,
+            ):
                 pass
-            page = _published_page(Page(pk=record.page_id))
-            url = export_url(record, urlconf=urlconf)
+            entry = page_entry(record, urlconf=urlconf)
         except (FileNotFoundError, ExportPathError, PageRenderError):
             continue
-        entries.append(
-            IndexEntry(
-                record.page_id, record.logical_path, url, page.title, page.search_description
-            )
-        )
+        entries.append(entry)
+    return sort_entries(entries)
+
+
+def page_entry(record, *, urlconf=None):
+    """The listing entry for a page export record; may raise ExportPathError or
+    PageRenderError when the page or its URL is no longer available."""
+    page = _published_page(Page(pk=record.page_id))
+    url = export_url(record, urlconf=urlconf)
+    return IndexEntry(record.page_id, record.logical_path, url, page.title, page.search_description)
+
+
+def sort_entries(entries):
     return sorted(entries, key=lambda entry: (entry.title.casefold(), entry.path, entry.page_id))
 
 

@@ -96,6 +96,16 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- On a large site, `agentmd_generate` never finished building the section
+  indexes, `llms.txt` and `manifest.json`, so they stayed missing (404) even
+  though pages were exported. The step re-checked every export for each index it
+  built, and checking each page-owned index read the whole site again, so its
+  cost grew with the square of the number of pages. It now lists the exports
+  once per run, checks them against one reading of the site, and updates the
+  list as it publishes each index. Locally, a 221-page site with 21 sections
+  went from 67 s to under 4 s; the cost now grows roughly in line with the
+  number of pages. Each index is still checked against the site's current state
+  when it is published (#66).
 - A block template that wraps a whole card in one link (image, tags, heading,
   summary) exported as a broken Markdown link: the headings, list items and blank
   lines inside the brackets made parsers end the link early, so the card's title
