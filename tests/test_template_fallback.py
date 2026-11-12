@@ -128,6 +128,16 @@ def test_link_wrapping_a_card_stays_one_inline_link(page):
             "[![Card](https://350.org/card.png) Title](/x)",
         ),
         ('<a href="/x">one<br>two</a>', "[one two](/x)"),
+        # Spaces just inside the <a> move outside the brackets, so words don't run together.
+        (
+            '<p>a material<a href="/x"> carbon footprint </a>threshold</p>',
+            "a material [carbon footprint](/x) threshold",
+        ),
+        ('<p>Read<a href="/x"> the guide</a>.</p>', "Read [the guide](/x)."),
+        ('<p><a href="/x">TrustLaw </a>and the</p>', "[TrustLaw](/x) and the"),
+        ('<p>Before<a href="/x"><h3>Title</h3></a>after</p>', "Before [Title](/x) after"),
+        ('<p><a href="/x">Clause\xa012</a></p>', "[Clause\xa012](/x)"),
+        ('<p><a href="/x">1. Scope</a> <a href="/y">+ Add</a></p>', "[1. Scope](/x) [+ Add](/y)"),
         (
             '<p>Join <a href="https://350.org/">350</a> today.</p>',
             "Join [350](https://350.org/) today.",
