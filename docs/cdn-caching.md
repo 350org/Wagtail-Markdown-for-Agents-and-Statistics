@@ -260,12 +260,21 @@ retain no-store. The package does not provide deployment-wide CDN invalidation.
 ## Statistics gaps
 
 The daily counters record **response selection at the origin**: one increment when
-Django chooses a Markdown response for a page GET. They cannot see:
+Django chooses a Markdown response for a page GET, or returns a page as HTML to a
+registry agent (#61). They cannot see:
 
 - cache hits at any layer, for HTML or for Markdown you chose to make cacheable;
 - requests blocked or challenged before the origin (bot rules, WAF, rate limits);
 - exports served by WhiteNoise, a web-server alias or object storage directly;
 - whether the client received the body (the count happens at selection, not delivery).
+
+They can also **over-count HEAD**. Django never counts a HEAD request, but Cloudflare
+forwards a HEAD that misses its cache to the origin as a GET, and that GET is counted
+as a read, in either format. Seen on staging on 12 November 2026: three uncached
+`curl -I` requests from a registry agent added three `html` counts. Django can't tell
+these GETs from real ones, so the package can't correct for them. Agents rarely
+send HEAD; if one does a lot of it, the origin access log shows the GETs with the
+same User-Agent.
 
 Quantify the gap from the CDN's side: Cloudflare's `cf-cache-status` header per
 request, its analytics, or the origin access log versus a known set of test requests
@@ -305,8 +314,10 @@ type, cache-control, Vary, source and cache-status headers, plus origin provenan
 A `text/markdown` body on a request without an agent trigger, at any point, is a
 cache-poisoning failure: stop traffic and agree correction and purging before
 continuing. HTML alone is not proof of a cache fault: confirm export eligibility
-and response provenance. Page Markdown GET selections should increment statistics;
-HEAD, HTML, aggregates and cache hits should not.
+and response provenance. Page Markdown GET selections and registry agents' HTML page GETs
+should increment statistics. Aggregates, cache hits, browsers' HTML and HEAD
+answered at the edge should not. A HEAD that misses the Cloudflare cache arrives
+as a GET and is counted (see [Statistics gaps](#statistics-gaps)).
 
 To test that a Cloudflare bypass rule is live independently of the origin's headers,
 request an HTML URL that matches its query clause, twice, for example

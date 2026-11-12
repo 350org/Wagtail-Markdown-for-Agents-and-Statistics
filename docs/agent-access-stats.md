@@ -55,6 +55,10 @@ ChatGPT-User's page loads were cache hits. Agents that don't name themselves in
 the User-Agent (for example an `X-Agent` header or a Web Bot Auth
 `Signature-Agent`) aren't recognised yet.
 
+**Behind Cloudflare, a HEAD can count as a read.** Cloudflare forwards a HEAD that
+misses its cache to Django as a GET, which is counted in either format. See
+[statistics gaps](cdn-caching.md#statistics-gaps).
+
 **Cost.** Each counted read is the same single upsert as a Markdown hit. Requests
 from browsers and other clients only add a User-Agent match against the registry:
 no routing work and no database query. Rows grow by at most one per page, registry
