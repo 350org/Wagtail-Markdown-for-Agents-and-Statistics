@@ -109,8 +109,41 @@
             </table>
         </div>
     {% endif %}
+    <section class="agentmd-formats" aria-labelledby="agentmd-formats-title">
+        <h2 id="agentmd-formats-title">{% trans "HTML reads by agent" %}</h2>
+        <p>{% trans "Page reads by agents in the registry, in each format. HTML reads are counted separately and are not in the totals above. The other filters apply here, but the access-method filter doesn't. HTML served from a page cache or CDN isn't counted." %}</p>
+        <p>{% trans "An agent that gets Markdown can still read HTML when a page has no Markdown export. Agents that don't get Markdown, such as browsers working for a person, read HTML by design." %}</p>
+        {% if not summary.formats.counting %}
+            <p class="help">{% trans "HTML reads aren't being counted on this site (COUNT_HTML is off). Counts recorded earlier are still shown." %}</p>
+        {% endif %}
+        {% if summary.formats.rows %}
+            <div class="agentmd-table-scroll">
+                <table class="listing agentmd-format-agents">
+                    <thead><tr><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Purpose" %}</th><th scope="col">{% trans "Gets Markdown by User-Agent" %}</th><th scope="col">{% trans "Markdown" %}</th><th scope="col">{% trans "HTML" %}</th><th scope="col">{% trans "Markdown share" %}</th><th scope="col">{% trans "Pages read as HTML" %}</th></tr></thead>
+                    <tbody>{% for row in summary.formats.rows %}
+                        <tr><th scope="row"><a href="{{ row.url }}">{{ row.agent }}</a></th><td>{{ row.intent_label }}</td><td>{% if row.serves_markdown is None %}—{% elif row.serves_markdown %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}</td><td>{{ row.markdown|intcomma }}</td><td>{{ row.html|intcomma }}</td><td>{{ row.share }}</td><td>{{ row.html_pages|intcomma }}</td></tr>
+                    {% endfor %}</tbody>
+                    <tfoot><tr><th scope="row">{% trans "All named agents" %}</th><td></td><td></td><td>{{ summary.formats.markdown_total|intcomma }}</td><td>{{ summary.formats.html_total|intcomma }}</td><td>{{ summary.formats.share_total }}</td><td></td></tr></tfoot>
+                </table>
+            </div>
+        {% else %}
+            <p>{% trans "No reads by named agents in this range." %}</p>
+        {% endif %}
+        {% if summary.formats.pages %}
+            <h3>{% trans "Pages read as HTML" %}</h3>
+            <p>{% trans "The 10 pages with the most HTML reads by named agents. Select a page to filter the whole report." %}</p>
+            <div class="agentmd-table-scroll">
+                <table class="listing agentmd-format-pages">
+                    <thead><tr><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "HTML" %}</th><th scope="col">{% trans "Markdown" %}</th></tr></thead>
+                    <tbody>{% for row in summary.formats.pages %}
+                        <tr><th scope="row"><a href="{{ row.url }}">{{ row.title }}</a></th><td>{{ row.html|intcomma }}</td><td>{{ row.markdown|intcomma }}</td></tr>
+                    {% endfor %}</tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
     <h2>{% trans "Daily records" %}</h2>
-    <p>{% trans "One row per page, agent, access method and day." %}</p>
+    <p>{% trans "One row per page, agent, access method and day, for Markdown requests." %}</p>
 {% endif %}
 {% if object_list %}
     <div class="agentmd-table-scroll">
@@ -127,7 +160,7 @@
 {% elif summary %}
     <div class="help-block help-info" role="status">
         {% if has_history %}
-            <h2>{% trans "No page requests match these filters" %}</h2>
+            <h2>{% trans "No Markdown requests match these filters" %}</h2>
             <p>{% trans "Try a wider date range or reset the filters." %}</p>
         {% else %}
             <h2>{% trans "No recorded page requests yet" %}</h2>

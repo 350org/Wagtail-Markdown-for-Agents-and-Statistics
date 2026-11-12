@@ -1,10 +1,13 @@
 """One atomic daily increment per selected page Markdown GET (#32/#33).
 
-Only the shared serving signal records hits. No full User-Agent, IP address,
-request URL or intent category is persisted. Recording is best effort: serving
-logs signal receiver failures and still returns the selected response.
+The shared serving signal records Markdown hits. The middleware's response
+phase also records HTML page reads by registry agents (#61, ``COUNT_HTML``);
+other clients' HTML is never counted. No full User-Agent, IP address, request
+URL or intent category is persisted. Recording is best effort: failures are
+logged and the response is still returned.
 """
 
+import logging
 import time
 from contextlib import nullcontext
 from datetime import UTC, datetime
@@ -12,20 +15,26 @@ from datetime import UTC, datetime
 from django.db import NotSupportedError, OperationalError, connections, router, transaction
 from wagtail import hooks
 
-from .data.agents import AGENT_CATEGORIES, INTENT_CATEGORIES
+from .data.agents import AGENT_CATEGORIES, INTENT_CATEGORIES, identify_agent
 from .models import AgentAccess
 from .negotiation import (
     METHOD_ACCEPT_HEADER,
     METHOD_EXPORT_URL,
+    METHOD_HTML,
     METHOD_QUERY_PARAM,
     METHOD_USER_AGENT,
     detect_agent,
 )
+from .routing import routed_page
+from .settings import get_setting
 from .signals import markdown_served
 
-ACCESS_METHODS = frozenset(
+logger = logging.getLogger(__name__)
+
+MARKDOWN_METHODS = frozenset(
     {METHOD_QUERY_PARAM, METHOD_ACCEPT_HEADER, METHOD_USER_AGENT, METHOD_EXPORT_URL}
 )
+ACCESS_METHODS = MARKDOWN_METHODS | {METHOD_HTML}
 
 
 def get_agent_categories() -> dict[str, list[str]]:
@@ -85,18 +94,22 @@ def record_access(*, page_id, user_agent="", access_method, at=None, using=None)
     Failures propagate to the serving signal's best-effort error handling.
     """
     if access_method not in ACCESS_METHODS:
-        raise ValueError(f"Unknown Markdown access method: {access_method!r}")
+        raise ValueError(f"Unknown access method: {access_method!r}")
     if not isinstance(page_id, int) or isinstance(page_id, bool) or page_id <= 0:
         raise ValueError("Statistics require a positive page identifier")
     at = datetime.now(UTC) if at is None else at
     if at.utcoffset() is None:
         raise ValueError("Statistics require an aware datetime")
+    label = agent_label(user_agent)
+    if access_method == METHOD_HTML and not label:
+        # The scope line of #61: HTML counts never become visitor analytics.
+        raise ValueError("HTML reads are counted for registry agents only")
     alias = using or router.db_for_write(AgentAccess)
     connection = connections[alias]
     date_field = AgentAccess._meta.get_field("access_date")
     values = [
         page_id,
-        agent_label(user_agent),
+        label,
         access_method,
         date_field.get_db_prep_save(at.astimezone(UTC).date(), connection),
         1,
@@ -149,6 +162,48 @@ def _record_served(sender, *, request, page_id, access_method, **kwargs):
         user_agent=request.headers.get("User-Agent", ""),
         access_method=access_method,
     )
+
+
+def counts_html(user_agent: str) -> bool:
+    """Whether an HTML page read with this User-Agent is counted (#61).
+
+    Only registry agents, while ``COUNT_HTML`` is on, and not left out by
+    ``COUNT_HTML_EXCLUDE`` (agent labels or purposes, case-insensitive).
+    """
+    if not get_setting("COUNT_HTML"):
+        return False
+    agent = identify_agent(user_agent)
+    if agent is None:
+        return False
+    excluded = {name.casefold() for name in get_setting("COUNT_HTML_EXCLUDE")}
+    if not excluded:
+        return True
+    return agent.label.casefold() not in excluded and categorise_agent(agent.label) not in excluded
+
+
+def record_html_read(request, response) -> None:
+    """Response phase: count a registry agent's successful HTML page GET (#61).
+
+    Same page-read rules as discovery (canonical Wagtail page route on an
+    enabled site, outside previews), but GET only. Never raises: a failure is
+    logged and the HTML response is returned unchanged.
+    """
+    try:
+        if request.method != "GET" or getattr(request, "is_preview", False):
+            return
+        if response.status_code != 200 or getattr(response, "streaming", False):
+            return
+        if not response.get("Content-Type", "").lower().startswith("text/html"):
+            return
+        user_agent = request.headers.get("User-Agent", "")
+        if not counts_html(user_agent):
+            return
+        routed = routed_page(request)
+        if routed is None:
+            return
+        record_access(page_id=routed[1].pk, user_agent=user_agent, access_method=METHOD_HTML)
+    except Exception:
+        logger.exception("HTML page served, but its agent read was not recorded")
 
 
 def connect():

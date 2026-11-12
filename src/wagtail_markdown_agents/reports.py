@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, timedelta
 
 from django import forms
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncMonth, TruncYear
 from django.utils.functional import cached_property
 from django.utils.http import urlencode
@@ -15,9 +15,18 @@ from wagtail.admin.views.reports import ReportView
 from wagtail.models import Page
 from wagtail.permission_policies import ModelPermissionPolicy
 
+from .data.agents import AGENTS
 from .data.operators import OPERATOR_NAMES, operator_for_agent
 from .models import AgentAccess
-from .stats import ACCESS_METHODS, INTENT_CATEGORIES, categorise_agent, get_agent_categories
+from .negotiation import METHOD_HTML
+from .settings import get_setting
+from .stats import (
+    ACCESS_METHODS,
+    INTENT_CATEGORIES,
+    MARKDOWN_METHODS,
+    categorise_agent,
+    get_agent_categories,
+)
 
 REPORT_PERMISSION = ModelPermissionPolicy(AgentAccess)
 INTENT_LABELS = {
@@ -106,7 +115,7 @@ class ReportFilterForm(forms.Form):
     method = forms.ChoiceField(
         label=_("Access method"),
         required=False,
-        choices=[("", _("All methods"))] + [(m, m) for m in sorted(ACCESS_METHODS)],
+        choices=[("", _("All methods"))] + [(m, m) for m in sorted(MARKDOWN_METHODS)],
     )
     intent = forms.ChoiceField(
         label=_("Intent"), required=False, choices=[("", _("All intents")), *INTENT_LABELS.items()]
@@ -268,6 +277,43 @@ def leader(counts, *, empty, label_for=None, eligible=lambda key: True):
     }
 
 
+def share(part, total):
+    """A whole-percent share, ``<1%`` when small but not zero."""
+    if total <= 0:
+        return "—"
+    percent = (200 * part + total) // (2 * total)
+    return f"{percent}%" if percent or not part else "<1%"
+
+
+def format_rows(agent_rows, intent_for_agent, serves_markdown):
+    """Markdown and HTML side by side for each named agent (#61).
+
+    Agents with HTML reads lead. The unknown bucket is left out: its HTML is
+    never counted, so a share for it would mean nothing.
+    """
+    rows = []
+    for row in agent_rows:
+        if not row["agent"].strip():
+            continue
+        markdown, html = row["markdown"] or 0, row["html"] or 0
+        if not markdown and not html:
+            continue
+        intent = intent_for_agent(row["agent"])
+        rows.append(
+            {
+                "agent": row["agent"],
+                "intent_label": INTENT_LABELS[intent],
+                "serves_markdown": serves_markdown(row["agent"]),
+                "markdown": markdown,
+                "html": html,
+                "share": share(markdown, markdown + html),
+                "html_pages": row["html_pages"] or 0,
+            }
+        )
+    rows.sort(key=lambda row: (-row["html"], -row["markdown"], row["agent"].casefold()))
+    return rows
+
+
 def top_pages(page_rows, report_total):
     """Rank filtered page totals with competition ties and whole-percent shares."""
     if report_total <= 0:
@@ -283,13 +329,12 @@ def top_pages(page_rows, report_total):
         if row["total"] != previous_total:
             rank = position
         previous_total = row["total"]
-        percent = (200 * row["total"] + report_total) // (2 * report_total)
         ranked.append(
             {
                 "page_id": row["page_id"],
                 "total": row["total"],
                 "rank": rank,
-                "share": f"{percent}%" if percent else "<1%",
+                "share": share(row["total"], report_total),
             }
         )
     return ranked
@@ -366,10 +411,17 @@ class AgentAccessReportView(ReportView):
         return f"{self.request.path}?{query}" if query else self.request.path
 
     def get_queryset(self):
-        queryset = AgentAccess.objects.all()
+        # Markdown only: HTML reads (#61) have their own section and never
+        # reach the tiles, chart, cards, top pages or daily records.
+        queryset = AgentAccess.objects.filter(access_method__in=MARKDOWN_METHODS)
         if not self.report_form.is_valid():
             return queryset.none()
-        data = self.report_form.cleaned_data
+        return self.filtered(queryset, self.report_form.cleaned_data).order_by(
+            "-access_date", "page_id", "agent", "access_method", "pk"
+        )
+
+    def filtered(self, queryset, data, *, method=True):
+        """Apply the report filters; ``method=False`` leaves out the method filter."""
         queryset = queryset.filter(access_date__range=(data["start"], data["end"]))
         if data["page_id"]:
             queryset = queryset.filter(page_id=int(data["page_id"]))
@@ -383,7 +435,7 @@ class AgentAccessReportView(ReportView):
                     if operator_for_agent(agent) == data["operator"]
                 ]
             )
-        if data["method"]:
+        if method and data["method"]:
             queryset = queryset.filter(access_method=data["method"])
         if data["intent"]:
             queryset = queryset.filter(
@@ -393,7 +445,56 @@ class AgentAccessReportView(ReportView):
                     if intent == data["intent"]
                 ]
             )
-        return queryset.order_by("-access_date", "page_id", "agent", "access_method", "pk")
+        return queryset
+
+    def format_summary(self, data):
+        """HTML reads next to Markdown, per named agent and per page (#61).
+
+        Both formats, all report filters except the access method: the
+        comparison needs every Markdown method. Two grouped queries.
+        """
+        # Named agents only: the unknown bucket's HTML is never counted.
+        scope = (
+            self.filtered(AgentAccess.objects.exclude(agent=""), data, method=False)
+        ).order_by()
+        is_html = Q(access_method=METHOD_HTML)
+        is_markdown = Q(access_method__in=MARKDOWN_METHODS)
+        agent_rows = scope.values("agent").annotate(
+            html=Sum("count", filter=is_html),
+            markdown=Sum("count", filter=is_markdown),
+            html_pages=Count("page_id", filter=is_html, distinct=True),
+        )
+        by_ua = get_setting("NEGOTIATE_USER_AGENT")
+        policies = {agent.label: agent.auto_markdown for agent in AGENTS}
+
+        def serves_markdown(label):
+            if label not in policies:
+                return None  # A retired label: no current serving policy.
+            return by_ua and policies[label]
+
+        rows = format_rows(agent_rows, self.intent_for_agent, serves_markdown)
+        for row in rows:
+            row["url"] = self.filter_url(agent=f"label:{row['agent']}")
+        pages = list(
+            scope.values("page_id")
+            .annotate(html=Sum("count", filter=is_html), markdown=Sum("count", filter=is_markdown))
+            .filter(html__gt=0)
+            .order_by("-html", "page_id")[:10]
+        )
+        for row in pages:
+            row["markdown"] = row["markdown"] or 0
+            row["title"] = page_label(row["page_id"], self.dimensions[1])
+            row["url"] = self.filter_url(page_id=row["page_id"], page_search="")
+        markdown = sum(row["markdown"] for row in rows)
+        html = sum(row["html"] for row in rows)
+        return {
+            "rows": rows,
+            "pages": pages,
+            "markdown_total": markdown,
+            "html_total": html,
+            "share_total": share(markdown, markdown + html),
+            "counting": get_setting("COUNT_HTML"),
+        }
 
     def decorate_paginated_queryset(self, object_list):
         for row in object_list:
@@ -505,6 +606,7 @@ class AgentAccessReportView(ReportView):
                     .annotate(requests=Sum("count"), unique_pages=Count("page_id", distinct=True))
                     .order_by("-requests", "agent", "access_method")
                 )
+            summary["formats"] = self.format_summary(data)
         context.update(
             report_form=self.report_form, summary=summary, has_history=bool(self.dimensions[0])
         )

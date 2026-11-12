@@ -28,9 +28,10 @@ Silence a check you have deliberately chosen to ignore with Django's
 
 | Key | Shape | Default |
 | --- | --- | --- |
-| `AUTO_GENERATE`, `LINK_HEADER`, `NEGOTIATE_QUERY_PARAM`, `NEGOTIATE_ACCEPT_HEADER`, `NEGOTIATE_USER_AGENT`, `INCLUDE_HIERARCHY`, `INCLUDE_OWNER` | `True` or `False` | `True`, `True`, `True`, `True`, `True`, `False`, `False` |
+| `AUTO_GENERATE`, `LINK_HEADER`, `NEGOTIATE_QUERY_PARAM`, `NEGOTIATE_ACCEPT_HEADER`, `NEGOTIATE_USER_AGENT`, `COUNT_HTML`, `INCLUDE_HIERARCHY`, `INCLUDE_OWNER` | `True` or `False` | `True`, `True`, `True`, `True`, `True`, `True`, `False`, `False` |
 | `CONTENT_SIGNAL` | Header value without control characters; `""` omits the header | `"ai-input=yes, search=yes"` |
 | `STATS_RETENTION_DAYS` | Positive whole number of days kept by `agentmd_prune_stats` (#36) | `90` |
+| `COUNT_HTML_EXCLUDE` | List of registry agent labels or purposes whose HTML reads aren't counted (#61) | `[]` |
 | `DISCOVERY_CACHE_TIMEOUT` | Seconds, `0` or more; `0` disables the discovery cache | `60` |
 | `LLMS_TXT_DESCRIPTION` | String | `""` |
 | `PAGE_TYPES` | `None` or a list of `"app_label.ModelName"` | `None` |

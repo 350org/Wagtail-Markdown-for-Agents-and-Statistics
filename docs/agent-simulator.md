@@ -378,3 +378,14 @@ and export requests still expect Markdown. The free-plan warm-cache Accept-only
 limitation also covers recognised agents that are outside the automatic-serving
 subset. Historical run evidence retains the dataset and expectations used at the
 time; regenerate plans when deploying a new registry version.
+
+## HTML reads — 12 November 2026
+
+The package now counts HTML page reads by registry agents (#61). Plans expect one
+`html` counter for each registry-agent GET that gets a page as HTML: the
+recognition-only User-Agent requests above, and page fixtures answered with a
+200 HTML page (`fallback`, `excluded`). HEAD, previews and errors still expect
+none. When reconciling, a background HTML read by a registry agent on a simulated
+page is expected background traffic; on any other page it is unmapped, so the
+report is inconclusive. For a site with `COUNT_HTML = False`, pass
+`--no-count-html` to both `plan` and `report`.

@@ -9,7 +9,9 @@ never generation during a request.
 Response phase: on an HTML 200 response to a canonical page request whose page
 has a current, stored, eligible export, append ``Link: <…>; rel="alternate";
 type="text/markdown"`` and merge ``Vary: Accept`` (see ``discovery.py``).
-``LINK_HEADER = False`` disables this phase.
+``LINK_HEADER = False`` disables this phase. The same phase counts a
+successful HTML page GET by a registry agent (#61); ``COUNT_HTML = False``
+turns that off.
 
 Place it after ``SecurityMiddleware`` and before ``CommonMiddleware``, so
 negotiated requests are answered before slash-appending redirects and cached
@@ -28,6 +30,7 @@ from .negotiation import detect
 from .routing import is_page_read, routed_page
 from .serving import serve_export
 from .settings import get_setting
+from .stats import record_html_read
 
 
 class AgentMarkdownMiddleware:
@@ -41,6 +44,7 @@ class AgentMarkdownMiddleware:
         response = self.get_response(request)
         if get_setting("LINK_HEADER"):
             add_discovery_headers(request, response)
+        record_html_read(request, response)
         return response
 
 
