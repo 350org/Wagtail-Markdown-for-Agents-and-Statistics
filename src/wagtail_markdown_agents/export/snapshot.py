@@ -48,6 +48,7 @@ class SiteSnapshot:
             for length in range(Page.steplen, len(tree_root.path), Page.steplen)
         ]
         self._attribute_names = None
+        self._page_sites = {}
         self._attribute_excluded = set()
         self.restricted_paths = set(
             PageViewRestriction.objects.filter(related_filter | Q(page__path__in=ancestors))
@@ -58,10 +59,16 @@ class SiteSnapshot:
     def site_for_page(self, page):
         # Preserve project routing overrides. Standard get_site merely looks up
         # get_url_parts()[0], so use the already-loaded site objects for that case.
-        if type(page).get_site is not Page.get_site:
-            return page.get_site()
-        parts = page.get_url_parts()
-        return self.sites.get(parts[0]) if parts else None
+        # Each page is asked several times in one reading (eligibility, path,
+        # state), and every answer resolves the page's URL.
+        if page.pk not in self._page_sites:
+            if type(page).get_site is not Page.get_site:
+                site = page.get_site()
+            else:
+                parts = page.get_url_parts()
+                site = self.sites.get(parts[0]) if parts else None
+            self._page_sites[page.pk] = site
+        return self._page_sites[page.pk]
 
     def is_restricted(self, page):
         return any(

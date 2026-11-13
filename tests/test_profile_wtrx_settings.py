@@ -1,10 +1,17 @@
-"""Committed integration edits rebuild actual exports using fresh offline settings."""
+"""Committed integration edits mark exports for the next agentmd_generate (#69).
+
+Every page can show these settings, so a save renders nothing in its request:
+the current exports stay served, and the next run rebuilds them with fresh
+offline settings.
+"""
 
 import json
+from io import StringIO
 
 import pytest
 from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management import call_command
 from django.db import transaction
 from django.db.models.signals import post_save
 from wagtail import hooks
@@ -18,11 +25,16 @@ from wagtail_markdown_agents import tasks
 from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.export.state import StaleBuild
 from wagtail_markdown_agents.export.writer import FileWriter
-from wagtail_markdown_agents.models import ExportArtifact
+from wagtail_markdown_agents.models import ExportArtifact, ExportScope
 from wagtail_markdown_agents.profiles.wtrx import handlers
 from wagtail_markdown_agents.rendering import render_block
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
+
+
+def generate(hostname="example.org"):
+    """Run agentmd_generate for one site, as the site's operator would."""
+    call_command("agentmd_generate", "--site", hostname, stdout=StringIO())
 
 
 def config(hostname, enabled=True):
@@ -79,12 +91,12 @@ def setup(request, settings, tmp_path, monkeypatch):
     page.save_revision().publish()
     page.refresh_from_db()
     settings.WAGTAIL_MARKDOWN_AGENTS = options
-    handlers.refresh_sites(site_ids=(site.pk,))
+    generate()
     yield FileWriter(), site, home, page, integration
     Site.clear_site_root_paths_cache()
 
 
-def test_committed_change_refreshes_leaf_hero_and_manifest_once(setup, monkeypatch):
+def test_committed_change_marks_pages_and_next_generate_rebuilds_them(setup, monkeypatch):
     writer, site, home, page, integration = setup
     original_revision = page.live_revision_id
     old = writer.begin(page)
@@ -96,14 +108,23 @@ def test_committed_change_refreshes_leaf_hero_and_manifest_once(setup, monkeypat
         return finalise(batch)
 
     monkeypatch.setattr(IndexBatch, "finalise", record_finalise)
+    rendered = []
+    upload = FileWriter._upload
+    monkeypatch.setattr(FileWriter, "_upload", lambda self, *args: rendered.append(args))
     with transaction.atomic():
         integration.integrations = config("new.example.org")
         integration.save()
-        assert "old.example.org/act/campaign-one/" in read(writer, "example.org/campaign.md")
-        assert finalised == []
+    # Nothing is rendered in the saving request: the current exports stay
+    # served and the site is marked for the next run.
+    assert rendered == [] and finalised == []
+    assert ExportScope.objects.get(site_id=site.pk).stale_before is not None
+    assert "old.example.org/act/campaign-one/" in read(writer, "example.org/campaign.md")
+    assert "old.example.org/act/home-campaign/" in read(writer, "example.org/index.md")
+    monkeypatch.setattr(FileWriter, "_upload", upload)
+    monkeypatch.setattr(IndexBatch, "finalise", finalise)
+    generate()
     assert "new.example.org/act/campaign-one/" in read(writer, "example.org/campaign.md")
     assert "new.example.org/act/home-campaign/" in read(writer, "example.org/index.md")
-    assert finalised == [{site.pk}]
     assert Page.objects.get(pk=page.pk).live_revision_id == original_revision
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert {entry["id"] for entry in manifest["documents"]} == {home.pk, page.pk}
@@ -140,11 +161,14 @@ def test_disable_and_delete_remove_campaign_links_without_recursive_creation(set
     monkeypatch.setattr(tasks, "enqueue", record)
     integration.integrations = config("old.example.org", enabled=False)
     integration.save()
+    generate()
     assert "/act/" not in read(writer, "example.org/campaign.md")
     integration.integrations = config("new.example.org")
     integration.save()
+    generate()
     assert "new.example.org" in read(writer, "example.org/campaign.md")
     integration.delete()
+    generate()
     assert "/act/" not in read(writer, "example.org/campaign.md")
     assert "Published copy." in read(writer, "example.org/campaign.md")
     assert len(queued) == 3
@@ -169,13 +193,15 @@ def test_nested_site_and_unpublished_draft_are_not_changed(setup, settings):
     page.body = [("text", "<p>DRAFT MUST NOT LEAK</p>")]
     page.save_revision()
     settings.WAGTAIL_MARKDOWN_AGENTS = options
-    handlers.refresh_sites(site_ids=(other.pk,))
+    generate("nested.example.org")
     other_files = dict(
         ExportArtifact.objects.filter(scope__site_id=other.pk).values_list("pk", "file_id")
     )
     integration.integrations = config("new.example.org")
     integration.save()
+    generate()
     output = read(writer, "example.org/campaign.md")
+    assert "new.example.org" in output
     assert "Published copy." in output and "DRAFT MUST NOT LEAK" not in output
     assert other_files == dict(
         ExportArtifact.objects.filter(scope__site_id=other.pk).values_list("pk", "file_id")
@@ -195,10 +221,13 @@ def test_delayed_job_reloads_latest_settings_and_honours_policy(setup, settings,
     fn, kwargs = pending[0]
     assert kwargs == {"site_ids": (site.pk,), "using": "default"}
     fn(**kwargs)
+    # The run reads the settings as they are then, not as they were saved.
+    generate()
     assert "latest.example.org" in read(writer, "example.org/campaign.md")
     # Restrictions applied before a delayed refresh are rechecked, not bypassed.
     PageViewRestriction.objects.create(page=page, restriction_type=PageViewRestriction.LOGIN)
     pending[1][0](**pending[1][1])
+    generate()
     assert not writer.exists("example.org/campaign.md")
 
 
@@ -219,7 +248,7 @@ def test_delayed_job_skips_disabled_or_deleted_scope(setup, settings, monkeypatc
     else:
         site.delete()
     monkeypatch.setattr(
-        handlers, "refresh_pages", lambda *args, **kwargs: pytest.fail("must not rebuild")
+        handlers, "request_refresh", lambda *args, **kwargs: pytest.fail("must not mark")
     )
     fn, kwargs = pending[0]
     fn(**kwargs)
@@ -227,20 +256,21 @@ def test_delayed_job_skips_disabled_or_deleted_scope(setup, settings, monkeypatc
 
 def test_failure_is_logged_after_commit_and_explicit_retry_works(setup, monkeypatch, caplog):
     writer, site, home, page, integration = setup
-    original = FileWriter._upload
 
     def fail(*args, **kwargs):
-        raise OSError("storage unavailable")
+        raise OSError("database unavailable")
 
-    monkeypatch.setattr(FileWriter, "_upload", fail)
+    original = handlers.request_refresh
+    monkeypatch.setattr(handlers, "request_refresh", fail)
     integration.integrations = config("new.example.org")
     integration.save()
     integration.refresh_from_db()
     assert integration.get_integration_config("actionkit")["hostname"] == "new.example.org"
     assert "integration-settings refresh failed" in caplog.text
-    assert "storage unavailable" in caplog.text
-    monkeypatch.setattr(FileWriter, "_upload", original)
+    assert "database unavailable" in caplog.text
+    monkeypatch.setattr(handlers, "request_refresh", original)
     handlers.refresh_sites(site_ids=(site.pk,))
+    generate()
     assert "new.example.org" in read(writer, "example.org/campaign.md")
 
 
@@ -281,6 +311,7 @@ def test_other_integration_changes_refresh_template_dependent_output(setup):
             )
         ]
         integration.save()
+        generate()
     assert "[Donate](https://donate.example.org/campaign)" in read(
         writer, "example.org/campaign.md"
     )

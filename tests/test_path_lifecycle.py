@@ -11,10 +11,21 @@ from tests import test_lifecycle
 from tests.test_indexes import article, read
 from tests.test_lifecycle import entries
 from wagtail_markdown_agents import tasks
+from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.models import ExportArtifact
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
 setup = test_lifecycle.setup
+
+
+def finalise(writer, site):
+    """Rebuild the site's indexes and discovery files, as agentmd_generate does.
+
+    Routine lifecycle events never rebuild llms.txt or the manifest (#69).
+    """
+    batch = IndexBatch(writer)
+    batch.mark_dirty(site.pk)
+    batch.finalise()
 
 
 def rename(page, slug):
@@ -49,6 +60,11 @@ def test_subtree_paths_and_discovery_follow_current_identity(setup, event):
     for record in old:
         assert not writer.exists(record.logical_path)
         assert not writer._backend(record.file).exists(record.file.storage_key)
+    # Relocation revokes the old paths. The manifest named them, so it waits for
+    # the next finalise; llms.txt is rebuilt at once with the new paths (#69).
+    assert not writer.exists("example.org/manifest.json")
+    assert "/markdown/index.md" in read(writer, "example.org/llms.txt")
+    finalise(writer, site)
     documents = {entry["id"]: entry for entry in entries(writer)}
     assert set(documents) == {home.pk, source.pk, destination.pk, branch.pk, child.pk}
     assert documents[child.pk]["path"] == f"example.org/{prefix}/child.md"
@@ -147,6 +163,8 @@ def test_move_callback_refetches_descendants(setup, monkeypatch, change):
         assert "child body." in output and "PRIVATE DRAFT" not in output
     else:
         assert not ExportArtifact.objects.filter(page_id=child_id).exists()
+        assert not writer.exists("example.org/manifest.json")
+        finalise(writer, site)
         assert child_id not in {entry["id"] for entry in entries(writer)}
 
 
@@ -159,7 +177,15 @@ def test_old_hook_paths_and_actual_storage_keys_are_retired(setup, event):
     ):
         branch = article(home, "branch")
         child = article(branch, "child")
-        records = list(ExportArtifact.objects.select_related("file"))
+        # Only the relocated subtree is rebuilt. Routine refreshes no longer
+        # move unrelated pages to the hook's paths (#69).
+        records = list(
+            ExportArtifact.objects.filter(page_id__in=[branch.pk, child.pk]).select_related("file")
+        )
+        assert {record.logical_path for record in records} == {
+            f"example.org/archive/{branch.pk}.md",
+            f"example.org/archive/{child.pk}.md",
+        }
     if event == "rename":
         rename(branch, "renamed")
         prefix = "renamed"
@@ -171,6 +197,7 @@ def test_old_hook_paths_and_actual_storage_keys_are_retired(setup, event):
         if record.logical_path.startswith("example.org/archive/"):
             assert not writer.exists(record.logical_path)
     assert writer.exists(f"example.org/{prefix}/child.md")
+    finalise(writer, site)
     assert child.pk in {entry["id"] for entry in entries(writer)}
 
 
@@ -240,8 +267,14 @@ def test_cross_site_move_cleans_old_scope_and_checks_destination_policy(setup, s
     assert not ExportArtifact.objects.filter(scope__site_id=site.pk, page_id=child.pk).exists()
     for record in old:
         assert not writer._backend(record.file).exists(record.file.storage_key)
-    assert child.pk not in {entry["id"] for entry in entries(writer)}
+    assert not writer.exists("example.org/manifest.json")
     assert writer.exists("other.org/branch/child.md") == enabled
+    # Routine events never build discovery files; a finalise does (#69).
+    assert not writer.exists("other.org/manifest.json")
+    finalise(writer, site)
+    assert child.pk not in {entry["id"] for entry in entries(writer)}
+    if enabled:
+        finalise(writer, other)
     assert writer.exists("other.org/manifest.json") == enabled
     if enabled:
         assert ExportArtifact.objects.get(page_id=child.pk).scope.site_id == other.pk
@@ -258,6 +291,7 @@ def test_move_into_and_out_of_restricted_parent_rechecks_subtree(setup):
     branch.refresh_from_db()
     branch.move(home, pos="last-child")
     assert writer.exists("example.org/branch/child.md")
+    finalise(writer, site)
     assert child.pk in {entry["id"] for entry in entries(writer)}
 
 
@@ -273,7 +307,10 @@ def test_move_then_delete_in_one_transaction_never_recreates_subtree(setup):
         branch.delete()
     assert not ExportArtifact.objects.filter(page_id__in=ids).exists()
     assert writer.exists("example.org/destination.md")
-    assert writer.exists("example.org/manifest.json")
+    # Deletion withdrew the manifest; a finalise rebuilds it without the subtree.
+    assert not writer.exists("example.org/manifest.json")
+    finalise(writer, site)
+    assert not {entry["id"] for entry in entries(writer)} & set(ids)
 
 
 def test_multiple_moves_before_commit_only_export_final_location(setup):
@@ -306,6 +343,7 @@ def test_rename_then_move_and_delete_former_parent_before_commit(setup):
         source.delete()
     assert writer.exists("example.org/destination/renamed/child.md")
     assert not writer.exists("example.org/source/branch/child.md")
+    finalise(writer, site)
     assert child.pk in {entry["id"] for entry in entries(writer)}
 
 

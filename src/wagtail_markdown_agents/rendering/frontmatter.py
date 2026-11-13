@@ -328,6 +328,19 @@ def _hierarchy(page, is_eligible: Callable) -> dict:
     }
 
 
+def hierarchy_page_ids(page) -> list[int]:
+    """The pages ``INCLUDE_HIERARCHY`` metadata names for ``page``; none when off.
+
+    An export is served only while each of them is still eligible, so one that
+    turns private hides the exports that name it (#69).
+    """
+    if not get_setting("INCLUDE_HIERARCHY"):
+        return []
+    related = _hierarchy(page.specific, _policy_is_eligible)
+    pages = [related["parent"], *related["ancestors"], *related["children"]]
+    return sorted({item.pk for item in pages if item is not None})
+
+
 def _policy_is_eligible(page) -> bool:
     from ..export.policy import ExportPolicy
 

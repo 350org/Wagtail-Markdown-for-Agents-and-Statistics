@@ -14,6 +14,7 @@ from tests import test_lifecycle
 from tests.test_indexes import article, read
 from tests.test_lifecycle import entries
 from wagtail_markdown_agents import handlers, tasks
+from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.export.lifecycle import refresh_pages, revoke_ineligible
 from wagtail_markdown_agents.export.policy import ExportPolicy
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
@@ -26,6 +27,21 @@ setup = test_lifecycle.setup
 
 def configure(settings, auto):
     settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "AUTO_GENERATE": auto}
+
+
+def finalise(writer, site):
+    """Rebuild the site's indexes, llms.txt and manifest, as agentmd_generate
+    does; routine lifecycle refreshes leave them to it (#69)."""
+    batch = IndexBatch(writer)
+    batch.mark_dirty(site.pk)
+    batch.finalise()
+
+
+def manifest_ids(writer):
+    """The page IDs the manifest lists; none when it is withdrawn."""
+    if not writer.exists("example.org/manifest.json"):
+        return set()
+    return {entry["id"] for entry in entries(writer)}
 
 
 @pytest.mark.parametrize("auto", [False, True])
@@ -55,11 +71,13 @@ def test_immediate_revocation_with_deferred_backend(setup, settings, monkeypatch
     assert queued == []
     assert writer.exists("example.org/unrelated.md")
     assert writer.exists("example.org/parent/child.md") == (kind == "excluded")
+    # Revocation withdraws the manifest; a routine refresh never rebuilds it.
+    assert not writer.exists("example.org/manifest.json")
     if auto:
-        assert not set(revoked) & {entry["id"] for entry in entries(writer)}
+        # The root index that listed the parent is rebuilt without it.
         assert "Parent" not in read(writer)
-    else:
-        assert not writer.exists("example.org/manifest.json")
+        finalise(writer, site)
+        assert not set(revoked) & manifest_ids(writer)
 
 
 @pytest.mark.parametrize("change", ["remove", "relax", "include", "delete_settings"])
@@ -89,7 +107,9 @@ def test_restoration_is_inline_after_commit(setup, monkeypatch, change):
     assert writer.exists("example.org/parent/index.md")
     assert writer.exists("example.org/parent/child.md")
     assert "PRIVATE DRAFT" not in read(writer, "example.org/parent/index.md")
-    assert {parent.pk, child.pk} <= {entry["id"] for entry in entries(writer)}
+    finalise(writer, site)
+    assert {parent.pk, child.pk} <= manifest_ids(writer)
+    assert "PRIVATE DRAFT" not in read(writer, "example.org/manifest.json")
 
 
 @pytest.mark.parametrize(
@@ -123,7 +143,9 @@ def test_restoration_rechecks_full_policy(setup, settings, veto):
             elif veto == "delete":
                 child.delete()
         assert not writer.exists("example.org/parent/child.md")
-        assert child_id not in {entry["id"] for entry in entries(writer)}
+        assert child_id not in manifest_ids(writer)
+        finalise(writer, site)
+        assert child_id not in manifest_ids(writer)
 
 
 @pytest.mark.parametrize("excluded", [False, True])
@@ -181,6 +203,7 @@ def test_exclusion_ignores_unsaved_value_and_unrelated_metadata(setup):
     row.excluded = True
     row.save(update_fields=["excluded"])
     assert not ExportArtifact.objects.filter(page_id=child.pk).exists()
+    finalise(writer, site)
     manifest_id = ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id
     row.extra_frontmatter = {"test": "private metadata"}
     row.save(update_fields=["extra_frontmatter"])
@@ -234,7 +257,9 @@ def test_cascade_deleted_side_rows_never_restore_pages(setup, model):
     ids = {parent.pk, child.pk}
     parent.delete()
     assert not ExportArtifact.objects.filter(page_id__in=ids).exists()
-    assert not ids & {entry["id"] for entry in entries(writer)}
+    assert not ids & manifest_ids(writer)
+    finalise(writer, site)
+    assert not ids & manifest_ids(writer)
     model.objects.create(page=home, **kwargs)
     home.delete()
     assert not ExportArtifact.objects.exists()

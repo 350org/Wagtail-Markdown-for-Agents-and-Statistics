@@ -1,5 +1,17 @@
 # Content-hash manifest
 
+**Off by default.** The manifest is for pipelines that need to detect changes,
+such as RAG indexing or a mirror that syncs the whole site. Building it reads every
+stored export, so it is published only when a site turns it on (#69):
+
+```python
+WAGTAIL_MARKDOWN_AGENTS = {"MANIFEST": True}
+```
+
+With it off, finalisation does not build it and withdraws an existing one, and
+`/markdown/manifest.json` answers 404. The agent simulator discovers pages from the
+manifest, so a site that runs it needs `MANIFEST` on.
+
 `ManifestGenerator` (#22) publishes a per-site `manifest.json` through the managed
 writer. It describes **successfully published, currently readable page documents**,
 including page-owned root/directory indexes. Synthetic navigation indexes and
@@ -24,9 +36,9 @@ With the sandbox URLconf it is `/markdown/manifest.json`, with
 `application/json; charset=utf-8`, GET/HEAD and the existing publication/serving
 guards. `urlconf=` supports custom route configurations. Disabled sites return
 `None`; requests never generate files. The [publish lifecycle](publish-lifecycle.md)
-finalises manifests automatically after publish and repairs discovery after
-unpublish/delete, restriction/exclusion changes and moves.
-[Management commands](management-commands.md) also finalise discovery after generation.
+does not rebuild the manifest: a publish keeps the last one served, and a
+revocation withdraws it until the next finalisation (#69).
+[Management commands](management-commands.md) finalise discovery after generation.
 
 ## v0.1 schema
 

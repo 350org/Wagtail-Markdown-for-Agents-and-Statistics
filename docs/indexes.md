@@ -35,9 +35,13 @@ described in [internal links](internal-links.md).
 ## Listing policy
 
 Entries come only from current, readable **page-owned** exports in the owning site.
-Every candidate passes the writer's ExportPolicy/state checks and a storage open
-bound to its exact file. The checks for one listing share one reading of the site
-(`site_freshness`), so listing costs grow with the number of exports.
+Every candidate passes the writer's ExportPolicy/state checks against its exact
+record, from database state alone: no export is opened, so a listing costs no
+storage requests (#69). A record exists only after its upload was read back;
+serving still opens the file and answers 404 if the object has gone. The checks
+for one listing share one reading of the site (`site_freshness`), so listing
+costs grow with the number of exports. A routine publish of a page index reads
+only the exports below it.
 `IndexGenerator.generate` lists the exports once, after withdrawing obsolete ones,
 and updates that list as it publishes each page index. Every publication still
 compares the site's state with the batch's starting state when it commits. If
@@ -119,7 +123,8 @@ pass affected old/new parent IDs explicitly. Moves between sites must dirty both
 scopes; the batch does not infer deleted pages' ancestry.
 
 `batch.delete_page(page_id, site_id=...)` captures those owners and immediately calls
-the writer's revocation API. Inside a CMS transaction, capture/withdraw there and
+the writer's revocation API, which withdraws the page and the navigation files
+that name it (#69). Inside a CMS transaction, capture/withdraw there and
 schedule `batch.finalise` with `transaction.on_commit`; generation itself must run
 after commit. Direct reads hide newly private dependent metadata even before cleanup
 runs. A failing context manager does not finalise or undo completed revocations.

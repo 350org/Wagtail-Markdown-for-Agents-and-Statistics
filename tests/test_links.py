@@ -160,7 +160,6 @@ def test_external_assets_and_meaningful_queries_are_untouched(corpus, events, ur
         ("excluded", "ineligible"),
         ("unpublished", "ineligible"),
         ("deleted", "not_found"),
-        ("missing", "not_found"),
         ("stale", "not_found"),
     ],
 )
@@ -176,8 +175,6 @@ def test_unavailable_target_is_reported_once_per_run(corpus, events, change, rea
         target.unpublish()
     elif change == "deleted":
         target.delete()
-    elif change == "missing":
-        storage.files.clear()
     else:
         target.body = [("paragraph", "<p>New content</p>")]
         target.save_revision().publish()
@@ -374,15 +371,30 @@ def test_link_rewrite_supports_filesystem_storage(corpus, settings, tmp_path):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_repeated_target_with_fragments_opens_storage_once(corpus, monkeypatch):
+def test_targets_are_checked_without_opening_storage(corpus, monkeypatch):
     writer, storage, site, source, target = corpus
-    original = writer.__class__.open
+    original = writer.__class__.is_current
     calls = []
 
-    def observed(self, path, **kwargs):
-        calls.append(path)
-        return original(self, path, **kwargs)
+    def observed(self, record, *args, **kwargs):
+        calls.append(record.logical_path)
+        return original(self, record, *args, **kwargs)
 
-    monkeypatch.setattr(writer.__class__, "open", observed)
+    monkeypatch.setattr(writer.__class__, "open", lambda *args, **kwargs: pytest.fail("opened"))
+    monkeypatch.setattr(writer.__class__, "is_current", observed)
     rewrite_links("[A](/target/#a) [B](/target/#b) [Again](/target/#a)", source)
+    # One database check per target, however often it is linked (#69).
     assert calls == ["example.org/target.md"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_missing_storage_object_is_left_to_serving(corpus, events, client):
+    writer, storage, site, source, target = corpus
+    # Link checks read the database only (#69), so a lost object still gets
+    # its export URL; serving opens the file and answers 404.
+    storage.files.clear()
+    assert rewrite_links("[One](/target/)", source) == (
+        "[One](http://example.org/markdown/target.md)"
+    )
+    assert events == []
+    assert client.get("/markdown/target.md", HTTP_HOST="example.org").status_code == 404

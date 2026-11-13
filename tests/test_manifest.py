@@ -177,7 +177,9 @@ def test_failed_batch_keeps_baseline_and_retry_reports_successes(setup, monkeypa
         batch.generate(first)
         batch.generate(other)
     assert ExportScope.objects.get(site_id=site.pk).manifest_state == baseline
-    assert not writer.exists("example.org/manifest.json")
+    # A page publication no longer withdraws the manifest: its last build is
+    # served until the site is finalised again (#69).
+    assert writer.exists("example.org/manifest.json")
     monkeypatch.setattr(writer, "_upload", original)
     batch.generate(other)
     batch.finalise()
@@ -191,6 +193,8 @@ def test_revocation_removes_private_metadata_without_tombstones(setup, client):
     generate(writer, site)
     PageViewRestriction.objects.create(page=child, restriction_type="login")
     assert client.get("/markdown/manifest.json", HTTP_HOST="example.org").status_code == 404
+    # A rebuild withdraws the private export first, as finalising does.
+    writer.delete_stale(site.pk)
     data = generate(writer, site)
     assert data["documents"] == [] and data["errors"] == []
     assert data["summary"]["removed"] == 1
@@ -256,8 +260,11 @@ def test_configuration_only_change_is_hashed_from_rebuilt_output(setup, settings
         **settings.WAGTAIL_MARKDOWN_AGENTS,
         "INCLUDE_HIERARCHY": True,
     }
-    data = generate(writer, site)
-    assert data["errors"] and data["summary"]["removed"] == 0
+    ManifestGenerator(writer).generate(site.pk)
+    # Out-of-date exports are reported as errors, by page ID only. The manifest
+    # names no page, so it is served (#69).
+    data = read(writer)
+    assert data["errors"] and not data["documents"] and data["summary"]["removed"] == 0
     writer.generate(child)
     second = generate(writer, site)["documents"][0]
     assert second["change_status"] == "modified"
@@ -272,6 +279,9 @@ def test_deleted_page_and_empty_corpus(setup):
     writer.generate(child)
     generate(writer, site)
     child.delete()
+    # Without lifecycle wiring the deleted page's export remains until a
+    # rebuild withdraws it, as finalising does.
+    writer.delete_stale(site.pk)
     data = generate(writer, site)
     assert data["documents"] == [] and data["errors"] == []
     assert data["summary"]["removed"] == 1

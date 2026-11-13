@@ -75,6 +75,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **`manifest.json` is off by default** (#69). It is for sync and RAG pipelines
+  that need to detect changes, and building it reads every stored export, which
+  made every `agentmd_generate` run read the whole export tree. Turn it on with
+  `MANIFEST = True`. With it off, the next run withdraws an existing manifest and
+  `/markdown/manifest.json` answers 404. The agent simulator still needs it on.
 - Agent registry `2026-11-06.1` recognises Anthropic's hosted browser, `Claude-Agent`,
   as an on-demand agent, without serving it Markdown automatically, like
   `Google-Agent`. That makes 72 identities, still 23 served automatically, so the
@@ -113,6 +118,40 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- On a large site, publishing a page in the admin failed with a server error, and
+  the section indexes, `llms.txt` and `manifest.json` went missing. Every
+  publication withdrew all of them, then rebuilt them inside the editor's request.
+  That meant reading every export from storage and re-rendering every section page,
+  which could not finish before the web server's timeout. Publishing now
+  regenerates the page, and its own index if it has children, reading only the
+  exports below it. Publishing a top-level page also rebuilds the root index and
+  `llms.txt`, which name only the top level. Other indexes and the manifest keep
+  their last build and stay served: a new post, title or description appears in
+  them after the next `agentmd_generate`, so run it on a schedule or after a batch
+  of edits. Each navigation file now records the pages it names, as does an
+  export with `INCLUDE_HIERARCHY` metadata: it is served only while each of
+  them is still eligible, with any export of its own current, and unpublishing, deleting,
+  restricting, excluding or moving a page withdraws only the files that name it.
+  Those indexes and `llms.txt` are rebuilt at once; the manifest returns at the
+  next finalise. Unpublishing a post no longer takes `llms.txt` down, and serving
+  `llms.txt` no longer reads the whole site. Listings and link
+  checks now read the database only and no longer open each export, so a lost
+  storage object is still listed and serving answers 404 for it. A plain
+  `agentmd_generate` (no `--force`) now rebuilds the navigation whenever a page
+  export is newer than it, without re-rendering current pages. After upgrading,
+  run `migrate`, then `agentmd_generate` once to rebuild indexes made by earlier
+  versions. Until that run, unpublishing a page withdraws those older indexes
+  and rebuilds only the root index and `llms.txt` in the request. Rebuilding
+  an index no longer decodes the site's manifest state for every page it
+  lists, which made unpublishing a post in a large section take many seconds
+  (#69).
+- With the 350.org profile, saving the site's integration settings re-rendered
+  every page of the site in that request, which timed out on a large site. The
+  save now renders nothing: the current exports stay served, `agentmd_status`
+  reports them as `outdated`, and the next `agentmd_generate` rebuilds them with
+  the new settings, without `--force`. Other projects can do the same through
+  `request_refresh(site_ids)`. Migration `0007` adds this marker and the record
+  of pages each navigation file names (#69).
 - On a large site, `agentmd_generate` never finished building the section
   indexes, `llms.txt` and `manifest.json`, so they stayed missing (404) even
   though pages were exported. The step re-checked every export for each index it

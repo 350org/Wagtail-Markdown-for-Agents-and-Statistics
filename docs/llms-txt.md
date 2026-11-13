@@ -71,11 +71,21 @@ including HEAD support, request gates and the existing cache headers. Generation
 never happens on a request. This discovery document is an aggregate, so retrieving
 it does not count as a page-read notification.
 
+## Keeping it current
+
+`llms.txt` names only the root index and the top-level pages, so publishing a post
+never changes it. The [publish lifecycle](publish-lifecycle.md) rebuilds it in the
+request when a top-level page is published or revoked, or when it is missing; this
+reads a handful of entries from the database and opens no stored export (#69). It
+records the pages it names, and it is served only while each of them still has a
+current export, so a top-level page that turns private hides it at once.
+
 `IndexBatch` now finalises this file once per dirty site **after** root/directory
 indexes. Its returned records include the discovery record. `IndexGenerator.generate`
 still builds only indexes; if calling the APIs separately, call `LlmsTxtGenerator`
-after page/index writes, then finalise the [manifest](manifest.md), because later
-page writes retire aggregate publications. A failure keeps
+after page/index writes, then finalise the [manifest](manifest.md), so both list
+the pages just written. A routine publish no longer withdraws them (#69); a
+revocation does. A failure keeps
 the site dirty on the batch object for an explicit retry.
 
 The generator captures site publication state before collecting targets. A change

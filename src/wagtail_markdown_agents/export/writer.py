@@ -9,19 +9,20 @@ import logging
 import time
 import uuid
 from contextlib import contextmanager
+from copy import copy
 from dataclasses import dataclass
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.db import DEFAULT_DB_ALIAS, OperationalError, connection, router, transaction
-from django.db.models import F
+from django.db.models import F, Q
 from wagtail.models import Page, PageViewRestriction, Revision, Site
 
 from ..models import ExportArtifact, ExportFile, ExportScope, PageAgentSettings
 from ..settings import get_setting
 from ..signals import markdown_deleted, markdown_generated
 from .paths import ExportPathError, site_path, validate_path
-from .state import StaleBuild, page_state, site_freshness, site_state
+from .state import StaleBuild, page_state, site_freshness, site_metadata, site_state
 from .storage import resolve_storage
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,16 @@ class BuildToken:
     source_state: str
     dependency_state: str = ""
     content_version: int = 0
+    # Stored on the record as its dependency_state: the site details its
+    # navigation was built from. dependency_state above is the whole-site
+    # reading checked at commit.
+    site_metadata: str = ""
+
+
+#: A navigation file naming more pages than this is checked against one reading
+#: of the whole site rather than page by page: llms.txt and the root index name a
+#: few sections, a blog index or the manifest name thousands of pages (#69).
+NAMED_PAGE_CHECKS = 50
 
 
 def _retry_locked(fn):
@@ -143,15 +154,23 @@ class FileWriter:
         _, site, _, _ = page_state(page_id)
         with _locked(site.pk) as scope:
             current, _, path, state = page_state(page_id, site.pk)
-            dependency = ""
+            dependency = metadata = ""
             if (
                 depends_on_site
                 or get_setting("INCLUDE_HIERARCHY")
                 or current.get_children().live().exists()
             ):
                 dependency = dependency_state or site_state(site.pk)[1]
+                metadata = site_metadata(site)
             return BuildToken(
-                site.pk, scope.version, page_id, path, state, dependency, scope.content_version
+                site.pk,
+                scope.version,
+                page_id,
+                path,
+                state,
+                dependency,
+                scope.content_version,
+                metadata,
             )
 
     def begin_site(self, site_id: int, path: str) -> BuildToken:
@@ -159,20 +178,35 @@ class FileWriter:
             site, state = site_state(site_id)
             site_path(path, site.hostname)
             return BuildToken(
-                site_id, scope.version, None, path, state, content_version=scope.content_version
+                site_id,
+                scope.version,
+                None,
+                path,
+                state,
+                content_version=scope.content_version,
+                site_metadata=site_metadata(site),
             )
 
     def generate(self, page, *, navigation="", depends_on_site=False):
         """Render and publish one page; index/discovery generation is separate."""
         from ..rendering import render_page
+        from ..rendering.frontmatter import hierarchy_page_ids
+        from ..rendering.page import _published_page
 
         _after_commit_required()
         token = self.begin(page, depends_on_site=depends_on_site or bool(navigation))
-        return self.publish(
-            token, render_page(Page.objects.get(pk=token.page_id), navigation=navigation)
-        )
+        current = Page.objects.get(pk=token.page_id)
+        # Hierarchy metadata names the page's relatives. A caller's own
+        # navigation names pages this cannot know, so it records nothing and
+        # every export of the site counts.
+        lists = None
+        if token.site_metadata and not navigation and get_setting("INCLUDE_HIERARCHY"):
+            lists = hierarchy_page_ids(_published_page(current))
+        return self.publish(token, render_page(current, navigation=navigation), lists=lists)
 
-    def publish(self, token: BuildToken, markdown: str, *, replace_index=False, commit=None):
+    def publish(
+        self, token: BuildToken, markdown: str, *, replace_index=False, commit=None, lists=None
+    ):
         """Publish a captured build or raise StaleBuild; no silent retries.
 
         ``replace_index`` lets a page index take over standalone navigation at
@@ -180,6 +214,7 @@ class FileWriter:
         ``commit(scope, record)`` optionally updates private database state in
         the pointer transaction. It must perform no IO or recursive publication;
         an exception rolls back both the pointer and that state.
+        ``lists`` gives the page IDs a navigation file names (#69).
         """
         _after_commit_required()
         candidate = self._allocate(token.site_id, token.path, token.page_id)
@@ -198,7 +233,7 @@ class FileWriter:
                         ),
                         notify=False,
                     )
-                record = self._swap(scope, token, candidate)
+                record = self._swap(scope, token, candidate, lists)
                 if commit is not None:
                     commit(scope, record)
         except Exception:
@@ -207,7 +242,7 @@ class FileWriter:
         self._published(record)
         return record
 
-    def update_aggregate(self, site_id: int, path: str, update, *, commit=None):
+    def update_aggregate(self, site_id: int, path: str, update, *, commit=None, lists=None):
         """Optimistic listing/manifest update; update receives str or None.
 
         The callback returns complete new text, with no database mutations or
@@ -215,6 +250,7 @@ class FileWriter:
         writes; a page change/revocation always aborts. Uploads run outside locks.
         An expired/missing aggregate is None. Page-owned indexes are protected.
         ``commit`` has the same atomic database-only contract as in ``publish``.
+        ``lists`` is called after ``update`` for the page IDs the text names.
         """
         _after_commit_required()
         baseline = None
@@ -228,6 +264,7 @@ class FileWriter:
                     site_path(path, site.hostname),
                     state,
                     content_version=scope.content_version,
+                    site_metadata=site_metadata(site),
                 )
                 existing = (
                     ExportArtifact.objects.filter(scope=scope, logical_path=path)
@@ -248,7 +285,10 @@ class FileWriter:
                 except FileNotFoundError:
                     pass
             try:
-                return self.publish(token, update(previous), commit=commit)
+                text = update(previous)
+                return self.publish(
+                    token, text, commit=commit, lists=lists() if lists is not None else None
+                )
             except ConcurrentAggregateUpdate:
                 if attempt == 2:
                     raise
@@ -306,6 +346,7 @@ class FileWriter:
             lambda: (
                 ExportArtifact.objects.filter(logical_path=path)
                 .select_related("file", "scope")
+                .defer("scope__manifest_state")
                 .first()
             )
         )
@@ -333,7 +374,8 @@ class FileWriter:
             return False
 
     def delete_page(self, page_id: int, *, site_id: int):
-        """Withdraw a page and site aggregates, even if no file currently exists.
+        """Withdraw a page and the navigation files that name it, even if no
+        file currently exists.
 
         May run inside revocation transactions: physical deletion is immediate.
         Rollback may restore a pointer to a missing file (safe HTML fallback).
@@ -341,12 +383,18 @@ class FileWriter:
         """
         with _locked(site_id) as scope:
             self._retire(ExportArtifact.objects.filter(scope=scope, page_id=page_id), notify=True)
-            self._retire(
-                ExportArtifact.objects.filter(scope=scope, page_id__isnull=True), notify=True
-            )
-            self._retire(
-                ExportArtifact.objects.filter(scope=scope).exclude(dependency_state=""), notify=True
-            )
+            # Only the navigation files that name the page go (#69); one that
+            # did not record what it names counts as naming every page. The
+            # site's root page takes them all: deleting it deletes the site.
+            root = Site.objects.filter(pk=site_id).values_list("root_page_id", flat=True).first()
+            naming = [
+                pk
+                for pk, lists in ExportArtifact.objects.filter(scope=scope)
+                .filter(Q(page_id__isnull=True) | ~Q(dependency_state=""))
+                .values_list("pk", "lists")
+                if lists is None or page_id in lists or page_id == root
+            ]
+            self._retire(ExportArtifact.objects.filter(pk__in=naming), notify=True)
             ExportScope.objects.filter(pk=scope.pk).update(
                 version=F("version") + 1, content_version=F("content_version") + 1
             )
@@ -408,7 +456,9 @@ class FileWriter:
                 freshness = None  # The site is gone: every record is obsolete.
             obsolete = [
                 record.pk
-                for record in ExportArtifact.objects.filter(scope=scope).select_related("scope")
+                for record in ExportArtifact.objects.filter(scope=scope)
+                .select_related("scope")
+                .defer("scope__manifest_state")
                 if not self._current(record, freshness)
             ]
             if obsolete:
@@ -416,6 +466,18 @@ class FileWriter:
                 ExportScope.objects.filter(pk=scope.pk).update(
                     version=F("version") + 1, content_version=F("content_version") + 1
                 )
+        self._cleanup_safely(site_id)
+
+    def withdraw_aggregate(self, site_id: int, path: str):
+        """Withdraw one site-level file, such as a manifest that is switched off."""
+        with _locked(site_id) as scope:
+            records = ExportArtifact.objects.filter(
+                scope=scope, logical_path=path, page_id__isnull=True
+            )
+            if not records.exists():
+                return
+            self._retire(records, notify=True)
+            ExportScope.objects.filter(pk=scope.pk).update(version=F("version") + 1)
         self._cleanup_safely(site_id)
 
     def prune_indexes(self, token: BuildToken, keep_paths):
@@ -509,7 +571,7 @@ class FileWriter:
         if token.dependency_state and site_state(token.site_id)[1] != token.dependency_state:
             raise StaleBuild("Related site content changed during rendering")
 
-    def _swap(self, scope, token, file):
+    def _swap(self, scope, token, file, lists=None):
         self._backend(file)  # Recheck storage identity after upload too.
         occupied = ExportArtifact.objects.filter(logical_path=token.path).first()
         if occupied and occupied.scope_id != scope.pk:
@@ -525,20 +587,15 @@ class FileWriter:
             )
             raise StorageContractError(f"Path {token.path!r} is owned by {owner}")
         if token.page_id is not None:
+            # Only this page's earlier export goes. Indexes and discovery files
+            # that list it keep their last build until the site is finalised
+            # again: rebuilding them all on every publication cannot finish on
+            # a large site (#69). Revocation still withdraws them (delete_page).
             for record in ExportArtifact.objects.filter(scope=scope, page_id=token.page_id):
                 self._retire(
                     ExportArtifact.objects.filter(pk=record.pk),
                     notify=record.logical_path != token.path,
                 )
-            self._retire(
-                ExportArtifact.objects.filter(scope=scope, page_id__isnull=True), notify=True
-            )
-            # Rebuilding one page-owned index must not withdraw other indexes
-            # built from the same CMS state. Revocation withdraws them all.
-            dependents = ExportArtifact.objects.filter(scope=scope).exclude(dependency_state="")
-            if dependents.exists():
-                current_site_state = token.dependency_state or site_state(scope.site_id)[1]
-                self._retire(dependents.exclude(dependency_state=current_site_state), notify=True)
         else:
             self._retire(
                 ExportArtifact.objects.filter(scope=scope, logical_path=token.path), notify=False
@@ -549,7 +606,8 @@ class FileWriter:
             logical_path=token.path,
             file=file,
             source_state=token.source_state,
-            dependency_state=token.dependency_state,
+            dependency_state=token.site_metadata,
+            lists=None if lists is None else sorted(set(lists)),
         )
         changes = {"version": F("version") + 1}
         if token.page_id is not None:
@@ -576,35 +634,88 @@ class FileWriter:
             logger.exception("Failed build left candidate %s for operator recovery", file.pk)
 
     def _current(self, record, freshness=None):
-        """Whether ``record`` was built from its page's and site's current inputs.
+        """Whether ``record`` may still be served.
 
-        ``freshness`` is one reading of the record's site, shared by a caller
-        checking many records; without it every check reads the site afresh.
+        A page's own document is current while it was built from the page's
+        current inputs at its current path. A navigation file (a page index,
+        a hierarchy export, llms.txt, the manifest, a standalone index) also
+        needs the site's details unchanged and every page it names still
+        eligible, with any export of its own current, so a page that turns
+        private or unpublished hides the files that name it, even without a
+        lifecycle signal. It is
+        not rebuilt when a page is republished, so it keeps its last build
+        until the site is finalised again (#69). ``freshness`` is one reading
+        of the record's site, shared by a caller checking many records.
         """
         site_id = record.scope.site_id
         if freshness is not None and freshness.site.pk != site_id:
             freshness = None
-
-        def site_digest():
-            return freshness.state if freshness else site_state(site_id)[1]
-
         try:
-            if record.page_id is None:
-                state = site_digest()
-            else:
+            if record.page_id is not None:
                 _, _, path, state = page_state(
                     record.page_id,
                     site_id,
                     snapshot=freshness.snapshot if freshness else None,
                     config=freshness.config if freshness else None,
                 )
-                if path != record.logical_path:
+                if path != record.logical_path or state != record.source_state:
                     return False
-            return state == record.source_state and (
-                not record.dependency_state or site_digest() == record.dependency_state
-            )
+                if not record.dependency_state:
+                    return True
+            if record.lists is None or len(record.lists) > NAMED_PAGE_CHECKS:
+                # Unrecorded or long lists: one reading of the whole site.
+                freshness = freshness or site_freshness(site_id)
+            if freshness is not None:
+                if record.dependency_state != freshness.metadata:
+                    return False
+                if record.lists is None:
+                    return freshness.exports_current
+                return freshness.named_current(record.lists)
+            site = Site.objects.filter(pk=site_id).first()
+            if site is None or record.dependency_state != site_metadata(site):
+                return False
+            return self._named_current(site_id, record.lists)
         except StaleBuild:
             return False
+
+    def _named_current(self, site_id, page_ids):
+        """Whether each of a short list of pages may still be named.
+
+        Each must be eligible, and any export it has in this site current; see
+        ``SiteFreshness.named_current``.
+        """
+        exported = {
+            page_id: (path, state)
+            for page_id, path, state in ExportArtifact.objects.filter(
+                scope__site_id=site_id, page_id__in=page_ids
+            ).values_list("page_id", "logical_path", "source_state")
+        }
+        for page_id in set(page_ids):
+            try:
+                if page_id in exported:
+                    _, _, path, state = page_state(page_id, site_id)
+                    if (path, state) != exported[page_id]:
+                        return False
+                else:
+                    page_state(page_id)
+            except StaleBuild:
+                return False
+        return True
+
+    def is_current(self, record, freshness=None, *, own=False) -> bool:
+        """Whether ``record`` may be served, from database state alone.
+
+        Listings and links use this instead of opening each export: a record
+        is created only after its upload was read back, and serving still
+        opens the file. ``own`` checks only a page's own document, ignoring
+        whether the navigation it carries could be rebuilt: listing a page
+        needs the page current, and a page index being rebuilt makes every
+        other index look out of date until it is published.
+        """
+        if own and record.page_id is not None and record.dependency_state:
+            record = copy(record)
+            record.dependency_state = ""
+        return _retry_locked(lambda: self._current(record, freshness))
 
     def _open_file(self, file):
         try:

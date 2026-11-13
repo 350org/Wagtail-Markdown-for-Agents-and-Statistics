@@ -52,12 +52,15 @@ class LinkResolver:
         self.batch = freshness if freshness and freshness.site.pk == site_id else None
         self.freshness = self.batch
 
-    def _open(self, path, record):
-        """Open a link target's export, checking it as the writer does.
+    def _require_current(self, path, record):
+        """Raise FileNotFoundError unless a link target's export may be served.
 
-        Checking an index or discovery file reads the whole site, so one
-        reading serves every such target in this render (#66). Without a
-        batch's reading, leaf exports keep the cheaper per-page check.
+        The check uses database state alone, as listings do: opening each
+        target cost remote storage requests per link, and an index links to
+        every page it lists (#69). Checking an index or discovery file reads
+        the whole site, so one reading serves every such target in this
+        render (#66). Without a batch's reading, leaf exports keep the
+        cheaper per-page check.
         """
         freshness = self.batch
         if freshness is None and (record.page_id is None or record.dependency_state):
@@ -67,9 +70,10 @@ class LinkResolver:
                 except StaleBuild as exc:
                     raise FileNotFoundError(path) from exc
             freshness = self.freshness
-        return FileWriter().open(
-            path, site_id=self.site.pk, file_id=record.file_id, freshness=freshness
-        )
+        if record.scope.site_id != self.site.pk or not FileWriter().is_current(
+            record, freshness, own=True
+        ):
+            raise FileNotFoundError(path)
 
     def resolve(self, url):
         if url not in self.urls:
@@ -214,6 +218,7 @@ class LinkResolver:
         record = (
             ExportArtifact.objects.filter(scope__site_id=self.site.pk, logical_path=logical)
             .select_related("scope", "file")
+            .defer("scope__manifest_state")
             .first()
         )
         if record is None:
@@ -222,8 +227,8 @@ class LinkResolver:
             page = Page.objects.filter(pk=record.page_id).first()
             return self._export(page) if page else (None, "not_found")
         try:
-            with self._open(logical, record):
-                return export_url(record), None
+            self._require_current(logical, record)
+            return export_url(record), None
         except (FileNotFoundError, ExportPathError):
             return None, "not_found"
 
@@ -247,15 +252,15 @@ class LinkResolver:
                     scope__site_id=self.site.pk, page_id=current.pk, logical_path=path
                 )
                 .select_related("scope", "file")
+                .defer("scope__manifest_state")
                 .first()
             )
             if record is None:
                 result = (None, "not_found")
             else:
                 try:
-                    with self._open(path, record):
-                        target = export_url(record)
-                    result = (target, None)
+                    self._require_current(path, record)
+                    result = (export_url(record), None)
                 except (FileNotFoundError, ExportPathError):
                     result = (None, "not_found")
         self.targets[page.pk] = result
@@ -307,23 +312,29 @@ def _source_positions(content, line_map, lines, offsets):
     return positions
 
 
-def rewrite_links(markdown, page, context=None, *, freshness=None):
+def rewrite_links(markdown, page, context=None, *, freshness=None, checked=()):
     """Edit recognised destinations, preserving surrounding Markdown bytes.
 
     Reference uses become inline links; definitions and images stay untouched.
     Code/HTML blocks and inline code are excluded by the Markdown parser. A link
     to a private page is replaced by its label, and an autolink to one removed.
     ``freshness`` is a batch's reading of the site, reused to check targets.
+    ``checked`` lists export URLs the caller has just checked, such as an
+    index's page list, which are kept as they are without a lookup each (#69).
     """
     context = context if context is not None else render_context(page)
     resolver = LinkResolver(page, context, freshness)
+    parser = MarkdownIt("commonmark")
+    for url in checked:
+        escaped = url.replace("(", "%28").replace(")", "%29")
+        for key in {url, escaped, parser.normalizeLink(escaped)}:
+            resolver.urls[key] = None
     edits = []
     lines = markdown.splitlines(keepends=True)
     offsets, offset = [], 0
     for line_text in lines:
         offsets.append(offset)
         offset += len(line_text)
-    parser = MarkdownIt("commonmark")
 
     def capture_link(state, silent):
         start, count = state.pos, len(state.tokens)

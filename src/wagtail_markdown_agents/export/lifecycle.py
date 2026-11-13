@@ -5,17 +5,23 @@ from functools import partial
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, transaction
+from django.utils import timezone
 from wagtail.models import Page, Site
 
 from .. import tasks
-from ..models import ExportArtifact
-from ..rendering.page import PageRenderError
+from ..models import ExportArtifact, ExportScope
+from ..rendering.page import PageRenderError, unsupported_reason
 from ..settings import get_setting
-from .indexes import IndexBatch
+from .indexes import IndexBatch, IndexGenerator
+from .llms_txt import LlmsTxtGenerator
 from .policy import ExportPolicy
 from .writer import FileWriter, _after_commit_required
 
 logger = logging.getLogger(__name__)
+
+#: The withdrawn page indexes one routine refresh rebuilds in the request. Each
+#: rebuild reads the whole site twice; beyond this they wait for agentmd_generate.
+INDEX_REPAIRS = 3
 
 
 def write_database(instance=None, using=None):
@@ -191,21 +197,220 @@ def revoke_ineligible(*, using=DEFAULT_DB_ALIAS):
     return revoked
 
 
-def _discovery_current(writer, site, owners):
-    """A prior callback may already have repaired this cascade's shared artefacts.
+def _routine_refresh(page_ids, captured, *, using):
+    """Refresh what a CMS event changed, never the whole site (#69).
 
-    Check former index owners too: a publish callback could have finalised a
-    manifest before a deletion callback repairs a missing parent leaf.
+    Runs inside the editor's request when tasks run inline, so it must not
+    grow with the size of the site. It regenerates the given pages, then any
+    parent or former index owner with no export at its current path: a parent
+    that gained its first or lost its last child, or an index a revocation
+    withdrew (at most ``INDEX_REPAIRS`` of them). Other indexes, llms.txt and
+    the manifest keep their last build until ``agentmd_generate`` or an
+    explicit refresh finalises the site.
     """
-    if not all(
-        writer.exists(f"{site.hostname}/{name}")
-        for name in ("index.md", "llms.txt", "manifest.json")
-    ):
-        return False
-    records = list(ExportArtifact.objects.filter(scope__site_id=site.pk, page_id__in=owners))
-    return len(records) == len(owners) and all(
-        writer.exists(record.logical_path) for record in records
+    writer = FileWriter()
+    generator = IndexGenerator(writer)
+    policy = ExportPolicy()
+    results = []
+    owners = {owner for owners in captured.values() for owner in owners}
+    parents = set()
+    done = set()
+    # Deepest first, so a moved section's index lists its children at their
+    # new paths.
+    depths = dict(Page.objects.using(using).filter(pk__in=page_ids).values_list("pk", "depth"))
+    for page_id in sorted(page_ids, key=lambda page_id: (-depths.get(page_id, 0), page_id)):
+        page = Page.objects.using(using).filter(pk=page_id).specific().first()
+        if page is None or not policy.is_eligible(page):
+            for site_id in captured:
+                _withdraw(writer, page_id, site_id)
+            continue
+        site = policy.site_for_page(page)
+        for site_id in captured:
+            if site_id != site.pk:
+                _withdraw(writer, page_id, site_id)
+        parent = page.get_parent()
+        if parent is not None:
+            parents.add(parent.pk)
+        try:
+            results.append(_regenerate(writer, generator, policy, page))
+            done.add(page.pk)
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+            _withdraw(writer, page.pk, site.pk)
+            logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
+    # Former owners still holding an export kept their index: only one that
+    # lost its last child or was moved loses it, through revocation. Checking
+    # just the withdrawn ones keeps this independent of the number of indexes.
+    owners.difference_update(
+        ExportArtifact.objects.filter(page_id__in=owners).values_list("page_id", flat=True)
     )
+    candidates = (owners | parents).difference(page_ids)
+    repairs = sorted(
+        _needs_repair(candidates, using=using), key=lambda page: (-page.depth, page.pk)
+    )
+    # A revocation withdraws the one index that listed the page, so a routine
+    # event leaves an index or two to rebuild. More than that means the
+    # revocation withdrew navigation wholesale: files from an earlier version
+    # record no pages and count as naming them all, as does revoking the
+    # site's root page. Rebuilding every index of the site cannot fit in a
+    # request (#69), so those wait for agentmd_generate. A former owner that
+    # is now a leaf is one page render, and is always repaired.
+    indexes = [page for page in repairs if policy.relative_path(page).endswith("/index.md")]
+    if len(indexes) > INDEX_REPAIRS:
+        logger.warning(
+            "Left %s withdrawn Markdown indexes for agentmd_generate to rebuild", len(indexes)
+        )
+        repairs = [page for page in repairs if page not in indexes]
+    recorded = set(
+        ExportArtifact.objects.filter(page_id__in=candidates).values_list("page_id", flat=True)
+    )
+    relocated = set()
+    for page in repairs:
+        # A leaf that became an index, or an index that became a leaf, has a
+        # new path. A withdrawn index rebuilt where it was has not.
+        if page.pk in recorded or not policy.relative_path(page).endswith("/index.md"):
+            relocated.add(page.pk)
+        try:
+            results.append(_regenerate(writer, generator, policy, page))
+            done.add(page.pk)
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+            logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
+    for site in Site.objects.using(using).filter(pk__in=captured).select_related("root_page"):
+        if ExportPolicy.site_enabled(site):
+            results.extend(
+                _refresh_top_level(writer, generator, policy, site, done, {*page_ids, *relocated})
+            )
+    return results
+
+
+def _refresh_top_level(writer, generator, policy, site, done, page_ids):
+    """Keep llms.txt and the root index current when the top level changes (#69).
+
+    Both name only the site's top-level pages, so a post never changes them and
+    this costs two small queries. When a top-level page was published or
+    changed path (a leaf that gained its first child, an index that lost its
+    last), or a revocation withdrew llms.txt, both are rebuilt, so neither keeps
+    a link to a path that has gone.
+    """
+    host = site.hostname
+    named = set()
+    llms = None
+    for path, lists in ExportArtifact.objects.filter(
+        scope__site_id=site.pk, logical_path__in=[f"{host}/llms.txt", f"{host}/index.md"]
+    ).values_list("logical_path", "lists"):
+        named.update(lists or ())
+        if path == f"{host}/llms.txt":
+            llms = lists
+    # A top-level page's path is host/page.md or host/page/index.md; the root
+    # index itself is not one of llms.txt's entries.
+    top_level = any(
+        path != f"{host}/index.md"
+        and (path.count("/") == 1 or path == f"{host}/{path.split('/')[1]}/index.md")
+        for path in ExportArtifact.objects.filter(
+            scope__site_id=site.pk, page_id__in=page_ids
+        ).values_list("logical_path", flat=True)
+    )
+    # llms.txt links the root index under a fixed label, so editing the home
+    # page leaves it as it is.
+    named.discard(site.root_page_id)
+    if llms is not None and not top_level and not named.intersection(page_ids):
+        return []
+    results = []
+    home = site.root_page.specific
+    if (
+        home.pk not in done
+        and policy.is_eligible(home)
+        and policy.relative_path(home) == f"{host}/index.md"
+    ):
+        try:
+            results.append(generator.regenerate(home))
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+    discovery = LlmsTxtGenerator(writer).generate(site.pk)
+    if discovery is not None:
+        results.append(discovery)
+    return results
+
+
+def _withdraw(writer, page_id, site_id):
+    """Revoke a page's export, if it has one.
+
+    Revocation withdraws the site's discovery files, which a routine refresh
+    does not rebuild, so a page that was never exported (a form page, say)
+    must not cost the site its llms.txt and manifest.
+    """
+    if ExportArtifact.objects.filter(scope__site_id=site_id, page_id=page_id).exists():
+        writer.delete_page(page_id, site_id=site_id)
+
+
+def _regenerate(writer, generator, policy, page):
+    if policy.relative_path(page).endswith("/index.md"):
+        return generator.regenerate(page)
+    return writer.generate(page)
+
+
+def _needs_repair(page_ids, *, using):
+    """The live, eligible, supported pages among ``page_ids`` with no export
+    at their path.
+
+    A page has none when revocation withdrew its index or its path moved
+    between a leaf and an index. An export that is merely out of date (after a
+    settings change, say) is left for ``agentmd_generate``: repairing every
+    such index here would rebuild the whole site inside one request.
+    """
+    pages = list(Page.objects.using(using).filter(pk__in=page_ids, live=True).specific())
+    if not pages:
+        return []
+    recorded = {}
+    for page_id, path in ExportArtifact.objects.filter(page_id__in=page_ids).values_list(
+        "page_id", "logical_path"
+    ):
+        recorded.setdefault(page_id, set()).add(path)
+    policy = ExportPolicy()
+    return [
+        page
+        for page in pages
+        if not unsupported_reason(type(page))
+        and policy.is_eligible(page)
+        and policy.relative_path(page) not in recorded.get(page.pk, ())
+    ]
+
+
+def request_refresh(site_ids, *, using=DEFAULT_DB_ALIAS):
+    """Mark every page export of these sites for rebuilding, rendering nothing now.
+
+    For a change that alters every page's Markdown without a page revision,
+    such as a site setting the renderers read. Rebuilding thousands of pages
+    cannot fit in the request that saved the setting (#69), so the current
+    exports stay served and the next ``agentmd_generate`` rebuilds those
+    published before this call, without ``--force``.
+    """
+    write_database(using=using)
+    now = timezone.now()
+    for site_id in sorted(set(site_ids)):
+        ExportScope.objects.get_or_create(site_id=site_id)
+        ExportScope.objects.filter(site_id=site_id).update(stale_before=now)
+
+
+def navigation_behind(site):
+    """Whether a page export is newer than the site's navigation.
+
+    A routine publication leaves most indexes and the manifest as they were
+    (#69). A finalisation records when it finished, so any page export
+    published after that is missing from the navigation.
+    """
+    finalised = (
+        ExportScope.objects.filter(site_id=site.pk).values_list("finalised_at", flat=True).first()
+    )
+    if finalised is None:
+        return True
+    return ExportArtifact.objects.filter(
+        scope__site_id=site.pk, page_id__isnull=False, published_at__gt=finalised
+    ).exists()
 
 
 def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic=False):
@@ -227,12 +432,12 @@ def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic
         captured.setdefault(site_id, set()).update(owners)
     if not captured:
         return []
+    if automatic:
+        return _routine_refresh(page_ids, captured, using=using)
     writer = FileWriter()
     batch = IndexBatch(writer)
     for site in Site.objects.filter(pk__in=captured):
         if ExportPolicy.site_enabled(site):
-            if automatic and not page_ids and _discovery_current(writer, site, captured[site.pk]):
-                continue
             batch.mark_dirty(site.pk, page_ids=captured[site.pk])
     if not batch.dirty and not page_ids:
         return []

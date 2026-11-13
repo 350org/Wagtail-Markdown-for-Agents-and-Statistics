@@ -90,9 +90,10 @@ class ManifestGenerator:
         if not ExportPolicy.site_enabled(site):
             return None
         next_state = None
+        documents = []
 
         def update(previous):
-            nonlocal next_state
+            nonlocal next_state, documents
             fresh = site_freshness(site_id)
             if fresh.state != source_state:
                 raise StaleBuild("Site content changed before manifest generation")
@@ -110,7 +111,9 @@ class ManifestGenerator:
                 record.page_id: record
                 for record in ExportArtifact.objects.filter(
                     scope__site_id=site_id, page_id__isnull=False
-                ).select_related("scope", "file")
+                )
+                .select_related("scope", "file")
+                .defer("scope__manifest_state")
             }
             documents, errors, comparisons = [], [], {}
             summary = {"new": 0, "modified": 0, "unchanged": 0, "removed": 0, "errors": 0}
@@ -195,5 +198,9 @@ class ManifestGenerator:
             ExportScope.objects.filter(pk=scope.pk).update(manifest_state=next_state)
 
         return self.writer.update_aggregate(
-            site_id, f"{site.hostname}/manifest.json", update, commit=commit
+            site_id,
+            f"{site.hostname}/manifest.json",
+            update,
+            commit=commit,
+            lists=lambda: [entry["id"] for entry in documents],
         )

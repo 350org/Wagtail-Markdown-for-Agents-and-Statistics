@@ -1,10 +1,11 @@
 """Fresh publication inputs, independent of the caller's page instance."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import cached_property
 
 from wagtail.models import Page, Site
 
-from ..models import PageAgentSettings
+from ..models import ExportArtifact, PageAgentSettings
 from ..settings import DEFAULTS, NON_CONTENT_SETTINGS, get_setting
 from .policy import ExportPolicy
 from .snapshot import SiteSnapshot
@@ -72,6 +73,63 @@ class SiteFreshness:
     snapshot: SiteSnapshot
     config: dict
     state: str
+    # Each current page's export path and state, as the digest read them.
+    pages: dict = field(default_factory=dict, compare=False)
+
+    @cached_property
+    def metadata(self):
+        """The site's own details, as :func:`site_metadata` digests them."""
+        return site_metadata(self.site, self.config)
+
+    @cached_property
+    def exports_current(self):
+        """Whether every page export of the site matches its page's current inputs.
+
+        Navigation and discovery files are served only while this holds, so a
+        page that becomes private, unpublished or excluded hides them even
+        when no lifecycle signal withdrew them (#69).
+        """
+        records = ExportArtifact.objects.filter(
+            scope__site_id=self.site.pk, page_id__isnull=False
+        ).values_list("page_id", "logical_path", "source_state")
+        return all(
+            self.pages.get(page_id) == (path, source_state)
+            for page_id, path, source_state in records
+        )
+
+    def named_current(self, page_ids):
+        """Whether each of ``page_ids`` may still be named (#69).
+
+        Each must be eligible, and any export it has in this site must be
+        current. A named page need not have an export: hierarchy metadata
+        names pages that were never exported, and an index waiting to be
+        rebuilt is still a public page. One outside this reading (an ancestor
+        above the site's root, or a page no longer eligible) is checked afresh.
+        """
+        named = set(page_ids)
+        for page_id in named.difference(self.pages):
+            page = Page.objects.filter(pk=page_id).first()
+            if page is None or not ExportPolicy().is_eligible(page.specific):
+                return False
+        records = ExportArtifact.objects.filter(
+            scope__site_id=self.site.pk, page_id__isnull=False
+        ).values_list("page_id", "logical_path", "source_state")
+        return all(
+            self.pages.get(page_id) == (path, source_state)
+            for page_id, path, source_state in records
+            if page_id in named
+        )
+
+
+def site_metadata(site, config=None):
+    """A digest of what a site's navigation reads besides its pages' exports."""
+    return digest(
+        {
+            "site": [site.pk, site.hostname, site.port, site.root_page_id, site.site_name],
+            "llms_description": get_setting("LLMS_TXT_DESCRIPTION"),
+            "config": content_config() if config is None else config,
+        }
+    )
 
 
 def site_freshness(site_id):
@@ -94,7 +152,9 @@ def site_freshness(site_id):
             "pages": states,
         }
     )
-    return SiteFreshness(site, snapshot, config, state)
+    return SiteFreshness(
+        site, snapshot, config, state, {page_id: (path, page) for page_id, path, page in states}
+    )
 
 
 def site_state(site_id):

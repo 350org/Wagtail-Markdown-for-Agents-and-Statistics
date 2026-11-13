@@ -2,11 +2,15 @@ from django.core.management.base import BaseCommand, CommandError
 from wagtail.models import Site
 
 from ...export.indexes import IndexBatch
+from ...settings import get_setting
 from ..export_commands import add_scope_arguments, report, require_autocommit, select
 
 
 class Command(BaseCommand):
-    help = "Rebuild indexes, llms.txt and manifest for sites affected by the selection."
+    help = (
+        "Rebuild indexes, llms.txt and (with MANIFEST on) the manifest for sites "
+        "affected by the selection."
+    )
 
     def add_arguments(self, parser) -> None:
         add_scope_arguments(parser)
@@ -22,7 +26,8 @@ class Command(BaseCommand):
         for site in Site.objects.filter(pk__in=selection.site_ids).order_by("pk"):
             if options["dry_run"]:
                 self.stdout.write(
-                    f"Site {site.hostname}: would rebuild indexes, llms.txt and manifest"
+                    f"Site {site.hostname}: would rebuild indexes and llms.txt"
+                    + (" and manifest" if get_setting("MANIFEST") else "")
                 )
                 counts["generated"] += 1
                 continue

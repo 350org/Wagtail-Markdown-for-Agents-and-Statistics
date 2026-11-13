@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 from ..models import ExportArtifact
 from ..public_urls import export_url
 from ..settings import get_setting
-from .listings import directory_entries, markdown_text, readable_page_entries
+from .listings import markdown_text, navigation_entries
 from .paths import ExportPathError
 from .policy import ExportPolicy
 from .state import StaleBuild, site_freshness
@@ -39,12 +39,12 @@ class LlmsTxtGenerator:
             parts.append("> " + markdown_text(description))
 
         root_path = f"{site.hostname}/index.md"
-        entries = directory_entries(
-            readable_page_entries(self.writer, site, urlconf=self.urlconf, freshness=fresh),
-            root_path,
-        )
+        entries = navigation_entries(self.writer, site, root_path, fresh, urlconf=self.urlconf)
         lines = []
-        root_url = self._root_url(site, root_path, fresh)
+        root_url, root_page_id = self._root_url(site, root_path, fresh)
+        named = [entry.page_id for entry in entries]
+        if root_page_id is not None:
+            named.append(root_page_id)  # It links to the home page's index.
         if root_url:
             lines.append(self._link("Site index", root_url, "Browse available content."))
         lines.extend(self._link(entry.title, entry.url, entry.description) for entry in entries)
@@ -52,24 +52,24 @@ class LlmsTxtGenerator:
             parts.append("## Explore\n\n" + "\n".join(lines))
         else:
             parts.append("No exported pages are available.")
-        return self.writer.publish(token, "\n\n".join(parts) + "\n")
+        return self.writer.publish(token, "\n\n".join(parts) + "\n", lists=named)
 
     def _root_url(self, site, path, freshness):
         record = (
             ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=path)
             .select_related("scope", "file")
+            .defer("scope__manifest_state")
             .first()
         )
         if record is None:
-            return None
+            return None, None
+        # From database state, as the listing is: no storage request (#69).
+        if not self.writer.is_current(record, freshness, own=True):
+            return None, None
         try:
-            with self.writer.open(
-                path, site_id=site.pk, file_id=record.file_id, freshness=freshness
-            ):
-                pass
-            return export_url(record, urlconf=self.urlconf)
-        except (FileNotFoundError, ExportPathError):
-            return None
+            return export_url(record, urlconf=self.urlconf), record.page_id
+        except ExportPathError:
+            return None, None
 
     @staticmethod
     def _link(title, url, description):

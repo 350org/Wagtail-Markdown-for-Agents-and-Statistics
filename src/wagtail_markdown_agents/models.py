@@ -66,6 +66,12 @@ class ExportScope(models.Model):
     content_version = models.PositiveBigIntegerField(default=0)
     # Private comparison hashes survive withdrawal of the public manifest.
     manifest_state = models.JSONField(default=dict, blank=True)
+    # Page exports published before this are rebuilt by the next
+    # agentmd_generate, and served as they are until then (#69).
+    stale_before = models.DateTimeField(null=True, blank=True)
+    # When the site's navigation was last finalised; a page export published
+    # later is not in it yet (#69).
+    finalised_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Export scope for site {self.site_id}"
@@ -98,6 +104,11 @@ class ExportArtifact(models.Model):
     file = models.OneToOneField(ExportFile, on_delete=models.PROTECT, related_name="artifact")
     source_state = models.CharField(max_length=64)
     dependency_state = models.CharField(max_length=64, blank=True, default="")
+    # The page IDs a file names: an index's or llms.txt's entries, the
+    # manifest's documents, an export's hierarchy metadata. It is served only
+    # while each of them is eligible, and a revocation withdraws only the
+    # files that name the page. None: not recorded, so every page counts.
+    lists = models.JSONField(null=True, blank=True, default=None)
     published_at = models.DateTimeField(auto_now=True)
 
     class Meta:

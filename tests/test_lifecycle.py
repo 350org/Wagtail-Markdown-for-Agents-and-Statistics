@@ -57,14 +57,52 @@ def entries(writer):
     return json.loads(read(writer, "example.org/manifest.json"))["documents"]
 
 
-def test_publish_generates_complete_discovery_and_manifest(setup):
+def finalise(writer, site):
+    """Rebuild the site's indexes, llms.txt and manifest, as agentmd_generate does.
+
+    Routine lifecycle events never do this (#69).
+    """
+    batch = IndexBatch(writer)
+    batch.mark_dirty(site.pk)
+    batch.finalise()
+
+
+def rebuilt_entries(writer, site):
+    finalise(writer, site)
+    return entries(writer)
+
+
+def test_publish_exports_the_page_and_leaves_discovery_to_finalise(setup):
     writer, site, home = setup
     child = article(home, "child")
     assert DEFAULTS["AUTO_GENERATE"] is True
     assert "child body." in read(writer, "example.org/child.md")
+    # The parent gained its first child, so its index is built in the request.
     assert "Child" in read(writer)
+    # A new top-level page refreshes llms.txt in the request; the manifest,
+    # which names every page, waits for the next finalise (#69).
     assert "Child" in read(writer, "example.org/llms.txt")
+    assert not writer.exists("example.org/manifest.json")
+    finalise(writer, site)
     assert {entry["id"] for entry in entries(writer)} == {home.pk, child.pk}
+
+
+def test_publish_keeps_the_last_discovery_build(setup):
+    writer, site, home = setup
+    section = article(home, "section")
+    article(section, "child")
+    finalise(writer, site)
+    llms = ExportArtifact.objects.get(logical_path="example.org/llms.txt").file_id
+    manifest = ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id
+    article(section, "later")
+    assert writer.exists("example.org/section/later.md")
+    # A page below the top level leaves llms.txt and the manifest as they were;
+    # the manifest lists it after the next finalise.
+    assert ExportArtifact.objects.get(logical_path="example.org/llms.txt").file_id == llms
+    assert ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id == manifest
+    assert "Later" not in json.dumps(entries(writer))
+    finalise(writer, site)
+    assert "Later" in json.dumps(entries(writer))
 
 
 def test_publish_waits_for_commit_and_rollback_discards_callback(setup, monkeypatch):
@@ -101,7 +139,8 @@ def test_newer_draft_never_replaces_published_content(setup):
         child.save_revision()
     output = read(writer, "example.org/child.md")
     assert "child body." in output and "PRIVATE DRAFT" not in output
-    assert "PRIVATE DRAFT" not in json.dumps(entries(writer))
+    assert "PRIVATE DRAFT" not in read(writer)
+    assert "PRIVATE DRAFT" not in json.dumps(rebuilt_entries(writer, site))
 
 
 @pytest.mark.parametrize("change", ["unpublish", "delete", "restrict", "newer_publish"])
@@ -128,7 +167,7 @@ def test_deferred_callback_refetches_current_state(setup, monkeypatch, change):
         assert "Newer published body" in read(writer, "example.org/child.md")
     else:
         assert not writer.exists("example.org/child.md")
-        assert child.pk not in {entry["id"] for entry in entries(writer)}
+        assert child.pk not in {entry["id"] for entry in rebuilt_entries(writer, site)}
 
 
 @pytest.mark.parametrize("event", ["unpublish", "delete"])
@@ -157,6 +196,7 @@ def test_revocation_is_immediate_even_with_deferred_backend(
 def test_auto_generate_off_keeps_current_exports_but_does_not_publish_new_pages(setup, settings):
     writer, site, home = setup
     child = article(home, "child")
+    finalise(writer, site)
     settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "AUTO_GENERATE": False}
     assert writer.exists("example.org/child.md")
     assert writer.exists("example.org/manifest.json")
@@ -174,14 +214,19 @@ def test_delete_cascade_removes_descendants_and_repairs_parent_leaf(setup):
     grandchild = article(child, "grandchild")
     ids = [child.pk, grandchild.pk]
     assert writer.exists("example.org/parent/index.md")
+    finalise(writer, site)
     with transaction.atomic():
         child.delete()
         assert not ExportArtifact.objects.filter(page_id__in=ids).exists()
         assert not writer.exists("example.org/manifest.json")
+    # The routine repair turns the parent back into a leaf; the manifest
+    # stays withdrawn until the next finalise (#69).
     assert writer.exists("example.org/parent.md")
     assert not writer.exists("example.org/parent/index.md")
-    assert not set(ids) & {entry["id"] for entry in entries(writer)}
-    assert parent.pk in {entry["id"] for entry in entries(writer)}
+    assert not writer.exists("example.org/manifest.json")
+    listed = {entry["id"] for entry in rebuilt_entries(writer, site)}
+    assert not set(ids) & listed
+    assert parent.pk in listed
 
 
 def test_delete_site_root_does_not_recreate_site_or_exports(setup):
@@ -254,9 +299,14 @@ def test_render_failure_is_logged_after_cms_commit_and_not_a_manifest_success(
 
 def test_unsupported_page_is_skipped_without_breaking_discovery(setup, caplog):
     writer, site, home = setup
+    article(home, "child")
+    finalise(writer, site)
+    manifest = ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id
     child = home.add_child(instance=Page(title="Unsupported", slug="unsupported"))
     child.save_revision().publish()
     assert not ExportArtifact.objects.filter(page_id=child.pk).exists()
+    # Skipping it withdraws nothing: the last discovery build is still served.
+    assert ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id == manifest
     assert writer.exists("example.org/manifest.json")
     assert "unsupported_page" in caplog.text
 
@@ -350,7 +400,7 @@ def test_deleted_restriction_cascade_does_not_restore_page(setup):
     ids = [parent.pk, child.pk]
     parent.delete()
     assert not ExportArtifact.objects.filter(page_id__in=ids).exists()
-    assert not set(ids) & {entry["id"] for entry in entries(writer)}
+    assert not set(ids) & {entry["id"] for entry in rebuilt_entries(writer, site)}
 
 
 def test_delete_rollback_never_rebuilds_during_transaction(setup):
@@ -372,7 +422,7 @@ def test_empty_page_body_does_not_become_successful_export(setup, caplog):
     child = home.add_child(instance=ArticlePage(title="Empty", slug="empty", body=[]))
     child.save_revision().publish()
     assert not ExportArtifact.objects.filter(page_id=child.pk).exists()
-    assert child.pk not in {entry["id"] for entry in entries(writer)}
+    assert child.pk not in {entry["id"] for entry in rebuilt_entries(writer, site)}
     assert "empty_body" in caplog.text
 
 
@@ -411,24 +461,28 @@ def test_unpublish_during_upload_rejects_obsolete_lifecycle_build(setup, monkeyp
     assert revoked == [child.pk]
     assert not Page.objects.get(pk=child.pk).live
     assert not writer.exists("example.org/child.md")
-    assert child.pk not in {entry["id"] for entry in entries(writer)}
+    assert child.pk not in {entry["id"] for entry in rebuilt_entries(writer, site)}
     assert "StaleBuild" in caplog.text
 
 
-def test_cascade_finalises_discovery_once_and_preserves_removal_summary(setup, monkeypatch):
+def test_cascade_never_finalises_and_next_build_preserves_removal_summary(setup, monkeypatch):
     writer, site, home = setup
     parent = article(home, "parent")
     article(parent, "child")
+    finalise(writer, site)
     calls = []
     original = IndexBatch.finalise
 
-    def finalise(self):
+    def counted(self, **kwargs):
         calls.append(set(self.dirty))
-        return original(self)
+        return original(self, **kwargs)
 
-    monkeypatch.setattr(IndexBatch, "finalise", finalise)
+    monkeypatch.setattr(IndexBatch, "finalise", counted)
     parent.delete()
-    assert calls == [{site.pk}]
+    # The deletion cascade withdraws discovery but rebuilds none of it (#69).
+    assert calls == []
+    assert not writer.exists("example.org/manifest.json")
+    finalise(writer, site)
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert manifest["summary"]["removed"] == 2
 
@@ -442,4 +496,4 @@ def test_publish_callback_does_not_hide_pending_parent_leaf_repair(setup):
         child.delete()
     assert writer.exists("example.org/parent.md")
     assert not writer.exists("example.org/parent/index.md")
-    assert parent.pk in {entry["id"] for entry in entries(writer)}
+    assert parent.pk in {entry["id"] for entry in rebuilt_entries(writer, site)}

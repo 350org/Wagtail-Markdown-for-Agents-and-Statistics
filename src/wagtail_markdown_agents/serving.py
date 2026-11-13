@@ -74,6 +74,7 @@ def serve_export(request, path, *, access_method=METHOD_EXPORT_URL):
     artifact = (
         ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=path)
         .select_related("scope", "file")
+        .defer("scope__manifest_state")
         .first()
     )
     if artifact is None:

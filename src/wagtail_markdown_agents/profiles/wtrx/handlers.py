@@ -2,6 +2,7 @@
 
 Donation defaults and the ActionKit hostname come from the site's
 IntegrationSettings, so a change there changes every page that shows them.
+The change marks the site's exports for the next ``agentmd_generate``.
 """
 
 import logging
@@ -13,7 +14,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from wagtail.models import Site
 
 from wagtail_markdown_agents import tasks
-from wagtail_markdown_agents.export.lifecycle import refresh_pages, write_database
+from wagtail_markdown_agents.export.lifecycle import request_refresh, write_database
 from wagtail_markdown_agents.export.policy import ExportPolicy
 from wagtail_markdown_agents.export.storage import digest
 from wagtail_markdown_agents.settings import get_setting
@@ -76,22 +77,22 @@ def _enqueue(site_ids, using):
 
 
 def refresh_sites(*, site_ids, using="default"):
+    """Mark the sites' exports for the next ``agentmd_generate``, rendering nothing.
+
+    Every page can show these settings, and re-rendering a large site's pages
+    in the request that saved them cannot finish before the web server's
+    timeout (#69). The current exports stay served until that run.
+    """
     write_database(using=using)
     if not get_setting("AUTO_GENERATE"):
         return
-    for site in Site.objects.using(using).filter(pk__in=site_ids).select_related("root_page"):
-        if not ExportPolicy.site_enabled(site):
-            continue
-        # Nested sites may share an ancestor. Match actual routing ownership,
-        # rather than rebuilding everything below the changed site's root.
-        page_ids = []
-        for page in site.root_page.get_descendants(inclusive=True).specific(defer=True):
-            owner = page.get_site()
-            if owner is not None and owner.pk == site.pk:
-                page_ids.append(page.pk)
-        # Lifecycle refresh always renders selected pages, even when their page
-        # revisions are unchanged, and finalises indexes/discovery/manifest once.
-        refresh_pages(page_ids, scopes={site.pk: ()}, using=using, automatic=True)
+    enabled = [
+        site.pk
+        for site in Site.objects.using(using).filter(pk__in=site_ids)
+        if ExportPolicy.site_enabled(site)
+    ]
+    if enabled:
+        request_refresh(enabled, using=using)
 
 
 def ready():

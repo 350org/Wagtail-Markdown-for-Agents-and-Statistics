@@ -158,6 +158,7 @@ def test_translated_publish_refreshes_indexes_and_manifest(translated, settings)
     french_page.body = [("paragraph", "<p>Updated translation.</p>")]
     french_page.save_revision().publish()
     assert "Updated translation." in read(writer, "example.org/fr/article.md")
+    # The publication keeps the last manifest rather than rebuilding it (#69).
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert {entry["id"] for entry in manifest["documents"]} == {
         home.pk,
@@ -167,6 +168,9 @@ def test_translated_publish_refreshes_indexes_and_manifest(translated, settings)
     }
     PageViewRestriction.objects.create(page=french_home, restriction_type="login")
     assert not writer.exists("example.org/fr/article.md")
+    # Revocation withdraws the manifest; the next finalise rebuilds it (#69).
+    assert not writer.exists("example.org/manifest.json")
+    call_command("agentmd_generate_indexes", site=site.hostname)
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert {entry["id"] for entry in manifest["documents"]} == {home.pk, page.pk}
 

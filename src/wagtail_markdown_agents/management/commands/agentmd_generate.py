@@ -2,10 +2,12 @@ from django.core.management.base import BaseCommand, CommandError
 from wagtail.models import Site
 
 from ...export.indexes import IndexBatch
+from ...export.lifecycle import navigation_behind
 from ...export.state import StaleBuild
 from ...export.writer import FileWriter
 from ...models import ExportArtifact
 from ...rendering.page import PageRenderError
+from ...settings import get_setting
 from ..export_commands import add_scope_arguments, inspect_page, report, require_autocommit, select
 
 #: Builds per page (and per site finalisation) before a superseded build fails.
@@ -101,10 +103,7 @@ class Command(BaseCommand):
                     self.stderr.write(f"Page {page_id}: failed ({exc})")
             if dry_run:
                 try:
-                    if needs_discovery or not all(
-                        writer.exists(f"{site.hostname}/{name}")
-                        for name in ("index.md", "llms.txt", "manifest.json")
-                    ):
+                    if needs_discovery or not self._discovery_current(writer, site):
                         counts["discovery_scopes"] += 1
                         self.stdout.write(f"Site {site.hostname}: would refresh discovery")
                 except Exception as exc:
@@ -116,10 +115,7 @@ class Command(BaseCommand):
                 counts["failed_scopes"] += 1
                 continue  # Never finalise a partially failed site's manifest.
             try:
-                if not batch.dirty and not all(
-                    writer.exists(f"{site.hostname}/{name}")
-                    for name in ("index.md", "llms.txt", "manifest.json")
-                ):
+                if not batch.dirty and not self._discovery_current(writer, site):
                     batch.mark_dirty(site.pk)
                 if batch.dirty:
                     self._retry(batch.finalise, f"Site {site.hostname}: retrying discovery")
@@ -136,6 +132,24 @@ class Command(BaseCommand):
         report(self, counts, dry_run=dry_run)
         if counts["failed"] or counts["failed_scopes"]:
             raise CommandError("Export generation failed; see page/site results above.")
+
+    @staticmethod
+    def _discovery_current(writer, site):
+        """Whether the site's navigation is served and lists every page export.
+
+        Routine publication leaves navigation as it was (#69), so a run that
+        finds every page current still rebuilds it when a page is newer.
+        """
+        manifest = f"{site.hostname}/manifest.json"
+        if get_setting("MANIFEST"):
+            required = ["index.md", "llms.txt", "manifest.json"]
+        elif ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=manifest).exists():
+            return False  # Switched off: the next finalisation withdraws it.
+        else:
+            required = ["index.md", "llms.txt"]
+        return not navigation_behind(site) and all(
+            writer.exists(f"{site.hostname}/{name}") for name in required
+        )
 
     def _generate(self, batch, page_id, page, writer):
         """Build one page, rebuilding from fresh state if another change overtook it.

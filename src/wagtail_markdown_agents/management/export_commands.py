@@ -124,14 +124,26 @@ def inspect_page(page_id, writer):
         return "unsupported", page, None
     path = policy.relative_path(page)
     site = policy.site_for_page(page)
-    record = ExportArtifact.objects.filter(page_id=page_id, scope__site_id=site.pk).first()
+    record = (
+        ExportArtifact.objects.filter(page_id=page_id, scope__site_id=site.pk)
+        .select_related("scope", "file")
+        .defer("scope__manifest_state")
+        .first()
+    )
     if record is None:
         return "missing", page, path
+    # The page's own document only: navigation is rebuilt by the site's
+    # finalisation, and checking it here read the whole site per index (#69).
+    if record.logical_path != path or not writer.is_current(record, own=True):
+        return "unavailable", page, path
     try:
-        with writer.open(path, site_id=site.pk, file_id=record.file_id):
+        with writer._open_file(record.file):
             pass
     except FileNotFoundError:
         return "unavailable", page, path
+    stale_before = record.scope.stale_before
+    if stale_before is not None and record.published_at < stale_before:
+        return "outdated", page, path
     return "current", page, path
 
 
