@@ -15,6 +15,7 @@ from .listings import IndexEntry as IndexEntry
 from .listings import (
     directory_entries,
     markdown_text,
+    navigation_entries,
     page_entry,
     readable_page_entries,
     sort_entries,
@@ -103,9 +104,9 @@ class IndexGenerator:
         for path, page in candidates:
             token = self.writer.begin(page, depends_on_site=True, dependency_state=baseline)
             self._check_listing(token, listed_version)
-            navigation = ""
+            navigation, linked = "", ()
             if path.endswith("/index.md"):
-                navigation, _ = self._navigation(
+                navigation, linked = self._navigation(
                     site, path, _published_page(page), sort_entries(listed.values())
                 )
             try:
@@ -115,6 +116,7 @@ class IndexGenerator:
                     navigation=navigation,
                     root_index=path == f"{site.hostname}/index.md",
                     freshness=fresh,
+                    checked_urls=[entry.url for entry in linked],
                 )
             except PageRenderError as exc:
                 if exc.reason not in {"unsupported_page", "empty_body"}:
@@ -142,8 +144,8 @@ class IndexGenerator:
             token = self.writer.begin_site(site_id, path)
             self._check_state(token.source_state, baseline)
             self._check_listing(token, listed_version)
-            navigation, count = self._navigation(site, path, None, entries)
-            metadata = {"title": "Markdown exports", "count": count}
+            navigation, linked = self._navigation(site, path, None, entries)
+            metadata = {"title": "Markdown exports", "count": len(linked)}
             if directory == site.hostname:
                 metadata["okf_version"] = OKF_VERSION
             content = frontmatter.serialise(metadata) + "\n# Markdown exports\n"
@@ -159,6 +161,36 @@ class IndexGenerator:
                 scope__site_id=site_id, logical_path__endswith="/index.md"
             ).order_by("logical_path")
         )
+
+    def regenerate(self, page):
+        """Publish one page's index from the current exports below it.
+
+        For routine publication (#69): neither the site's other indexes nor
+        its discovery files are rebuilt, and only exports below this index
+        are read. Raises PageRenderError for a page that cannot be exported
+        and StaleBuild when the site changes while rendering.
+        """
+        _after_commit_required()
+        site = page.get_site()
+        if site is None:
+            raise StaleBuild(f"Page {page.pk} has no site")
+        fresh = site_freshness(site.pk)
+        token = self.writer.begin(page, depends_on_site=True, dependency_state=fresh.state)
+        navigation, linked = self._navigation(
+            site,
+            token.path,
+            _published_page(page),
+            navigation_entries(self.writer, site, token.path, fresh, urlconf=self.urlconf),
+        )
+        content = render_page(
+            page,
+            site=site,
+            navigation=navigation,
+            root_index=token.path == f"{site.hostname}/index.md",
+            freshness=fresh,
+            checked_urls=[entry.url for entry in linked],
+        )
+        return self.writer.publish(token, content, replace_index=token.path.endswith("/index.md"))
 
     @staticmethod
     def _check_state(current, baseline):
@@ -183,7 +215,7 @@ class IndexGenerator:
 
     def _navigation(self, site, path, page, listed):
         """The ``## Pages`` list for ``path`` from ``listed``, the site's readable
-        page exports sorted by title."""
+        page exports sorted by title, and the entries it lists."""
         entries = tuple(directory_entries(listed, path))
         content = f"## Pages ({len(entries)})\n\n"
         if entries:
@@ -211,7 +243,7 @@ class IndexGenerator:
                 if not isinstance(result, str):
                     raise TypeError(f"{INDEX_CONTENT_HOOK} must return a Markdown string or None")
                 content = result
-        return content, len(entries)
+        return content, entries
 
 
 class IndexBatch:

@@ -9,9 +9,9 @@ from wagtail.models import Page, Site
 
 from .. import tasks
 from ..models import ExportArtifact
-from ..rendering.page import PageRenderError
+from ..rendering.page import PageRenderError, unsupported_reason
 from ..settings import get_setting
-from .indexes import IndexBatch
+from .indexes import IndexBatch, IndexGenerator
 from .policy import ExportPolicy
 from .writer import FileWriter, _after_commit_required
 
@@ -191,21 +191,107 @@ def revoke_ineligible(*, using=DEFAULT_DB_ALIAS):
     return revoked
 
 
-def _discovery_current(writer, site, owners):
-    """A prior callback may already have repaired this cascade's shared artefacts.
+def _routine_refresh(page_ids, captured, *, using):
+    """Refresh what a CMS event changed, never the whole site (#69).
 
-    Check former index owners too: a publish callback could have finalised a
-    manifest before a deletion callback repairs a missing parent leaf.
+    Runs inside the editor's request when tasks run inline, so it must not
+    grow with the size of the site. It regenerates the given pages, then any
+    parent or former index owner with no export at its current path: a parent
+    that gained its first or lost its last child, or an index a revocation
+    withdrew. Other indexes, llms.txt and the manifest
+    keep their last build until ``agentmd_generate`` or an explicit refresh
+    finalises the site.
     """
-    if not all(
-        writer.exists(f"{site.hostname}/{name}")
-        for name in ("index.md", "llms.txt", "manifest.json")
-    ):
-        return False
-    records = list(ExportArtifact.objects.filter(scope__site_id=site.pk, page_id__in=owners))
-    return len(records) == len(owners) and all(
-        writer.exists(record.logical_path) for record in records
+    writer = FileWriter()
+    generator = IndexGenerator(writer)
+    policy = ExportPolicy()
+    results = []
+    owners = {owner for owners in captured.values() for owner in owners}
+    parents = set()
+    # Deepest first, so a moved section's index lists its children at their
+    # new paths.
+    depths = dict(Page.objects.using(using).filter(pk__in=page_ids).values_list("pk", "depth"))
+    for page_id in sorted(page_ids, key=lambda page_id: (-depths.get(page_id, 0), page_id)):
+        page = Page.objects.using(using).filter(pk=page_id).specific().first()
+        if page is None or not policy.is_eligible(page):
+            for site_id in captured:
+                _withdraw(writer, page_id, site_id)
+            continue
+        site = policy.site_for_page(page)
+        for site_id in captured:
+            if site_id != site.pk:
+                _withdraw(writer, page_id, site_id)
+        parent = page.get_parent()
+        if parent is not None:
+            parents.add(parent.pk)
+        try:
+            results.append(_regenerate(writer, generator, policy, page))
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+            _withdraw(writer, page.pk, site.pk)
+            logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
+    # Former owners still holding an export kept their index: only one that
+    # lost its last child or was moved loses it, through revocation. Checking
+    # just the withdrawn ones keeps this independent of the number of indexes.
+    owners.difference_update(
+        ExportArtifact.objects.filter(page_id__in=owners).values_list("page_id", flat=True)
     )
+    candidates = (owners | parents).difference(page_ids)
+    for page in sorted(
+        _needs_repair(candidates, using=using), key=lambda page: (-page.depth, page.pk)
+    ):
+        try:
+            results.append(_regenerate(writer, generator, policy, page))
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+            logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
+    return results
+
+
+def _withdraw(writer, page_id, site_id):
+    """Revoke a page's export, if it has one.
+
+    Revocation withdraws the site's discovery files, which a routine refresh
+    does not rebuild, so a page that was never exported (a form page, say)
+    must not cost the site its llms.txt and manifest.
+    """
+    if ExportArtifact.objects.filter(scope__site_id=site_id, page_id=page_id).exists():
+        writer.delete_page(page_id, site_id=site_id)
+
+
+def _regenerate(writer, generator, policy, page):
+    if policy.relative_path(page).endswith("/index.md"):
+        return generator.regenerate(page)
+    return writer.generate(page)
+
+
+def _needs_repair(page_ids, *, using):
+    """The live, eligible, supported pages among ``page_ids`` with no export
+    at their path.
+
+    A page has none when revocation withdrew its index or its path moved
+    between a leaf and an index. An export that is merely out of date (after a
+    settings change, say) is left for ``agentmd_generate``: repairing every
+    such index here would rebuild the whole site inside one request.
+    """
+    pages = list(Page.objects.using(using).filter(pk__in=page_ids, live=True).specific())
+    if not pages:
+        return []
+    recorded = {}
+    for page_id, path in ExportArtifact.objects.filter(page_id__in=page_ids).values_list(
+        "page_id", "logical_path"
+    ):
+        recorded.setdefault(page_id, set()).add(path)
+    policy = ExportPolicy()
+    return [
+        page
+        for page in pages
+        if not unsupported_reason(type(page))
+        and policy.is_eligible(page)
+        and policy.relative_path(page) not in recorded.get(page.pk, ())
+    ]
 
 
 def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic=False):
@@ -227,12 +313,12 @@ def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic
         captured.setdefault(site_id, set()).update(owners)
     if not captured:
         return []
+    if automatic:
+        return _routine_refresh(page_ids, captured, using=using)
     writer = FileWriter()
     batch = IndexBatch(writer)
     for site in Site.objects.filter(pk__in=captured):
         if ExportPolicy.site_enabled(site):
-            if automatic and not page_ids and _discovery_current(writer, site, captured[site.pk]):
-                continue
             batch.mark_dirty(site.pk, page_ids=captured[site.pk])
     if not batch.dirty and not page_ids:
         return []

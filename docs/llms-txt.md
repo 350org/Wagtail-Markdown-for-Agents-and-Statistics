@@ -74,8 +74,9 @@ it does not count as a page-read notification.
 `IndexBatch` now finalises this file once per dirty site **after** root/directory
 indexes. Its returned records include the discovery record. `IndexGenerator.generate`
 still builds only indexes; if calling the APIs separately, call `LlmsTxtGenerator`
-after page/index writes, then finalise the [manifest](manifest.md), because later
-page writes retire aggregate publications. A failure keeps
+after page/index writes, then finalise the [manifest](manifest.md), so both list
+the pages just written. A routine publish no longer withdraws them (#69); a
+revocation does. A failure keeps
 the site dirty on the batch object for an explicit retry.
 
 The generator captures site publication state before collecting targets. A change

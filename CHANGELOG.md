@@ -113,6 +113,22 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- On a large site, publishing a page in the admin failed with a server error, and
+  the section indexes, `llms.txt` and `manifest.json` went missing. Every
+  publication withdrew all of them, then rebuilt them inside the editor's request.
+  That meant reading every export from storage and re-rendering every section page,
+  which could not finish before the web server's timeout. Publishing now
+  regenerates the page, and its own index if it has children, reading only the
+  exports below it. Other indexes, `llms.txt` and the manifest keep their last
+  build and stay served. A new page, title or description appears in them after
+  the next `agentmd_generate`, `agentmd_generate_indexes` or explicit refresh, so
+  run one on a schedule or after a batch of edits. Unpublishing, deleting,
+  restricting, excluding or moving a page still withdraws `llms.txt`, the manifest
+  and the indexes above it straight away. Those indexes are rebuilt at once;
+  `llms.txt` and the manifest return at the next finalise. Listings and link
+  checks now read the database only and no longer open each export, so a lost
+  storage object is still listed and serving answers 404 for it. After upgrading,
+  run `agentmd_generate` once to rebuild indexes made by earlier versions (#69).
 - On a large site, `agentmd_generate` never finished building the section
   indexes, `llms.txt` and `manifest.json`, so they stayed missing (404) even
   though pages were exported. The step re-checked every export for each index it

@@ -224,20 +224,24 @@ def test_aggregate_cannot_overwrite_page_owned_index(setup):
     assert child.pk
 
 
-def test_page_write_withdraws_aggregates_and_stale_site_build(setup):
+def test_page_write_keeps_aggregates_but_rejects_stale_site_build(setup):
     writer, storage, site, page = setup
     writer.generate(page)
     path = "example.org/manifest.json"
     writer.update_aggregate(site.pk, path, lambda previous: '{"pages": ["Article"]}')
     token = writer.begin_site(site.pk, path)
     writer.publish(writer.begin(page), "Fresh render")
-    assert not writer.exists(path)
+    # A page publication withdraws only the page's earlier export; the
+    # aggregate keeps its last build until the site is finalised (#69).
+    assert read(writer, path) == '{"pages": ["Article"]}'
     with pytest.raises(StaleBuild):
         writer.publish(token, "Old manifest")
 
 
 def test_restriction_hides_aggregate_before_lifecycle_wiring(setup):
     writer, storage, site, page = setup
+    # Aggregates list exported pages: one that turns private hides them.
+    writer.generate(page)
     writer.update_aggregate(site.pk, "example.org/llms.txt", lambda previous: "Article")
     PageViewRestriction.objects.create(page=page, restriction_type="login")
     assert not writer.exists("example.org/llms.txt")
@@ -308,6 +312,7 @@ def test_child_revocation_withdraws_page_owned_index_and_rejects_its_paused_buil
         instance=ArticlePage(title="Child", slug="child", body=[("paragraph", "<p>Child</p>")])
     )
     child.save_revision().publish()
+    writer.generate(child)
     index = writer.generate(page, navigation="## Children\n\nChild")
     token = writer.begin(page)
     PageViewRestriction.objects.create(page=child, restriction_type="login")

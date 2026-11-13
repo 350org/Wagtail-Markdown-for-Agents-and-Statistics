@@ -110,16 +110,21 @@ def test_only_current_published_eligible_targets_are_listed(setup):
     with hooks.register_temporarily(
         "markdown_export_eligible", lambda page, site: page.pk != targets["vetoed"].pk
     ):
+        # llms.txt is served only while every export is current (#69), so
+        # withdraw the obsolete ones first, as finalising does.
+        writer.delete_stale(site.pk)
         LlmsTxtGenerator(writer).generate(site.pk)
         output = read(writer)
-    assert links(output) == [export_url(good_record)]
+    # Listings read the database, not storage (#69): an export whose object
+    # has gone is still listed; serving it is a miss.
+    assert sorted(links(output)) == sorted([export_url(good_record), export_url(missing)])
+    assert not writer.exists(missing.logical_path)
     assert "[Good]" in output and ": Public summary" in output
     for text in [
         "DRAFT",
         "Restricted",
         "Excluded",
         "Vetoed",
-        "Missing",
         "Stale",
         "Ungenerated",
         "Inherited",
@@ -210,6 +215,8 @@ def test_newly_private_metadata_is_hidden_then_removed_on_rebuild(setup, client)
     LlmsTxtGenerator(writer).generate(site.pk)
     PageViewRestriction.objects.create(page=child, restriction_type="login")
     assert client.get("/markdown/llms.txt", HTTP_HOST="example.org").status_code == 404
+    # A rebuild withdraws the private export first, as finalising does.
+    writer.delete_stale(site.pk)
     LlmsTxtGenerator(writer).generate(site.pk)
     assert "Secret" not in read(writer) and "Previously public" not in read(writer)
 
@@ -330,8 +337,11 @@ def test_stale_root_index_is_omitted_and_available_descendants_are_promoted(setu
     child = article(parent, "child")
     writer.generate(child)
     IndexGenerator(writer).generate(site.pk)
-    # This changes site dependencies, leaving the child's leaf export current.
+    # This leaves the child's leaf export current. The parent's export and
+    # the root index that listed it are obsolete; finalising withdraws them
+    # before llms.txt is rebuilt.
     PageAgentSettings.objects.create(page=parent, excluded=True)
+    writer.delete_stale(site.pk)
     LlmsTxtGenerator(writer).generate(site.pk)
     output = read(writer)
     assert "Site index" not in output and "[Parent]" not in output

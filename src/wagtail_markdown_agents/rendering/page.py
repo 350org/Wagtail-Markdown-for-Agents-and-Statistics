@@ -47,6 +47,7 @@ def render_page(
     navigation: str = "",
     root_index: bool = False,
     freshness=None,
+    checked_urls=(),
 ) -> str:
     """Render a published page as YAML frontmatter and a Markdown body.
 
@@ -72,13 +73,15 @@ def render_page(
     ``freshness`` is a batch's reading of the site (``site_freshness``), used to
     check links to indexes and discovery files instead of reading the site
     again. The batch's publication must still check the site's state (#66).
+    ``checked_urls`` are the export URLs ``navigation`` links to, already
+    checked by the index generator, so they are not looked up again (#69).
     """
     published = _published_page(page)
     with page_language(published):
-        return _render(published, site, navigation, root_index, freshness)
+        return _render(published, site, navigation, root_index, freshness, checked_urls)
 
 
-def _render(published, site, navigation, root_index, freshness=None):
+def _render(published, site, navigation, root_index, freshness=None, checked_urls=()):
     fields = selected_fields(type(published))
     _require_supported_page(published)
     if not isinstance(navigation, str):
@@ -103,7 +106,7 @@ def _render(published, site, navigation, root_index, freshness=None):
     if heading:
         heading = render_plain_text(None, " ".join(heading.splitlines()), context)
         body = _join([f"# {heading}", body])
-    body = rewrite_links(body, published, context, freshness=freshness)
+    body = rewrite_links(body, published, context, freshness=freshness, checked=checked_urls)
     metadata = frontmatter.build(published, context)
     if root_index:
         metadata["okf_version"] = OKF_VERSION

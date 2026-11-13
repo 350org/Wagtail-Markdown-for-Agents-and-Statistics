@@ -5,7 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 from ..models import ExportArtifact
 from ..public_urls import export_url
 from ..settings import get_setting
-from .listings import directory_entries, markdown_text, readable_page_entries
+from .listings import markdown_text, navigation_entries
 from .paths import ExportPathError
 from .policy import ExportPolicy
 from .state import StaleBuild, site_freshness
@@ -39,10 +39,7 @@ class LlmsTxtGenerator:
             parts.append("> " + markdown_text(description))
 
         root_path = f"{site.hostname}/index.md"
-        entries = directory_entries(
-            readable_page_entries(self.writer, site, urlconf=self.urlconf, freshness=fresh),
-            root_path,
-        )
+        entries = navigation_entries(self.writer, site, root_path, fresh, urlconf=self.urlconf)
         lines = []
         root_url = self._root_url(site, root_path, fresh)
         if root_url:

@@ -24,9 +24,9 @@ With the sandbox URLconf it is `/markdown/manifest.json`, with
 `application/json; charset=utf-8`, GET/HEAD and the existing publication/serving
 guards. `urlconf=` supports custom route configurations. Disabled sites return
 `None`; requests never generate files. The [publish lifecycle](publish-lifecycle.md)
-finalises manifests automatically after publish and repairs discovery after
-unpublish/delete, restriction/exclusion changes and moves.
-[Management commands](management-commands.md) also finalise discovery after generation.
+does not rebuild the manifest: a publish keeps the last one served, and a
+revocation withdraws it until the next finalisation (#69).
+[Management commands](management-commands.md) finalise discovery after generation.
 
 ## v0.1 schema
 

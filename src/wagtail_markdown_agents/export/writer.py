@@ -9,7 +9,9 @@ import logging
 import time
 import uuid
 from contextlib import contextmanager
+from copy import copy
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
@@ -21,7 +23,7 @@ from ..models import ExportArtifact, ExportFile, ExportScope, PageAgentSettings
 from ..settings import get_setting
 from ..signals import markdown_deleted, markdown_generated
 from .paths import ExportPathError, site_path, validate_path
-from .state import StaleBuild, page_state, site_freshness, site_state
+from .state import StaleBuild, page_state, site_freshness, site_metadata, site_state
 from .storage import resolve_storage
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,23 @@ class BuildToken:
     source_state: str
     dependency_state: str = ""
     content_version: int = 0
+    # Stored on the record as its dependency_state: the site details its
+    # navigation was built from. dependency_state above is the whole-site
+    # reading checked at commit.
+    site_metadata: str = ""
+
+
+def listing_paths(paths):
+    """The index paths that could list an export at any of ``paths``."""
+    listing = set()
+    for path in paths:
+        directory = PurePosixPath(path).parent
+        if path.endswith("/index.md"):
+            directory = directory.parent
+        while str(directory) not in {"", "."}:
+            listing.add(f"{directory}/index.md")
+            directory = directory.parent
+    return listing
 
 
 def _retry_locked(fn):
@@ -143,15 +162,23 @@ class FileWriter:
         _, site, _, _ = page_state(page_id)
         with _locked(site.pk) as scope:
             current, _, path, state = page_state(page_id, site.pk)
-            dependency = ""
+            dependency = metadata = ""
             if (
                 depends_on_site
                 or get_setting("INCLUDE_HIERARCHY")
                 or current.get_children().live().exists()
             ):
                 dependency = dependency_state or site_state(site.pk)[1]
+                metadata = site_metadata(site)
             return BuildToken(
-                site.pk, scope.version, page_id, path, state, dependency, scope.content_version
+                site.pk,
+                scope.version,
+                page_id,
+                path,
+                state,
+                dependency,
+                scope.content_version,
+                metadata,
             )
 
     def begin_site(self, site_id: int, path: str) -> BuildToken:
@@ -159,7 +186,13 @@ class FileWriter:
             site, state = site_state(site_id)
             site_path(path, site.hostname)
             return BuildToken(
-                site_id, scope.version, None, path, state, content_version=scope.content_version
+                site_id,
+                scope.version,
+                None,
+                path,
+                state,
+                content_version=scope.content_version,
+                site_metadata=site_metadata(site),
             )
 
     def generate(self, page, *, navigation="", depends_on_site=False):
@@ -228,6 +261,7 @@ class FileWriter:
                     site_path(path, site.hostname),
                     state,
                     content_version=scope.content_version,
+                    site_metadata=site_metadata(site),
                 )
                 existing = (
                     ExportArtifact.objects.filter(scope=scope, logical_path=path)
@@ -333,19 +367,27 @@ class FileWriter:
             return False
 
     def delete_page(self, page_id: int, *, site_id: int):
-        """Withdraw a page and site aggregates, even if no file currently exists.
+        """Withdraw a page, site aggregates and the page indexes that could list
+        it, even if no file currently exists.
 
         May run inside revocation transactions: physical deletion is immediate.
         Rollback may restore a pointer to a missing file (safe HTML fallback).
         The scope lock prevents a concurrent build passing revocation's commit.
         """
         with _locked(site_id) as scope:
-            self._retire(ExportArtifact.objects.filter(scope=scope, page_id=page_id), notify=True)
+            owned = ExportArtifact.objects.filter(scope=scope, page_id=page_id)
+            listing = listing_paths(owned.values_list("logical_path", flat=True))
+            self._retire(owned, notify=True)
             self._retire(
                 ExportArtifact.objects.filter(scope=scope, page_id__isnull=True), notify=True
             )
+            # Only an index above the page can list it (#69); other page
+            # indexes stay published.
             self._retire(
-                ExportArtifact.objects.filter(scope=scope).exclude(dependency_state=""), notify=True
+                ExportArtifact.objects.filter(scope=scope, logical_path__in=listing).exclude(
+                    dependency_state=""
+                ),
+                notify=True,
             )
             ExportScope.objects.filter(pk=scope.pk).update(
                 version=F("version") + 1, content_version=F("content_version") + 1
@@ -525,20 +567,15 @@ class FileWriter:
             )
             raise StorageContractError(f"Path {token.path!r} is owned by {owner}")
         if token.page_id is not None:
+            # Only this page's earlier export goes. Indexes and discovery files
+            # that list it keep their last build until the site is finalised
+            # again: rebuilding them all on every publication cannot finish on
+            # a large site (#69). Revocation still withdraws them (delete_page).
             for record in ExportArtifact.objects.filter(scope=scope, page_id=token.page_id):
                 self._retire(
                     ExportArtifact.objects.filter(pk=record.pk),
                     notify=record.logical_path != token.path,
                 )
-            self._retire(
-                ExportArtifact.objects.filter(scope=scope, page_id__isnull=True), notify=True
-            )
-            # Rebuilding one page-owned index must not withdraw other indexes
-            # built from the same CMS state. Revocation withdraws them all.
-            dependents = ExportArtifact.objects.filter(scope=scope).exclude(dependency_state="")
-            if dependents.exists():
-                current_site_state = token.dependency_state or site_state(scope.site_id)[1]
-                self._retire(dependents.exclude(dependency_state=current_site_state), notify=True)
         else:
             self._retire(
                 ExportArtifact.objects.filter(scope=scope, logical_path=token.path), notify=False
@@ -549,7 +586,7 @@ class FileWriter:
             logical_path=token.path,
             file=file,
             source_state=token.source_state,
-            dependency_state=token.dependency_state,
+            dependency_state=token.site_metadata,
         )
         changes = {"version": F("version") + 1}
         if token.page_id is not None:
@@ -576,35 +613,51 @@ class FileWriter:
             logger.exception("Failed build left candidate %s for operator recovery", file.pk)
 
     def _current(self, record, freshness=None):
-        """Whether ``record`` was built from its page's and site's current inputs.
+        """Whether ``record`` may still be served.
 
-        ``freshness`` is one reading of the record's site, shared by a caller
-        checking many records; without it every check reads the site afresh.
+        A page's own document is current while it was built from the page's
+        current inputs at its current path. A document that lists or names
+        other pages (a page index, a hierarchy export, llms.txt, the manifest,
+        a standalone index) also needs the site's details unchanged and every
+        page export in the site current. It is not rebuilt when a page is
+        republished, so it keeps its last build until the site is finalised
+        again (#69). ``freshness`` is one reading of the record's site,
+        shared by a caller checking many records.
         """
         site_id = record.scope.site_id
         if freshness is not None and freshness.site.pk != site_id:
             freshness = None
-
-        def site_digest():
-            return freshness.state if freshness else site_state(site_id)[1]
-
         try:
-            if record.page_id is None:
-                state = site_digest()
-            else:
+            if record.page_id is not None:
                 _, _, path, state = page_state(
                     record.page_id,
                     site_id,
                     snapshot=freshness.snapshot if freshness else None,
                     config=freshness.config if freshness else None,
                 )
-                if path != record.logical_path:
+                if path != record.logical_path or state != record.source_state:
                     return False
-            return state == record.source_state and (
-                not record.dependency_state or site_digest() == record.dependency_state
-            )
+                if not record.dependency_state:
+                    return True
+            freshness = freshness or site_freshness(site_id)
         except StaleBuild:
             return False
+        return record.dependency_state == freshness.metadata and freshness.exports_current
+
+    def is_current(self, record, freshness=None, *, own=False) -> bool:
+        """Whether ``record`` may be served, from database state alone.
+
+        Listings and links use this instead of opening each export: a record
+        is created only after its upload was read back, and serving still
+        opens the file. ``own`` checks only a page's own document, ignoring
+        whether the navigation it carries could be rebuilt: listing a page
+        needs the page current, and a page index being rebuilt makes every
+        other index look out of date until it is published.
+        """
+        if own and record.page_id is not None and record.dependency_state:
+            record = copy(record)
+            record.dependency_state = ""
+        return _retry_locked(lambda: self._current(record, freshness))
 
     def _open_file(self, file):
         try:

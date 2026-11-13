@@ -28,8 +28,10 @@ maps to something other than the language code all resolve.
 ## Targets and query strings
 
 Same-site canonical page links resolve through the CMS tree, current ExportPolicy
-and a successfully published ownership record. The writer checks the exact stored
-generation before the resolver calls `export_url`. A relocated target therefore
+and a successfully published ownership record. The writer checks the exact recorded
+generation, from database state alone, before the resolver calls `export_url`: no
+target is opened, so an index linking to every page it lists costs no storage
+requests (#69). A relocated target therefore
 uses its actual public route, such as `https://example.org/markdown/custom/page.md`.
 Already-public export links, including aggregate links, are checked too. The URLconf
 must be included in the host project before a managed target can supply its URL.
@@ -50,7 +52,7 @@ A site-specific redirect takes precedence over global redirects; multiple candid
 at the selected scope are ambiguous and remain unchanged. Chains are bounded to
 eight resolution steps, with cycle detection. External redirects and meaningful
 query/custom-subroute redirects stay as authored. Resolution makes no outbound HTTP
-requests; remote storage may still perform IO through its configured backend.
+requests and opens no stored export.
 
 ## Markdown preservation
 
@@ -85,8 +87,9 @@ rewrite run:
 
 - `ineligible`: the page exists but is not live or is restricted (link removed), or
   is excluded, fails a policy hook, or belongs to another site scope (URL kept).
-- `not_found`: no page was found, the current export is absent/stale/missing from
-  storage, or a redirect cannot be resolved unambiguously.
+- `not_found`: no page was found, the current export is absent or stale, or a
+  redirect cannot be resolved unambiguously. A record whose storage object has
+  gone is still linked; serving answers 404 for it.
 
 Ignored external, asset and query-dependent links produce no event. Receiver
 exceptions are logged without dropping authored content. The resolver caches URL

@@ -16,6 +16,7 @@ from wagtail.models import Locale, Site
 from tests import profile_module, test_lifecycle
 from tests.test_lifecycle import entries
 from wagtail_markdown_agents import checks, profile
+from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.export.policy import ExportPolicy
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
 from wagtail_markdown_agents.rendering import render_block
@@ -254,6 +255,12 @@ def test_ticking_the_field_withdraws_an_existing_export(setup, settings):
     page.hide_from_search = True
     page.save_revision().publish()
     assert not writer.exists("example.org/hidden-later.md")
+    # Withdrawing the page withdraws the manifest that listed it; the next
+    # finalise rebuilds it without the page (#69).
+    assert not writer.exists("example.org/manifest.json")
+    batch = IndexBatch(writer)
+    batch.mark_dirty(site.pk)
+    batch.finalise()
     assert page.pk not in {entry["id"] for entry in entries(writer)}
 
 

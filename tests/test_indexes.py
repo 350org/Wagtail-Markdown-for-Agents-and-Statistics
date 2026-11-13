@@ -131,12 +131,15 @@ def test_only_readable_eligible_published_targets_are_listed(setup):
         "PRIVATE",
         "Excluded",
         "Vetoed",
-        "Missing",
         "Ungenerated",
         "Inherited",
         "DRAFT",
     ]:
         assert text not in body
+    # Listings read the database, not storage (#69): an export whose object
+    # has gone is still listed, and serving it is a miss.
+    assert "[Missing]" in body
+    assert not writer.exists(record.logical_path)
 
 
 def test_relocated_files_get_directory_indexes_and_real_urls(setup):
@@ -324,7 +327,7 @@ def test_project_index_golden_has_one_complete_listing(setup, settings, monkeypa
     assert_matches_golden("index.md", output.replace(f"id: {parent.pk}\n", "id: <pk>\n"))
 
 
-def test_missing_last_object_prunes_empty_synthetic_directories(setup):
+def test_withdrawn_last_export_prunes_empty_synthetic_directories(setup):
     writer, site, home = setup
     PageAgentSettings.objects.create(page=home, excluded=True)
     child = article(home, "child")
@@ -332,7 +335,12 @@ def test_missing_last_object_prunes_empty_synthetic_directories(setup):
         record = writer.generate(child)
         IndexGenerator(writer).generate(site.pk)
         assert writer.exists("example.org/nested/index.md")
+        # A missing object alone keeps its listing: listings read the
+        # database, not storage (#69).
         writer._backend(record.file).delete(record.file.storage_key)
+        IndexGenerator(writer).generate(site.pk)
+        assert writer.exists("example.org/nested/index.md")
+        writer.delete_page(child.pk, site_id=site.pk)
         IndexGenerator(writer).generate(site.pk)
         assert not ExportArtifact.objects.filter(
             logical_path="example.org/nested/index.md"

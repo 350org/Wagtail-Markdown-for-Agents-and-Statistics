@@ -90,7 +90,8 @@ def refresh_sites(*, site_ids, using="default"):
             if owner is not None and owner.pk == site.pk:
                 page_ids.append(page.pk)
         # Lifecycle refresh always renders selected pages, even when their page
-        # revisions are unchanged, and finalises indexes/discovery/manifest once.
+        # revisions are unchanged. Navigation and discovery files keep their
+        # last build until the site is finalised again (#69).
         refresh_pages(page_ids, scopes={site.pk: ()}, using=using, automatic=True)
 
 

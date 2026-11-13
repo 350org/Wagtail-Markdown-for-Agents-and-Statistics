@@ -84,7 +84,7 @@ def setup(request, settings, tmp_path, monkeypatch):
     Site.clear_site_root_paths_cache()
 
 
-def test_committed_change_refreshes_leaf_hero_and_manifest_once(setup, monkeypatch):
+def test_committed_change_refreshes_leaf_and_hero_without_finalising(setup, monkeypatch):
     writer, site, home, page, integration = setup
     original_revision = page.live_revision_id
     old = writer.begin(page)
@@ -103,8 +103,13 @@ def test_committed_change_refreshes_leaf_hero_and_manifest_once(setup, monkeypat
         assert finalised == []
     assert "new.example.org/act/campaign-one/" in read(writer, "example.org/campaign.md")
     assert "new.example.org/act/home-campaign/" in read(writer, "example.org/index.md")
-    assert finalised == [{site.pk}]
+    # A routine refresh regenerates the pages but leaves llms.txt and the
+    # manifest to the next finalise (#69).
+    assert finalised == []
     assert Page.objects.get(pk=page.pk).live_revision_id == original_revision
+    batch = IndexBatch(writer)
+    batch.mark_dirty(site.pk)
+    batch.finalise()
     manifest = json.loads(read(writer, "example.org/manifest.json"))
     assert {entry["id"] for entry in manifest["documents"]} == {home.pk, page.pk}
     with pytest.raises(StaleBuild):
