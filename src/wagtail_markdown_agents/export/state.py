@@ -98,18 +98,27 @@ class SiteFreshness:
         )
 
     def named_current(self, page_ids):
-        """Whether each of ``page_ids`` has a current export of its own (#69)."""
+        """Whether each of ``page_ids`` may still be named (#69).
+
+        Each must be eligible, and any export it has in this site must be
+        current. A named page need not have an export: hierarchy metadata
+        names pages that were never exported, and an index waiting to be
+        rebuilt is still a public page. One outside this reading (an ancestor
+        above the site's root, or a page no longer eligible) is checked afresh.
+        """
         named = set(page_ids)
+        for page_id in named.difference(self.pages):
+            page = Page.objects.filter(pk=page_id).first()
+            if page is None or not ExportPolicy().is_eligible(page.specific):
+                return False
         records = ExportArtifact.objects.filter(
             scope__site_id=self.site.pk, page_id__isnull=False
         ).values_list("page_id", "logical_path", "source_state")
-        found = 0
-        for page_id, path, source_state in records:
-            if page_id in named:
-                if self.pages.get(page_id) != (path, source_state):
-                    return False
-                found += 1
-        return found == len(named)
+        return all(
+            self.pages.get(page_id) == (path, source_state)
+            for page_id, path, source_state in records
+            if page_id in named
+        )
 
 
 def site_metadata(site, config=None):

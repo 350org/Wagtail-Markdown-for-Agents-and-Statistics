@@ -54,13 +54,22 @@ read and re-rendered the whole site inside the editor's request, which cannot
 finish on a site with thousands of pages on remote storage.
 
 Each navigation file (a page index, `llms.txt`, the manifest or a standalone index)
-records the pages it names. It is served only while the site's details are unchanged
-and each of those pages still has a current export. So a page that becomes private,
+records the pages it names, and so does an export with `INCLUDE_HIERARCHY` metadata
+(its parent, ancestors and children). It is served only while the site's details are
+unchanged and each of those pages is still eligible, with any export of its own
+current. A named page need not have an export: a link to one that is waiting to be
+rebuilt answers 404 until it is. So a page that becomes private,
 unpublished or excluded without a lifecycle signal, such as a bulk `update()`, still
 hides every file that names it, and only those. A file that names a few pages checks
 them one by one; one that names more than 50 (a blog index, the manifest) uses one
-reading of the site. A file built before this version, or a hierarchy export, did
-not record its pages and is checked against every page export.
+reading of the site. A file built before this version, or a page published with
+navigation of the caller's own, did not record its pages and is checked against
+every page export.
+
+When a top-level page changes path (a leaf that gains its first child, or an index
+that loses its last), the root index and `llms.txt` are rebuilt in the request, so
+neither links the path that has gone. An index below the top level keeps the old
+link until the next `agentmd_generate`.
 
 Set `AUTO_GENERATE=False` to stop routine lifecycle regeneration. This also applies
 to previously queued automatic work when it eventually executes. The setting controls

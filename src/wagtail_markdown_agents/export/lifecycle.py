@@ -262,7 +262,15 @@ def _routine_refresh(page_ids, captured, *, using):
             "Left %s withdrawn Markdown indexes for agentmd_generate to rebuild", len(indexes)
         )
         repairs = [page for page in repairs if page not in indexes]
+    recorded = set(
+        ExportArtifact.objects.filter(page_id__in=candidates).values_list("page_id", flat=True)
+    )
+    relocated = set()
     for page in repairs:
+        # A leaf that became an index, or an index that became a leaf, has a
+        # new path. A withdrawn index rebuilt where it was has not.
+        if page.pk in recorded or not policy.relative_path(page).endswith("/index.md"):
+            relocated.add(page.pk)
         try:
             results.append(_regenerate(writer, generator, policy, page))
             done.add(page.pk)
@@ -272,7 +280,9 @@ def _routine_refresh(page_ids, captured, *, using):
             logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
     for site in Site.objects.using(using).filter(pk__in=captured).select_related("root_page"):
         if ExportPolicy.site_enabled(site):
-            results.extend(_refresh_top_level(writer, generator, policy, site, done, page_ids))
+            results.extend(
+                _refresh_top_level(writer, generator, policy, site, done, {*page_ids, *relocated})
+            )
     return results
 
 
@@ -280,9 +290,10 @@ def _refresh_top_level(writer, generator, policy, site, done, page_ids):
     """Keep llms.txt and the root index current when the top level changes (#69).
 
     Both name only the site's top-level pages, so a post never changes them and
-    this costs two small queries. When a top-level page was published, or a
-    revocation withdrew llms.txt, both are rebuilt: a few entries, read from the
-    database with one reading of the site.
+    this costs two small queries. When a top-level page was published or
+    changed path (a leaf that gained its first child, an index that lost its
+    last), or a revocation withdrew llms.txt, both are rebuilt, so neither keeps
+    a link to a path that has gone.
     """
     host = site.hostname
     named = set()

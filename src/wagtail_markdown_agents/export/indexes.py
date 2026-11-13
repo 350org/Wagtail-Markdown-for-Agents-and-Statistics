@@ -128,7 +128,8 @@ class IndexGenerator:
                 token,
                 content,
                 replace_index=path.endswith("/index.md"),
-                lists=[entry.page_id for entry in linked],
+                lists=[entry.page_id for entry in linked]
+                + frontmatter.hierarchy_page_ids(_published_page(page)),
             )
             listed_version += 1
             # The publication replaced any earlier export of this page.
@@ -201,7 +202,8 @@ class IndexGenerator:
             token,
             content,
             replace_index=token.path.endswith("/index.md"),
-            lists=[entry.page_id for entry in linked],
+            lists=[entry.page_id for entry in linked]
+            + frontmatter.hierarchy_page_ids(_published_page(page)),
         )
 
     @staticmethod

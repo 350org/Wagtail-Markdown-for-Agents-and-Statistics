@@ -190,12 +190,19 @@ class FileWriter:
     def generate(self, page, *, navigation="", depends_on_site=False):
         """Render and publish one page; index/discovery generation is separate."""
         from ..rendering import render_page
+        from ..rendering.frontmatter import hierarchy_page_ids
+        from ..rendering.page import _published_page
 
         _after_commit_required()
         token = self.begin(page, depends_on_site=depends_on_site or bool(navigation))
-        return self.publish(
-            token, render_page(Page.objects.get(pk=token.page_id), navigation=navigation)
-        )
+        current = Page.objects.get(pk=token.page_id)
+        # Hierarchy metadata names the page's relatives. A caller's own
+        # navigation names pages this cannot know, so it records nothing and
+        # every export of the site counts.
+        lists = None
+        if token.site_metadata and not navigation and get_setting("INCLUDE_HIERARCHY"):
+            lists = hierarchy_page_ids(_published_page(current))
+        return self.publish(token, render_page(current, navigation=navigation), lists=lists)
 
     def publish(
         self, token: BuildToken, markdown: str, *, replace_index=False, commit=None, lists=None
@@ -633,8 +640,9 @@ class FileWriter:
         current inputs at its current path. A navigation file (a page index,
         a hierarchy export, llms.txt, the manifest, a standalone index) also
         needs the site's details unchanged and every page it names still
-        exported and current, so a page that turns private or unpublished
-        hides the files that name it, even without a lifecycle signal. It is
+        eligible, with any export of its own current, so a page that turns
+        private or unpublished hides the files that name it, even without a
+        lifecycle signal. It is
         not rebuilt when a page is republished, so it keeps its last build
         until the site is finalised again (#69). ``freshness`` is one reading
         of the record's site, shared by a caller checking many records.
@@ -671,20 +679,26 @@ class FileWriter:
             return False
 
     def _named_current(self, site_id, page_ids):
-        """Whether each of a short list of pages has a current export of its own."""
-        records = list(
-            ExportArtifact.objects.filter(scope__site_id=site_id, page_id__in=page_ids)
-            .select_related("scope")
-            .defer("scope__manifest_state")
-        )
-        if len(records) != len(set(page_ids)):
-            return False  # A named page has lost its export.
-        for named in records:
+        """Whether each of a short list of pages may still be named.
+
+        Each must be eligible, and any export it has in this site current; see
+        ``SiteFreshness.named_current``.
+        """
+        exported = {
+            page_id: (path, state)
+            for page_id, path, state in ExportArtifact.objects.filter(
+                scope__site_id=site_id, page_id__in=page_ids
+            ).values_list("page_id", "logical_path", "source_state")
+        }
+        for page_id in set(page_ids):
             try:
-                _, _, path, state = page_state(named.page_id, site_id)
+                if page_id in exported:
+                    _, _, path, state = page_state(page_id, site_id)
+                    if (path, state) != exported[page_id]:
+                        return False
+                else:
+                    page_state(page_id)
             except StaleBuild:
-                return False
-            if path != named.logical_path or state != named.source_state:
                 return False
         return True
 

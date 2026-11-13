@@ -13,7 +13,7 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.db import connection
-from wagtail.models import Site
+from wagtail.models import PageViewRestriction, Site
 
 from tests import test_lifecycle
 from tests.test_indexes import article, read
@@ -349,3 +349,70 @@ def test_manifest_is_off_by_default(setup, quiet, settings, client):
     assert "Fresh page" in read(writer, "example.org/section-0/index.md")
     # Navigation is current without a manifest, so another run does nothing.
     assert "discovery_scopes=0" in generate()
+
+
+def test_top_level_page_changing_between_leaf_and_index_keeps_links_live(setup, quiet, client):
+    writer, site, home = setup
+    built = quiet(home, sections=1, leaves=2)
+    about = article(home, "about")
+    generate()
+
+    def linked(path):
+        return [
+            line.split("/markdown/")[1].rstrip(")")
+            for line in read(writer, path).splitlines()
+            if "[About]" in line
+        ]
+
+    def status(path):
+        return client.get(f"/markdown/{path}", HTTP_HOST="example.org").status_code
+
+    # Its first child moves the page from about.md to about/index.md. llms.txt
+    # and the root index are rebuilt, so neither links the path that has gone.
+    child = article(about, "team")
+    for path in ("example.org/llms.txt", "example.org/index.md"):
+        assert linked(path) == ["about/index.md"], path
+    assert status("about/index.md") == 200 and status("about.md") == 404
+    # Losing its last child moves it back.
+    child.unpublish()
+    for path in ("example.org/llms.txt", "example.org/index.md"):
+        assert linked(path) == ["about.md"], path
+    assert status("about.md") == 200 and status("about/index.md") == 404
+    # A post below the top level still leaves both alone.
+    kept = files(("example.org/llms.txt", "example.org/index.md"))
+    built[0][1][0].unpublish()
+    assert files(kept.keys()) == kept
+
+
+def test_hierarchy_export_is_hidden_when_a_named_page_turns_private(setup, settings, client):
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "AUTO_GENERATE": False,
+        "INCLUDE_HIERARCHY": True,
+    }
+    parent = article(home, "parent")
+    child = article(parent, "child", title="Secret child")
+    other = article(home, "other")
+    # The child is named in the parent's metadata but has no export of its own.
+    writer.generate(parent)
+    writer.generate(other)
+
+    def status(path):
+        return client.get(f"/markdown/{path}", HTTP_HOST="example.org").status_code
+
+    assert "Secret child" in read(writer, "example.org/parent/index.md")
+    assert status("parent/index.md") == 200
+    # A bulk change sends no signal, so only the check at serving can hide it.
+    PageViewRestriction.objects.bulk_create(
+        [PageViewRestriction(page=child, restriction_type="login")]
+    )
+    assert status("parent/index.md") == 404
+    # An export that does not name the child is still served.
+    assert status("other.md") == 200
+    PageViewRestriction.objects.all().delete()
+    assert status("parent/index.md") == 200
+    # With signals, only the exports that name the page are withdrawn.
+    PageViewRestriction.objects.create(page=child, restriction_type="login")
+    assert not ExportArtifact.objects.filter(page_id=parent.pk).exists()
+    assert ExportArtifact.objects.filter(page_id=other.pk).exists()

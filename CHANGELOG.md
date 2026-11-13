@@ -128,8 +128,9 @@ versioning: [SemVer](https://semver.org/).
   `llms.txt`, which name only the top level. Other indexes and the manifest keep
   their last build and stay served: a new post, title or description appears in
   them after the next `agentmd_generate`, so run it on a schedule or after a batch
-  of edits. Each navigation file now records the pages it names: it is served
-  only while each of them has a current export, and unpublishing, deleting,
+  of edits. Each navigation file now records the pages it names, as does an
+  export with `INCLUDE_HIERARCHY` metadata: it is served only while each of
+  them is still eligible, with any export of its own current, and unpublishing, deleting,
   restricting, excluding or moving a page withdraws only the files that name it.
   Those indexes and `llms.txt` are rebuilt at once; the manifest returns at the
   next finalise. Unpublishing a post no longer takes `llms.txt` down, and serving
