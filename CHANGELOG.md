@@ -139,7 +139,11 @@ versioning: [SemVer](https://semver.org/).
   `agentmd_generate` (no `--force`) now rebuilds the navigation whenever a page
   export is newer than it, without re-rendering current pages. After upgrading,
   run `migrate`, then `agentmd_generate` once to rebuild indexes made by earlier
-  versions (#69).
+  versions. Until that run, unpublishing a page withdraws those older indexes
+  and rebuilds only the root index and `llms.txt` in the request. Rebuilding
+  an index no longer decodes the site's manifest state for every page it
+  lists, which made unpublishing a post in a large section take many seconds
+  (#69).
 - With the 350.org profile, saving the site's integration settings re-rendered
   every page of the site in that request, which timed out on a large site. The
   save now renders nothing: the current exports stay served, `agentmd_status`

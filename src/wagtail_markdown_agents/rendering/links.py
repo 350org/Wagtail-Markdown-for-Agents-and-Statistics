@@ -218,6 +218,7 @@ class LinkResolver:
         record = (
             ExportArtifact.objects.filter(scope__site_id=self.site.pk, logical_path=logical)
             .select_related("scope", "file")
+            .defer("scope__manifest_state")
             .first()
         )
         if record is None:
@@ -251,6 +252,7 @@ class LinkResolver:
                     scope__site_id=self.site.pk, page_id=current.pk, logical_path=path
                 )
                 .select_related("scope", "file")
+                .defer("scope__manifest_state")
                 .first()
             )
             if record is None:

@@ -77,6 +77,10 @@ storage keys, including hook relocations; no storage directory is swept.
 
 With automatic generation enabled, the withdrawn page indexes are rebuilt after
 commit, without it, and so is `llms.txt` if it named the page (a top-level page).
+One request rebuilds at most three withdrawn indexes. A revocation that withdrew
+more (navigation files from before this version, which count as naming every page,
+or the site's root page) leaves them for the next `agentmd_generate`, and logs a
+warning; the root index and `llms.txt` are still rebuilt.
 The manifest and standalone indexes stay withdrawn until the next finalisation:
 rebuilding the manifest reads every export. Unpublishing a post leaves `llms.txt`
 in place. With automatic generation disabled, every

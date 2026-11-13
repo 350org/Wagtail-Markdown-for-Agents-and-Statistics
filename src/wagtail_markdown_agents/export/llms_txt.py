@@ -58,6 +58,7 @@ class LlmsTxtGenerator:
         record = (
             ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=path)
             .select_related("scope", "file")
+            .defer("scope__manifest_state")
             .first()
         )
         if record is None:

@@ -19,6 +19,10 @@ from .writer import FileWriter, _after_commit_required
 
 logger = logging.getLogger(__name__)
 
+#: The withdrawn page indexes one routine refresh rebuilds in the request. Each
+#: rebuild reads the whole site twice; beyond this they wait for agentmd_generate.
+INDEX_REPAIRS = 3
+
 
 def write_database(instance=None, using=None):
     """Respect the signal's write alias and the managed writer's primary-only contract."""
@@ -200,9 +204,9 @@ def _routine_refresh(page_ids, captured, *, using):
     grow with the size of the site. It regenerates the given pages, then any
     parent or former index owner with no export at its current path: a parent
     that gained its first or lost its last child, or an index a revocation
-    withdrew. Other indexes, llms.txt and the manifest
-    keep their last build until ``agentmd_generate`` or an explicit refresh
-    finalises the site.
+    withdrew (at most ``INDEX_REPAIRS`` of them). Other indexes, llms.txt and
+    the manifest keep their last build until ``agentmd_generate`` or an
+    explicit refresh finalises the site.
     """
     writer = FileWriter()
     generator = IndexGenerator(writer)
@@ -242,9 +246,23 @@ def _routine_refresh(page_ids, captured, *, using):
         ExportArtifact.objects.filter(page_id__in=owners).values_list("page_id", flat=True)
     )
     candidates = (owners | parents).difference(page_ids)
-    for page in sorted(
+    repairs = sorted(
         _needs_repair(candidates, using=using), key=lambda page: (-page.depth, page.pk)
-    ):
+    )
+    # A revocation withdraws the one index that listed the page, so a routine
+    # event leaves an index or two to rebuild. More than that means the
+    # revocation withdrew navigation wholesale: files from an earlier version
+    # record no pages and count as naming them all, as does revoking the
+    # site's root page. Rebuilding every index of the site cannot fit in a
+    # request (#69), so those wait for agentmd_generate. A former owner that
+    # is now a leaf is one page render, and is always repaired.
+    indexes = [page for page in repairs if policy.relative_path(page).endswith("/index.md")]
+    if len(indexes) > INDEX_REPAIRS:
+        logger.warning(
+            "Left %s withdrawn Markdown indexes for agentmd_generate to rebuild", len(indexes)
+        )
+        repairs = [page for page in repairs if page not in indexes]
+    for page in repairs:
         try:
             results.append(_regenerate(writer, generator, policy, page))
             done.add(page.pk)

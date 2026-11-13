@@ -111,7 +111,9 @@ class ManifestGenerator:
                 record.page_id: record
                 for record in ExportArtifact.objects.filter(
                     scope__site_id=site_id, page_id__isnull=False
-                ).select_related("scope", "file")
+                )
+                .select_related("scope", "file")
+                .defer("scope__manifest_state")
             }
             documents, errors, comparisons = [], [], {}
             summary = {"new": 0, "modified": 0, "unchanged": 0, "removed": 0, "errors": 0}

@@ -21,7 +21,7 @@ from wagtail_markdown_agents.export.indexes import IndexBatch
 from wagtail_markdown_agents.export.lifecycle import request_refresh
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
 from wagtail_markdown_agents.export.writer import FileWriter
-from wagtail_markdown_agents.models import ExportArtifact
+from wagtail_markdown_agents.models import ExportArtifact, ExportScope
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.export_lifecycle]
 setup = test_lifecycle.setup
@@ -204,6 +204,46 @@ def test_unpublishing_withdraws_only_the_files_that_name_the_page(setup, quiet, 
     assert files(kept.keys()) == kept
     for path in kept:
         assert writer.exists(path), path
+
+
+def test_unpublishing_after_an_upgrade_rebuilds_no_section_index(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    built = quiet(home, sections=4, leaves=2)
+    # Navigation files as an earlier version left them: no record of the pages
+    # they name, so a revocation withdraws them all.
+    ExportArtifact.objects.filter(page_id__isnull=False).exclude(dependency_state="").update(
+        lists=None, dependency_state="0" * 64
+    )
+    ExportArtifact.objects.filter(page_id__isnull=True).update(lists=None, dependency_state="")
+    counts = measure(monkeypatch, lambda: built[0][1][0].unpublish())
+    # Only the root index and llms.txt come back in the request, never every
+    # section index of the site.
+    assert counts["published"] == ["example.org/index.md", "example.org/llms.txt"]
+    for number in range(4):
+        assert not writer.exists(f"example.org/section-{number}/index.md")
+    assert "Section0-Leaf-0" not in read(writer)
+    generate()
+    for number in range(4):
+        assert "Section0-Leaf-0" not in read(writer, f"example.org/section-{number}/index.md")
+
+
+def test_listing_does_not_decode_the_manifest_state_per_record(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    quiet(home, sections=1, leaves=6)
+    decoded = []
+    field = ExportScope._meta.get_field("manifest_state")
+    original = type(field).from_db_value
+
+    def from_db_value(self, value, expression, connection):
+        if self is field:
+            decoded.append(1)
+        return original(self, value, expression, connection)
+
+    monkeypatch.setattr(type(field), "from_db_value", from_db_value)
+    republish(home, "New home")
+    # It holds an entry per page, so decoding it once per listed record made
+    # an index rebuild quadratic in the size of the site.
+    assert len(decoded) <= 6, len(decoded)
 
 
 def test_unpublishing_a_top_level_page_rebuilds_llms_txt_without_it(setup, quiet):

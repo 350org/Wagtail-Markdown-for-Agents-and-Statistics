@@ -127,6 +127,7 @@ def inspect_page(page_id, writer):
     record = (
         ExportArtifact.objects.filter(page_id=page_id, scope__site_id=site.pk)
         .select_related("scope", "file")
+        .defer("scope__manifest_state")
         .first()
     )
     if record is None:

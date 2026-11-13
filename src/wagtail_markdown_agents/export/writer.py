@@ -339,6 +339,7 @@ class FileWriter:
             lambda: (
                 ExportArtifact.objects.filter(logical_path=path)
                 .select_related("file", "scope")
+                .defer("scope__manifest_state")
                 .first()
             )
         )
@@ -448,7 +449,9 @@ class FileWriter:
                 freshness = None  # The site is gone: every record is obsolete.
             obsolete = [
                 record.pk
-                for record in ExportArtifact.objects.filter(scope=scope).select_related("scope")
+                for record in ExportArtifact.objects.filter(scope=scope)
+                .select_related("scope")
+                .defer("scope__manifest_state")
                 if not self._current(record, freshness)
             ]
             if obsolete:
@@ -670,9 +673,9 @@ class FileWriter:
     def _named_current(self, site_id, page_ids):
         """Whether each of a short list of pages has a current export of its own."""
         records = list(
-            ExportArtifact.objects.filter(
-                scope__site_id=site_id, page_id__in=page_ids
-            ).select_related("scope")
+            ExportArtifact.objects.filter(scope__site_id=site_id, page_id__in=page_ids)
+            .select_related("scope")
+            .defer("scope__manifest_state")
         )
         if len(records) != len(set(page_ids)):
             return False  # A named page has lost its export.

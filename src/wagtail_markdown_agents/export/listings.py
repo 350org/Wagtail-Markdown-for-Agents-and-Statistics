@@ -35,10 +35,22 @@ def current_page_records(writer, site, freshness, *, prefix=""):
     per export (#69). Serving still opens each file and treats a missing
     object as a miss.
     """
-    records = ExportArtifact.objects.filter(
-        scope__site_id=site.pk, page_id__isnull=False, logical_path__startswith=prefix
-    ).select_related("scope", "file")
-    return [record for record in records if writer.is_current(record, freshness, own=True)]
+    # The scope's manifest_state holds an entry per page: decoding it for each
+    # record made every listing quadratic in the size of the site (#69).
+    records = (
+        ExportArtifact.objects.filter(
+            scope__site_id=site.pk, page_id__isnull=False, logical_path__startswith=prefix
+        )
+        .select_related("scope", "file")
+        .defer("scope__manifest_state")
+    )
+    # The reading already holds each current page's export path and state, so
+    # compare with those rather than digesting every page a second time.
+    return [
+        record
+        for record in records
+        if freshness.pages.get(record.page_id) == (record.logical_path, record.source_state)
+    ]
 
 
 def readable_page_entries(writer, site, *, urlconf=None, freshness=None):
