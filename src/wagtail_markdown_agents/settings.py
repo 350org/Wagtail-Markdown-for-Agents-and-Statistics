@@ -29,6 +29,9 @@ DEFAULTS: dict[str, Any] = {
     "RENDERERS": {},
     # Routine lifecycle regeneration; immediate revocation is always enforced.
     "AUTO_GENERATE": True,
+    # Publish manifest.json, the change list for sync and RAG pipelines. Building
+    # it reads every export, so it is off unless something consumes it (#69).
+    "MANIFEST": False,
     # Negotiation triggers.
     "NEGOTIATE_QUERY_PARAM": True,  # ?output_format=md|markdown
     "NEGOTIATE_ACCEPT_HEADER": True,  # Accept: text/markdown
@@ -67,6 +70,7 @@ NON_CONTENT_SETTINGS = frozenset(
     {
         "LLMS_TXT_DESCRIPTION",
         "AUTO_GENERATE",
+        "MANIFEST",
         "LINK_HEADER",
         "DISCOVERY_CACHE_TIMEOUT",
         "STATS_RETENTION_DAYS",

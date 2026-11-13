@@ -69,6 +69,9 @@ class ExportScope(models.Model):
     # Page exports published before this are rebuilt by the next
     # agentmd_generate, and served as they are until then (#69).
     stale_before = models.DateTimeField(null=True, blank=True)
+    # When the site's navigation was last finalised; a page export published
+    # later is not in it yet (#69).
+    finalised_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Export scope for site {self.site_id}"

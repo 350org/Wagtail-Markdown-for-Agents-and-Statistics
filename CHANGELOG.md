@@ -75,6 +75,11 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **`manifest.json` is off by default** (#69). It is for sync and RAG pipelines
+  that need to detect changes, and building it reads every stored export, which
+  made every `agentmd_generate` run read the whole export tree. Turn it on with
+  `MANIFEST = True`. With it off, the next run withdraws an existing manifest and
+  `/markdown/manifest.json` answers 404. The agent simulator still needs it on.
 - Agent registry `2026-11-06.1` recognises Anthropic's hosted browser, `Claude-Agent`,
   as an on-demand agent, without serving it Markdown automatically, like
   `Google-Agent`. That makes 72 identities, still 23 served automatically, so the

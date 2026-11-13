@@ -291,3 +291,21 @@ def test_requested_refresh_rebuilds_older_exports_without_force(setup, quiet):
     output = generate()
     assert f"generated={exported}" in output, output
     assert "generated=0" in generate()
+
+
+def test_manifest_is_off_by_default(setup, quiet, settings, client):
+    writer, site, home = setup
+    built = quiet(home, sections=1, leaves=1)
+    assert writer.exists("example.org/manifest.json")
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "MANIFEST": False}
+    # The next run withdraws the existing manifest.
+    assert "discovery_scopes=1" in generate()
+    assert not writer.exists("example.org/manifest.json")
+    article(built[0][0], "fresh", title="Fresh page")
+    output = generate()
+    assert "discovery_scopes=1" in output, output
+    assert not writer.exists("example.org/manifest.json")
+    assert client.get("/markdown/manifest.json", HTTP_HOST="example.org").status_code == 404
+    assert "Fresh page" in read(writer, "example.org/section-0/index.md")
+    # Navigation is current without a manifest, so another run does nothing.
+    assert "discovery_scopes=0" in generate()

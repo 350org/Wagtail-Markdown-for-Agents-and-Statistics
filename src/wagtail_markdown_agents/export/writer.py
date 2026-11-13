@@ -458,6 +458,18 @@ class FileWriter:
                 )
         self._cleanup_safely(site_id)
 
+    def withdraw_aggregate(self, site_id: int, path: str):
+        """Withdraw one site-level file, such as a manifest that is switched off."""
+        with _locked(site_id) as scope:
+            records = ExportArtifact.objects.filter(
+                scope=scope, logical_path=path, page_id__isnull=True
+            )
+            if not records.exists():
+                return
+            self._retire(records, notify=True)
+            ExportScope.objects.filter(pk=scope.pk).update(version=F("version") + 1)
+        self._cleanup_safely(site_id)
+
     def prune_indexes(self, token: BuildToken, keep_paths):
         """Remove unused standalone indexes from a captured directory inventory.
 

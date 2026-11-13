@@ -13,6 +13,14 @@ from wagtail.signals import (
 
 from wagtail_markdown_agents import handlers
 from wagtail_markdown_agents.models import PageAgentSettings
+from wagtail_markdown_agents.settings import DEFAULTS
+
+
+@pytest.fixture(autouse=True)
+def manifest_on(monkeypatch):
+    """The suite exercises the manifest; it is off by default (#69), which
+    tests/test_routine_refresh.py covers with an explicit MANIFEST=False."""
+    monkeypatch.setitem(DEFAULTS, "MANIFEST", True)
 
 
 @pytest.fixture(autouse=True)

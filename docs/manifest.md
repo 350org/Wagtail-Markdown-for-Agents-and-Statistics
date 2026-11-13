@@ -1,5 +1,17 @@
 # Content-hash manifest
 
+**Off by default.** The manifest is for pipelines that need to detect changes,
+such as RAG indexing or a mirror that syncs the whole site. Building it reads every
+stored export, so it is published only when a site turns it on (#69):
+
+```python
+WAGTAIL_MARKDOWN_AGENTS = {"MANIFEST": True}
+```
+
+With it off, finalisation does not build it and withdraws an existing one, and
+`/markdown/manifest.json` answers 404. The agent simulator discovers pages from the
+manifest, so a site that runs it needs `MANIFEST` on.
+
 `ManifestGenerator` (#22) publishes a per-site `manifest.json` through the managed
 writer. It describes **successfully published, currently readable page documents**,
 including page-owned root/directory indexes. Synthetic navigation indexes and

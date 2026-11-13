@@ -13,6 +13,11 @@ class Migration(migrations.Migration):
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
+            model_name="exportscope",
+            name="finalised_at",
+            field=models.DateTimeField(blank=True, null=True),
+        ),
+        migrations.AddField(
             model_name="exportartifact",
             name="lists",
             field=models.JSONField(blank=True, default=None, null=True),

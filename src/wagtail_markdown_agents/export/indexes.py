@@ -4,13 +4,15 @@ from contextlib import suppress
 from pathlib import PurePosixPath
 
 from django.db.models import Q
+from django.utils import timezone
 from wagtail import hooks
-from wagtail.models import Page
+from wagtail.models import Page, Site
 
 from .. import OKF_VERSION
 from ..models import ExportArtifact, ExportScope
 from ..rendering import frontmatter, render_page
 from ..rendering.page import PageRenderError, _published_page
+from ..settings import get_setting
 from .listings import IndexEntry as IndexEntry
 from .listings import (
     directory_entries,
@@ -314,8 +316,13 @@ class IndexBatch:
             discovery = self.discovery.generate(site_id)
             if discovery is not None:
                 results.append(discovery)
-            manifest = self.manifest.generate(site_id)
-            if manifest is not None:
-                results.append(manifest)
+            if get_setting("MANIFEST"):
+                manifest = self.manifest.generate(site_id)
+                if manifest is not None:
+                    results.append(manifest)
+            else:
+                site = Site.objects.get(pk=site_id)
+                self.writer.withdraw_aggregate(site_id, f"{site.hostname}/manifest.json")
+            ExportScope.objects.filter(site_id=site_id).update(finalised_at=timezone.now())
             del self.dirty[site_id]
         return results

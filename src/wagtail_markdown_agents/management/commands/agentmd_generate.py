@@ -7,6 +7,7 @@ from ...export.state import StaleBuild
 from ...export.writer import FileWriter
 from ...models import ExportArtifact
 from ...rendering.page import PageRenderError
+from ...settings import get_setting
 from ..export_commands import add_scope_arguments, inspect_page, report, require_autocommit, select
 
 #: Builds per page (and per site finalisation) before a superseded build fails.
@@ -139,9 +140,15 @@ class Command(BaseCommand):
         Routine publication leaves navigation as it was (#69), so a run that
         finds every page current still rebuilds it when a page is newer.
         """
+        manifest = f"{site.hostname}/manifest.json"
+        if get_setting("MANIFEST"):
+            required = ["index.md", "llms.txt", "manifest.json"]
+        elif ExportArtifact.objects.filter(scope__site_id=site.pk, logical_path=manifest).exists():
+            return False  # Switched off: the next finalisation withdraws it.
+        else:
+            required = ["index.md", "llms.txt"]
         return not navigation_behind(site) and all(
-            writer.exists(f"{site.hostname}/{name}")
-            for name in ("index.md", "llms.txt", "manifest.json")
+            writer.exists(f"{site.hostname}/{name}") for name in required
         )
 
     def _generate(self, batch, page_id, page, writer):

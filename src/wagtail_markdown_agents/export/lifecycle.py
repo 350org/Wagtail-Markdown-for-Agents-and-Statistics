@@ -370,21 +370,17 @@ def request_refresh(site_ids, *, using=DEFAULT_DB_ALIAS):
 def navigation_behind(site):
     """Whether a page export is newer than the site's navigation.
 
-    A routine publication leaves the indexes, llms.txt and the manifest as they
-    were (#69). A finalisation writes the manifest last, so any page export
-    published after it is missing from the navigation.
+    A routine publication leaves most indexes and the manifest as they were
+    (#69). A finalisation records when it finished, so any page export
+    published after that is missing from the navigation.
     """
-    manifest = (
-        ExportArtifact.objects.filter(
-            scope__site_id=site.pk, logical_path=f"{site.hostname}/manifest.json"
-        )
-        .values_list("published_at", flat=True)
-        .first()
+    finalised = (
+        ExportScope.objects.filter(site_id=site.pk).values_list("finalised_at", flat=True).first()
     )
-    if manifest is None:
+    if finalised is None:
         return True
     return ExportArtifact.objects.filter(
-        scope__site_id=site.pk, page_id__isnull=False, published_at__gt=manifest
+        scope__site_id=site.pk, page_id__isnull=False, published_at__gt=finalised
     ).exists()
 
 
