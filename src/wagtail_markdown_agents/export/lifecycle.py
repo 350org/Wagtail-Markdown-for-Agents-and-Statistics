@@ -13,6 +13,7 @@ from ..models import ExportArtifact, ExportScope
 from ..rendering.page import PageRenderError, unsupported_reason
 from ..settings import get_setting
 from .indexes import IndexBatch, IndexGenerator
+from .llms_txt import LlmsTxtGenerator
 from .policy import ExportPolicy
 from .writer import FileWriter, _after_commit_required
 
@@ -209,6 +210,7 @@ def _routine_refresh(page_ids, captured, *, using):
     results = []
     owners = {owner for owners in captured.values() for owner in owners}
     parents = set()
+    done = set()
     # Deepest first, so a moved section's index lists its children at their
     # new paths.
     depths = dict(Page.objects.using(using).filter(pk__in=page_ids).values_list("pk", "depth"))
@@ -227,6 +229,7 @@ def _routine_refresh(page_ids, captured, *, using):
             parents.add(parent.pk)
         try:
             results.append(_regenerate(writer, generator, policy, page))
+            done.add(page.pk)
         except PageRenderError as exc:
             if exc.reason not in {"unsupported_page", "empty_body"}:
                 raise
@@ -244,10 +247,63 @@ def _routine_refresh(page_ids, captured, *, using):
     ):
         try:
             results.append(_regenerate(writer, generator, policy, page))
+            done.add(page.pk)
         except PageRenderError as exc:
             if exc.reason not in {"unsupported_page", "empty_body"}:
                 raise
             logger.warning("Skipped Markdown page %s: %s", page.pk, exc.reason)
+    for site in Site.objects.using(using).filter(pk__in=captured).select_related("root_page"):
+        if ExportPolicy.site_enabled(site):
+            results.extend(_refresh_top_level(writer, generator, policy, site, done, page_ids))
+    return results
+
+
+def _refresh_top_level(writer, generator, policy, site, done, page_ids):
+    """Keep llms.txt and the root index current when the top level changes (#69).
+
+    Both name only the site's top-level pages, so a post never changes them and
+    this costs two small queries. When a top-level page was published, or a
+    revocation withdrew llms.txt, both are rebuilt: a few entries, read from the
+    database with one reading of the site.
+    """
+    host = site.hostname
+    named = set()
+    llms = None
+    for path, lists in ExportArtifact.objects.filter(
+        scope__site_id=site.pk, logical_path__in=[f"{host}/llms.txt", f"{host}/index.md"]
+    ).values_list("logical_path", "lists"):
+        named.update(lists or ())
+        if path == f"{host}/llms.txt":
+            llms = lists
+    # A top-level page's path is host/page.md or host/page/index.md; the root
+    # index itself is not one of llms.txt's entries.
+    top_level = any(
+        path != f"{host}/index.md"
+        and (path.count("/") == 1 or path == f"{host}/{path.split('/')[1]}/index.md")
+        for path in ExportArtifact.objects.filter(
+            scope__site_id=site.pk, page_id__in=page_ids
+        ).values_list("logical_path", flat=True)
+    )
+    # llms.txt links the root index under a fixed label, so editing the home
+    # page leaves it as it is.
+    named.discard(site.root_page_id)
+    if llms is not None and not top_level and not named.intersection(page_ids):
+        return []
+    results = []
+    home = site.root_page.specific
+    if (
+        home.pk not in done
+        and policy.is_eligible(home)
+        and policy.relative_path(home) == f"{host}/index.md"
+    ):
+        try:
+            results.append(generator.regenerate(home))
+        except PageRenderError as exc:
+            if exc.reason not in {"unsupported_page", "empty_body"}:
+                raise
+    discovery = LlmsTxtGenerator(writer).generate(site.pk)
+    if discovery is not None:
+        results.append(discovery)
     return results
 
 

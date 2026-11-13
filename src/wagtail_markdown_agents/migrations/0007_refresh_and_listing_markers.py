@@ -12,4 +12,9 @@ class Migration(migrations.Migration):
             name="stale_before",
             field=models.DateTimeField(blank=True, null=True),
         ),
+        migrations.AddField(
+            model_name="exportartifact",
+            name="lists",
+            field=models.JSONField(blank=True, default=None, null=True),
+        ),
     ]

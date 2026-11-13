@@ -97,6 +97,20 @@ class SiteFreshness:
             for page_id, path, source_state in records
         )
 
+    def named_current(self, page_ids):
+        """Whether each of ``page_ids`` has a current export of its own (#69)."""
+        named = set(page_ids)
+        records = ExportArtifact.objects.filter(
+            scope__site_id=self.site.pk, page_id__isnull=False
+        ).values_list("page_id", "logical_path", "source_state")
+        found = 0
+        for page_id, path, source_state in records:
+            if page_id in named:
+                if self.pages.get(page_id) != (path, source_state):
+                    return False
+                found += 1
+        return found == len(named)
+
 
 def site_metadata(site, config=None):
     """A digest of what a site's navigation reads besides its pages' exports."""

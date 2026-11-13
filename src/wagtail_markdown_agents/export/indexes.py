@@ -122,7 +122,12 @@ class IndexGenerator:
                 if exc.reason not in {"unsupported_page", "empty_body"}:
                     raise
                 continue
-            record = self.writer.publish(token, content, replace_index=path.endswith("/index.md"))
+            record = self.writer.publish(
+                token,
+                content,
+                replace_index=path.endswith("/index.md"),
+                lists=[entry.page_id for entry in linked],
+            )
             listed_version += 1
             # The publication replaced any earlier export of this page.
             listed.pop(record.page_id, None)
@@ -151,7 +156,7 @@ class IndexGenerator:
             content = frontmatter.serialise(metadata) + "\n# Markdown exports\n"
             if navigation:
                 content += "\n" + navigation.rstrip("\n") + "\n"
-            self.writer.publish(token, content)
+            self.writer.publish(token, content, lists=[entry.page_id for entry in linked])
         token = self.writer.begin_site(site_id, f"{site.hostname}/index.md")
         self._check_state(token.source_state, baseline)
         self._check_listing(token, listed_version)
@@ -190,7 +195,12 @@ class IndexGenerator:
             freshness=fresh,
             checked_urls=[entry.url for entry in linked],
         )
-        return self.writer.publish(token, content, replace_index=token.path.endswith("/index.md"))
+        return self.writer.publish(
+            token,
+            content,
+            replace_index=token.path.endswith("/index.md"),
+            lists=[entry.page_id for entry in linked],
+        )
 
     @staticmethod
     def _check_state(current, baseline):

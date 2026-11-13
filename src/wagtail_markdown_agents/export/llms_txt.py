@@ -41,7 +41,10 @@ class LlmsTxtGenerator:
         root_path = f"{site.hostname}/index.md"
         entries = navigation_entries(self.writer, site, root_path, fresh, urlconf=self.urlconf)
         lines = []
-        root_url = self._root_url(site, root_path, fresh)
+        root_url, root_page_id = self._root_url(site, root_path, fresh)
+        named = [entry.page_id for entry in entries]
+        if root_page_id is not None:
+            named.append(root_page_id)  # It links to the home page's index.
         if root_url:
             lines.append(self._link("Site index", root_url, "Browse available content."))
         lines.extend(self._link(entry.title, entry.url, entry.description) for entry in entries)
@@ -49,7 +52,7 @@ class LlmsTxtGenerator:
             parts.append("## Explore\n\n" + "\n".join(lines))
         else:
             parts.append("No exported pages are available.")
-        return self.writer.publish(token, "\n\n".join(parts) + "\n")
+        return self.writer.publish(token, "\n\n".join(parts) + "\n", lists=named)
 
     def _root_url(self, site, path, freshness):
         record = (
@@ -58,15 +61,14 @@ class LlmsTxtGenerator:
             .first()
         )
         if record is None:
-            return None
+            return None, None
+        # From database state, as the listing is: no storage request (#69).
+        if not self.writer.is_current(record, freshness, own=True):
+            return None, None
         try:
-            with self.writer.open(
-                path, site_id=site.pk, file_id=record.file_id, freshness=freshness
-            ):
-                pass
-            return export_url(record, urlconf=self.urlconf)
-        except (FileNotFoundError, ExportPathError):
-            return None
+            return export_url(record, urlconf=self.urlconf), record.page_id
+        except ExportPathError:
+            return None, None
 
     @staticmethod
     def _link(title, url, description):

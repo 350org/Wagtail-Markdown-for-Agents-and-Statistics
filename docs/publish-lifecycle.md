@@ -37,8 +37,13 @@ a parent that gained its first live child, or one a revocation withdrew. Capture
 former index owners allow a surviving parent to become a leaf after its final live
 child is removed.
 
-It does **not** rebuild the site's other page indexes, standalone indexes,
-`llms.txt` or `manifest.json`. Publishing a page withdraws only that page's earlier
+When a top-level page is published (its export is `host/page.md` or
+`host/page/index.md`), the root index and `llms.txt` are rebuilt too: they name only
+the top-level pages, so this is a handful of entries read from the database. Editing
+the home page, or any page below the top level, leaves `llms.txt` as it is.
+
+It does **not** rebuild the site's other page indexes, standalone indexes or
+`manifest.json`. Publishing a page withdraws only that page's earlier
 export, so those files keep their last build and stay served: a new page, a new
 title or a new description appears in them after the next finalisation
 (`agentmd_generate`, `agentmd_generate_indexes`, an explicit `refresh_pages` or an
@@ -48,11 +53,14 @@ a batch of edits, if navigation must follow content closely. Rebuilding them all
 read and re-rendered the whole site inside the editor's request, which cannot
 finish on a site with thousands of pages on remote storage.
 
-A file that lists or names other pages (a page index, a hierarchy export,
-`llms.txt`, the manifest or a standalone index) is served only while the site's
-details are unchanged and every page export in the site is current. So a page
-that becomes private, unpublished or excluded without a lifecycle signal, such as
-a bulk `update()`, still hides them until they are rebuilt.
+Each navigation file (a page index, `llms.txt`, the manifest or a standalone index)
+records the pages it names. It is served only while the site's details are unchanged
+and each of those pages still has a current export. So a page that becomes private,
+unpublished or excluded without a lifecycle signal, such as a bulk `update()`, still
+hides every file that names it, and only those. A file that names a few pages checks
+them one by one; one that names more than 50 (a blog index, the manifest) uses one
+reading of the site. A file built before this version, or a hierarchy export, did
+not record its pages and is checked against every page export.
 
 Set `AUTO_GENERATE=False` to stop routine lifecycle regeneration. This also applies
 to previously queued automatic work when it eventually executes. The setting controls
@@ -62,16 +70,16 @@ use an explicit refresh for that work.
 
 ## Immediate withdrawal
 
-Unpublish and pre-delete revoke the page's owned export, the site's standalone
-aggregates (`llms.txt`, the manifest and standalone indexes) and the page indexes
-above it, which are the only page indexes that can list it, synchronously. This never goes through `enqueue`
+Unpublish and pre-delete revoke the page's owned export and the navigation files
+that name it, synchronously. Revoking the site's root page withdraws them all. This never goes through `enqueue`
 and never consults `AUTO_GENERATE`. Recorded ownership supplies actual old paths and
 storage keys, including hook relocations; no storage directory is swept.
 
-With automatic generation enabled, the withdrawn page indexes above the page are
-rebuilt after commit, without it. `llms.txt`, the manifest and standalone indexes
-stay withdrawn until the next finalisation: they could name the page, and
-rebuilding them reads the whole site. With automatic generation disabled, every
+With automatic generation enabled, the withdrawn page indexes are rebuilt after
+commit, without it, and so is `llms.txt` if it named the page (a top-level page).
+The manifest and standalone indexes stay withdrawn until the next finalisation:
+rebuilding the manifest reads every export. Unpublishing a post leaves `llms.txt`
+in place. With automatic generation disabled, every
 withdrawn artefact remains unavailable until explicitly rebuilt.
 A rollback discards the refresh callback but cannot undo physical storage deletion:
 a restored pointer may safely refer to a missing file. Checked serving returns a

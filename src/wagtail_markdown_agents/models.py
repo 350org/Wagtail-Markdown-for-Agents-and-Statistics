@@ -101,6 +101,10 @@ class ExportArtifact(models.Model):
     file = models.OneToOneField(ExportFile, on_delete=models.PROTECT, related_name="artifact")
     source_state = models.CharField(max_length=64)
     dependency_state = models.CharField(max_length=64, blank=True, default="")
+    # The page IDs a navigation file names (an index, llms.txt, the manifest).
+    # It is served only while each of them is, and a revocation withdraws only
+    # the files that name the page. None: not recorded, so every page counts.
+    lists = models.JSONField(null=True, blank=True, default=None)
     published_at = models.DateTimeField(auto_now=True)
 
     class Meta:

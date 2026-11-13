@@ -119,13 +119,16 @@ versioning: [SemVer](https://semver.org/).
   That meant reading every export from storage and re-rendering every section page,
   which could not finish before the web server's timeout. Publishing now
   regenerates the page, and its own index if it has children, reading only the
-  exports below it. Other indexes, `llms.txt` and the manifest keep their last
-  build and stay served. A new page, title or description appears in them after
-  the next `agentmd_generate`, `agentmd_generate_indexes` or explicit refresh, so
-  run one on a schedule or after a batch of edits. Unpublishing, deleting,
-  restricting, excluding or moving a page still withdraws `llms.txt`, the manifest
-  and the indexes above it straight away. Those indexes are rebuilt at once;
-  `llms.txt` and the manifest return at the next finalise. Listings and link
+  exports below it. Publishing a top-level page also rebuilds the root index and
+  `llms.txt`, which name only the top level. Other indexes and the manifest keep
+  their last build and stay served: a new post, title or description appears in
+  them after the next `agentmd_generate`, so run it on a schedule or after a batch
+  of edits. Each navigation file now records the pages it names: it is served
+  only while each of them has a current export, and unpublishing, deleting,
+  restricting, excluding or moving a page withdraws only the files that name it.
+  Those indexes and `llms.txt` are rebuilt at once; the manifest returns at the
+  next finalise. Unpublishing a post no longer takes `llms.txt` down, and serving
+  `llms.txt` no longer reads the whole site. Listings and link
   checks now read the database only and no longer open each export, so a lost
   storage object is still listed and serving answers 404 for it. A plain
   `agentmd_generate` (no `--force`) now rebuilds the navigation whenever a page
@@ -137,7 +140,8 @@ versioning: [SemVer](https://semver.org/).
   save now renders nothing: the current exports stay served, `agentmd_status`
   reports them as `outdated`, and the next `agentmd_generate` rebuilds them with
   the new settings, without `--force`. Other projects can do the same through
-  `request_refresh(site_ids)`. Migration `0007` adds the marker it uses (#69).
+  `request_refresh(site_ids)`. Migration `0007` adds this marker and the record
+  of pages each navigation file names (#69).
 - On a large site, `agentmd_generate` never finished building the section
   indexes, `llms.txt` and `manifest.json`, so they stayed missing (404) even
   though pages were exported. The step re-checked every export for each index it

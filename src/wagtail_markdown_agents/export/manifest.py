@@ -90,9 +90,10 @@ class ManifestGenerator:
         if not ExportPolicy.site_enabled(site):
             return None
         next_state = None
+        documents = []
 
         def update(previous):
-            nonlocal next_state
+            nonlocal next_state, documents
             fresh = site_freshness(site_id)
             if fresh.state != source_state:
                 raise StaleBuild("Site content changed before manifest generation")
@@ -195,5 +196,9 @@ class ManifestGenerator:
             ExportScope.objects.filter(pk=scope.pk).update(manifest_state=next_state)
 
         return self.writer.update_aggregate(
-            site_id, f"{site.hostname}/manifest.json", update, commit=commit
+            site_id,
+            f"{site.hostname}/manifest.json",
+            update,
+            commit=commit,
+            lists=lambda: [entry["id"] for entry in documents],
         )

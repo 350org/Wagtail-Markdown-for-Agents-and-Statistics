@@ -79,26 +79,30 @@ def test_publish_exports_the_page_and_leaves_discovery_to_finalise(setup):
     assert "child body." in read(writer, "example.org/child.md")
     # The parent gained its first child, so its index is built in the request.
     assert "Child" in read(writer)
-    # Site-wide discovery is never built by a routine publication (#69).
-    assert not writer.exists("example.org/llms.txt")
+    # A new top-level page refreshes llms.txt in the request; the manifest,
+    # which names every page, waits for the next finalise (#69).
+    assert "Child" in read(writer, "example.org/llms.txt")
     assert not writer.exists("example.org/manifest.json")
     finalise(writer, site)
-    assert "Child" in read(writer, "example.org/llms.txt")
     assert {entry["id"] for entry in entries(writer)} == {home.pk, child.pk}
 
 
 def test_publish_keeps_the_last_discovery_build(setup):
     writer, site, home = setup
-    article(home, "child")
+    section = article(home, "section")
+    article(section, "child")
     finalise(writer, site)
     llms = ExportArtifact.objects.get(logical_path="example.org/llms.txt").file_id
-    article(home, "later")
-    assert writer.exists("example.org/later.md")
-    # The last build is still served; the new page is listed after the next finalise.
+    manifest = ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id
+    article(section, "later")
+    assert writer.exists("example.org/section/later.md")
+    # A page below the top level leaves llms.txt and the manifest as they were;
+    # the manifest lists it after the next finalise.
     assert ExportArtifact.objects.get(logical_path="example.org/llms.txt").file_id == llms
-    assert "Later" not in read(writer, "example.org/llms.txt")
+    assert ExportArtifact.objects.get(logical_path="example.org/manifest.json").file_id == manifest
+    assert "Later" not in json.dumps(entries(writer))
     finalise(writer, site)
-    assert "Later" in read(writer, "example.org/llms.txt")
+    assert "Later" in json.dumps(entries(writer))
 
 
 def test_publish_waits_for_commit_and_rollback_discards_callback(setup, monkeypatch):

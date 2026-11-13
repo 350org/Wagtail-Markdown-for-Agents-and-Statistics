@@ -260,12 +260,11 @@ def test_configuration_only_change_is_hashed_from_rebuilt_output(setup, settings
         **settings.WAGTAIL_MARKDOWN_AGENTS,
         "INCLUDE_HIERARCHY": True,
     }
-    record = ManifestGenerator(writer).generate(site.pk)
-    # The manifest is not served while an export is out of date (#69).
-    assert not writer.exists("example.org/manifest.json")
-    with writer._open_file(record.file) as stream:
-        data = json.loads(stream.read())
-    assert data["errors"] and data["summary"]["removed"] == 0
+    ManifestGenerator(writer).generate(site.pk)
+    # Out-of-date exports are reported as errors, by page ID only. The manifest
+    # names no page, so it is served (#69).
+    data = read(writer)
+    assert data["errors"] and not data["documents"] and data["summary"]["removed"] == 0
     writer.generate(child)
     second = generate(writer, site)["documents"][0]
     assert second["change_status"] == "modified"

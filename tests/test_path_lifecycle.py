@@ -60,10 +60,10 @@ def test_subtree_paths_and_discovery_follow_current_identity(setup, event):
     for record in old:
         assert not writer.exists(record.logical_path)
         assert not writer._backend(record.file).exists(record.file.storage_key)
-    # Relocation revokes the old paths, which withdraws discovery until the
-    # site is finalised again (#69).
+    # Relocation revokes the old paths. The manifest named them, so it waits for
+    # the next finalise; llms.txt is rebuilt at once with the new paths (#69).
     assert not writer.exists("example.org/manifest.json")
-    assert not writer.exists("example.org/llms.txt")
+    assert "/markdown/index.md" in read(writer, "example.org/llms.txt")
     finalise(writer, site)
     documents = {entry["id"]: entry for entry in entries(writer)}
     assert set(documents) == {home.pk, source.pk, destination.pk, branch.pk, child.pk}

@@ -123,8 +123,8 @@ pass affected old/new parent IDs explicitly. Moves between sites must dirty both
 scopes; the batch does not infer deleted pages' ancestry.
 
 `batch.delete_page(page_id, site_id=...)` captures those owners and immediately calls
-the writer's revocation API, which withdraws the page, the site's standalone
-aggregates and the page indexes above the page (#69). Inside a CMS transaction, capture/withdraw there and
+the writer's revocation API, which withdraws the page and the navigation files
+that name it (#69). Inside a CMS transaction, capture/withdraw there and
 schedule `batch.finalise` with `transaction.on_commit`; generation itself must run
 after commit. Direct reads hide newly private dependent metadata even before cleanup
 runs. A failing context manager does not finalise or undo completed revocations.
