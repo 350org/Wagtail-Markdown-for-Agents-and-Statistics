@@ -8,14 +8,17 @@ work rather than time, so they are stable on any machine.
 """
 
 import json
+from io import StringIO
 
 import pytest
+from django.core.management import call_command
 from django.db import connection
 from wagtail.models import Site
 
 from tests import test_lifecycle
 from tests.test_indexes import article, read
 from wagtail_markdown_agents.export.indexes import IndexBatch
+from wagtail_markdown_agents.export.lifecycle import request_refresh
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
 from wagtail_markdown_agents.export.writer import FileWriter
 from wagtail_markdown_agents.models import ExportArtifact
@@ -233,3 +236,40 @@ def test_a_moved_section_lists_its_pages_at_their_new_paths(setup, quiet):
     output = read(writer, path)
     assert "## Pages (2)" in output
     assert "/markdown/section-1/section-0/section0-leaf-0.md" in output
+
+
+def generate(*args):
+    output = StringIO()
+    call_command("agentmd_generate", "--site", "example.org", *args, stdout=output)
+    return output.getvalue()
+
+
+def test_generate_without_force_catches_navigation_up(setup, quiet):
+    writer, site, home = setup
+    built = quiet(home, sections=1, leaves=1)
+    article(built[0][0], "fresh", title="Fresh page")
+    assert "Fresh page" not in read(writer, "example.org/llms.txt")
+    output = generate()
+    # Every page is current, so none is rendered again, but the navigation is
+    # behind the new page's export and is rebuilt.
+    assert "generated=0" in output and "discovery_scopes=1" in output, output
+    assert "Fresh page" in read(writer, "example.org/section-0/index.md")
+    manifest = json.loads(read(writer, "example.org/manifest.json"))
+    assert "Fresh page" in {entry["title"] for entry in manifest["documents"]}
+    # A second run finds nothing to do.
+    assert "discovery_scopes=0" in generate()
+
+
+def test_requested_refresh_rebuilds_older_exports_without_force(setup, quiet):
+    writer, site, home = setup
+    quiet(home, sections=1, leaves=2)
+    exported = ExportArtifact.objects.filter(page_id__isnull=False).count()
+    request_refresh([site.pk])
+    status = StringIO()
+    call_command("agentmd_status", "--site", "example.org", stdout=status)
+    assert f"outdated={exported}" in status.getvalue()
+    # The current exports stay served until the run.
+    assert writer.exists("example.org/section-0/section0-leaf-0.md")
+    output = generate()
+    assert f"generated={exported}" in output, output
+    assert "generated=0" in generate()

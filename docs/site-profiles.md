@@ -147,7 +147,7 @@ own.
 
 | Profile | Site | Notes |
 | --- | --- | --- |
-| `wagtail_markdown_agents.profiles.wtrx` | 350.org ([`350org/wagtail-wtr-350`](https://github.com/350org/wagtail-wtr-350), app `wtrx`) | Renderers for the site's blocks, the page hero, image credits, Post metadata, pages hidden from search, and a refresh when the site's integration settings change. The `350.org profile drift` workflow compares it with the site on demand. |
+| `wagtail_markdown_agents.profiles.wtrx` | 350.org ([`350org/wagtail-wtr-350`](https://github.com/350org/wagtail-wtr-350), app `wtrx`) | Renderers for the site's blocks, the page hero, image credits, Post metadata, pages hidden from search, and marks every page for the next `agentmd_generate` when the site's integration settings change (nothing is rendered in the saving request). The `350.org profile drift` workflow compares it with the site on demand. |
 
 A shipped profile is tested against a stand-in for its site's app
 (`tests/wtrx_stub` for 350.org), so the package's tests never need the site

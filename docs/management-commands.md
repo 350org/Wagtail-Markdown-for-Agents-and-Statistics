@@ -38,12 +38,24 @@ python manage.py agentmd_generate --type blog.BlogPage --site example.org --forc
 
 The command renders current published revisions, publishes leaf documents, then
 finalises complete page indexes, directory indexes, `llms.txt` and the manifest once
-per affected site. It never renders a newer draft. Missing or unavailable selected
+per affected site. A site is finalised even when every selected page is current if
+its navigation is behind: publishing a page in the admin updates only that page's
+export (#69), so a plain `agentmd_generate` run, on a schedule or after a batch of
+edits, adds new pages, titles and descriptions to the indexes, `llms.txt` and the
+manifest without re-rendering every page.
+
+A change that alters every page without a page revision, such as a site setting
+the renderers read, can call
+`wagtail_markdown_agents.export.lifecycle.request_refresh(site_ids)` after commit.
+It renders nothing: the current exports stay served, and the next `agentmd_generate`
+rebuilds each export published before the call, without `--force`. The 350.org
+profile does this when the site's integration settings change. It never renders a newer draft. Missing or unavailable selected
 exports are rebuilt. Existing owned exports for selected ineligible/unsupported pages
 are withdrawn along with their dependent discovery artefacts.
 
-Without `--force`, a selected export is skipped when its recorded source/dependency
-state still matches and its exact owned storage object can be opened. This is a
+Without `--force`, a selected export is skipped when its recorded source state
+still matches and its exact owned storage object can be opened, unless it is
+**outdated**: published before a site-wide refresh was requested (see below). This is a
 publication-state check, not a new content-hash incremental mode. A changed live
 revision or a missing file causes a rebuild. Pages without a revision are exported
 from their live row; editing that row in code does not change the recorded state. `--force` bypasses that check, including
@@ -102,6 +114,8 @@ Status only reads database/storage state and reports each selected page:
 - `missing`: an eligible supported page has no export pointer in its current site.
 - `unavailable`: a pointer exists, but its file is missing or its recorded state/path
   is no longer current.
+- `outdated`: the export is current but was published before a requested site-wide
+  refresh; the next `agentmd_generate` rebuilds it.
 - `ineligible` or `unsupported`: no export should be generated under current policy
   or the v0.1 renderer contract.
 

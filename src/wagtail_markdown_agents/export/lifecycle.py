@@ -5,10 +5,11 @@ from functools import partial
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DEFAULT_DB_ALIAS, transaction
+from django.utils import timezone
 from wagtail.models import Page, Site
 
 from .. import tasks
-from ..models import ExportArtifact
+from ..models import ExportArtifact, ExportScope
 from ..rendering.page import PageRenderError, unsupported_reason
 from ..settings import get_setting
 from .indexes import IndexBatch, IndexGenerator
@@ -292,6 +293,43 @@ def _needs_repair(page_ids, *, using):
         and policy.is_eligible(page)
         and policy.relative_path(page) not in recorded.get(page.pk, ())
     ]
+
+
+def request_refresh(site_ids, *, using=DEFAULT_DB_ALIAS):
+    """Mark every page export of these sites for rebuilding, rendering nothing now.
+
+    For a change that alters every page's Markdown without a page revision,
+    such as a site setting the renderers read. Rebuilding thousands of pages
+    cannot fit in the request that saved the setting (#69), so the current
+    exports stay served and the next ``agentmd_generate`` rebuilds those
+    published before this call, without ``--force``.
+    """
+    write_database(using=using)
+    now = timezone.now()
+    for site_id in sorted(set(site_ids)):
+        ExportScope.objects.get_or_create(site_id=site_id)
+        ExportScope.objects.filter(site_id=site_id).update(stale_before=now)
+
+
+def navigation_behind(site):
+    """Whether a page export is newer than the site's navigation.
+
+    A routine publication leaves the indexes, llms.txt and the manifest as they
+    were (#69). A finalisation writes the manifest last, so any page export
+    published after it is missing from the navigation.
+    """
+    manifest = (
+        ExportArtifact.objects.filter(
+            scope__site_id=site.pk, logical_path=f"{site.hostname}/manifest.json"
+        )
+        .values_list("published_at", flat=True)
+        .first()
+    )
+    if manifest is None:
+        return True
+    return ExportArtifact.objects.filter(
+        scope__site_id=site.pk, page_id__isnull=False, published_at__gt=manifest
+    ).exists()
 
 
 def refresh_pages(page_ids=(), *, scopes=None, using=DEFAULT_DB_ALIAS, automatic=False):

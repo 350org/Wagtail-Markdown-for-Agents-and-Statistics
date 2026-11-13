@@ -66,6 +66,9 @@ class ExportScope(models.Model):
     content_version = models.PositiveBigIntegerField(default=0)
     # Private comparison hashes survive withdrawal of the public manifest.
     manifest_state = models.JSONField(default=dict, blank=True)
+    # Page exports published before this are rebuilt by the next
+    # agentmd_generate, and served as they are until then (#69).
+    stale_before = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Export scope for site {self.site_id}"

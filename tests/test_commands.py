@@ -237,7 +237,8 @@ def test_status_reports_current_missing_ineligible_and_storage_errors_without_wr
     def fail(*args, **kwargs):
         raise OSError("Storage unavailable")
 
-    monkeypatch.setattr(FileWriter, "open", fail)
+    # Status checks the record in the database, then opens the stored object.
+    monkeypatch.setattr(FileWriter, "_open_file", fail)
     output = StringIO()
     with pytest.raises(CommandError):
         call_command("agentmd_status", page_id=current.pk, stdout=output, stderr=output)

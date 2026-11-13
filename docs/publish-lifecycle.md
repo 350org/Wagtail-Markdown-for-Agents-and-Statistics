@@ -42,8 +42,9 @@ It does **not** rebuild the site's other page indexes, standalone indexes,
 export, so those files keep their last build and stay served: a new page, a new
 title or a new description appears in them after the next finalisation
 (`agentmd_generate`, `agentmd_generate_indexes`, an explicit `refresh_pages` or an
-`IndexBatch`). Run one of those on a schedule, or after a batch of edits, if
-navigation must follow content closely. Rebuilding them all on every publication
+`IndexBatch`). A plain `agentmd_generate` notices that navigation is behind and
+rebuilds it without re-rendering current pages, so run it on a schedule, or after
+a batch of edits, if navigation must follow content closely. Rebuilding them all on every publication
 read and re-rendered the whole site inside the editor's request, which cannot
 finish on a site with thousands of pages on remote storage.
 

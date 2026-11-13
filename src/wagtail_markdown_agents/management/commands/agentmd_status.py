@@ -15,12 +15,12 @@ class Command(BaseCommand):
         selection = select(options, operation="status")
         writer = FileWriter()
         counts = dict.fromkeys(
-            ("eligible", "current", "missing", "unavailable", "skipped", "failed"), 0
+            ("eligible", "current", "outdated", "missing", "unavailable", "skipped", "failed"), 0
         )
         for page_id in selection.page_ids:
             try:
                 state, page, path = inspect_page(page_id, writer)
-                if state in {"current", "missing", "unavailable"}:
+                if state in {"current", "outdated", "missing", "unavailable"}:
                     counts["eligible"] += 1
                     counts[state] += 1
                 else:

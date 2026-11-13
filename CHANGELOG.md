@@ -127,8 +127,17 @@ versioning: [SemVer](https://semver.org/).
   and the indexes above it straight away. Those indexes are rebuilt at once;
   `llms.txt` and the manifest return at the next finalise. Listings and link
   checks now read the database only and no longer open each export, so a lost
-  storage object is still listed and serving answers 404 for it. After upgrading,
-  run `agentmd_generate` once to rebuild indexes made by earlier versions (#69).
+  storage object is still listed and serving answers 404 for it. A plain
+  `agentmd_generate` (no `--force`) now rebuilds the navigation whenever a page
+  export is newer than it, without re-rendering current pages. After upgrading,
+  run `migrate`, then `agentmd_generate` once to rebuild indexes made by earlier
+  versions (#69).
+- With the 350.org profile, saving the site's integration settings re-rendered
+  every page of the site in that request, which timed out on a large site. The
+  save now renders nothing: the current exports stay served, `agentmd_status`
+  reports them as `outdated`, and the next `agentmd_generate` rebuilds them with
+  the new settings, without `--force`. Other projects can do the same through
+  `request_refresh(site_ids)`. Migration `0007` adds the marker it uses (#69).
 - On a large site, `agentmd_generate` never finished building the section
   indexes, `llms.txt` and `manifest.json`, so they stayed missing (404) even
   though pages were exported. The step re-checked every export for each index it
