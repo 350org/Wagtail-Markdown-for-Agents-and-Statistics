@@ -83,6 +83,8 @@ Unpublish and pre-delete revoke the page's owned export and the navigation files
 that name it, synchronously. Revoking the site's root page withdraws them all. This never goes through `enqueue`
 and never consults `AUTO_GENERATE`. Recorded ownership supplies actual old paths and
 storage keys, including hook relocations; no storage directory is swept.
+Scheduled expiry is an unpublish too: Wagtail's `publish_scheduled` command
+unpublishes an expired page through the same signal, so its export goes at once.
 
 With automatic generation enabled, the withdrawn page indexes are rebuilt after
 commit, without it, and so is `llms.txt` if it named the page (a top-level page).

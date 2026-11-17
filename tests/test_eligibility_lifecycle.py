@@ -1,5 +1,6 @@
 """Restriction/exclusion privacy transitions through real model signals (#70)."""
 
+from datetime import timedelta
 from io import StringIO
 
 import pytest
@@ -7,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
+from django.utils import timezone
 from wagtail import hooks
 from wagtail.models import Page, PageViewRestriction
 
@@ -244,6 +246,43 @@ def test_withdrawn_routes_and_html_access_controls(setup, settings, client):
     )
     assert response.status_code == 302
     assert "login" in response["Location"]
+
+
+@pytest.mark.parametrize("auto", [False, True])
+def test_scheduled_expiry_withdraws_the_page_and_its_listing(setup, settings, client, auto):
+    """Wagtail's publish_scheduled unpublishes an expired page; its Markdown goes too.
+
+    This relies on Wagtail sending page_unpublished from the expiry path, so a
+    change there would otherwise leave an expired page's export served.
+    """
+    writer, site, home = setup
+    blog = article(home, "blog")
+    expiring = article(blog, "expiring")
+    article(blog, "other")
+    refresh_pages([blog.pk])
+    assert writer.exists("example.org/blog/expiring.md")
+    assert "Expiring" in read(writer, "example.org/blog/index.md")
+    record = ExportArtifact.objects.select_related("file").get(page_id=expiring.pk)
+    configure(settings, auto)
+    Page.objects.filter(pk=expiring.pk).update(expire_at=timezone.now() - timedelta(minutes=1))
+
+    call_command("publish_scheduled", stdout=StringIO())
+
+    expiring.refresh_from_db()
+    assert not expiring.live and expiring.expired
+    # Checked reads refuse an expired page anyway; the receiver must also
+    # remove the record and the stored object.
+    assert not ExportArtifact.objects.filter(page_id=expiring.pk).exists()
+    assert not writer._backend(record.file).exists(record.file.storage_key)
+    assert not writer.exists("example.org/blog/expiring.md")
+    assert client.get("/markdown/blog/expiring.md", HTTP_HOST="example.org").status_code == 404
+    index = client.get("/markdown/blog/index.md", HTTP_HOST="example.org")
+    if auto:
+        # The withdrawn parent index is rebuilt after commit without the page.
+        assert index.status_code == 200
+        assert "Expiring" not in b"".join(index.streaming_content).decode()
+    else:
+        assert index.status_code == 404
 
 
 @pytest.mark.parametrize("model", [PageAgentSettings, PageViewRestriction])
