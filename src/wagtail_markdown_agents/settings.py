@@ -45,6 +45,11 @@ DEFAULTS: dict[str, Any] = {
     # Seconds to reuse the check that an index's or llms.txt's named pages are
     # still public, per site publication version; 0 checks every request (#74).
     "NAVIGATION_CACHE_TIMEOUT": 60,
+    # Pages an index lists before it shows only the newest; None lists every page (#76).
+    "LISTING_LIMIT": 20,
+    # Date field deciding "newest" per page type, else first_published_at:
+    # {"app_label.Model": "published_at"}.
+    "LISTING_DATE_FIELDS": {},
     # Days of agent access statistics kept by agentmd_prune_stats (#36).
     "STATS_RETENTION_DAYS": 90,
     # Count HTML page reads by registry agents, next to Markdown (#61).
@@ -77,6 +82,9 @@ NON_CONTENT_SETTINGS = frozenset(
         "LINK_HEADER",
         "DISCOVERY_CACHE_TIMEOUT",
         "NAVIGATION_CACHE_TIMEOUT",
+        # Index listings only; agentmd_generate_indexes applies a change (#76).
+        "LISTING_LIMIT",
+        "LISTING_DATE_FIELDS",
         "STATS_RETENTION_DAYS",
         "COUNT_HTML",
         "COUNT_HTML_EXCLUDE",

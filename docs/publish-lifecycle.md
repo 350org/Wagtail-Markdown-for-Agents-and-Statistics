@@ -62,11 +62,14 @@ rebuilt answers 404 until it is. So a page that becomes private,
 unpublished or excluded without a lifecycle signal, such as a bulk `update()`, still
 hides every file that names it, and only those. The check reads only the pages a
 file names and their ancestors, in a fixed number of queries, so a blog index that
-names thousands of posts no longer reads the whole site (#74). When a request
-makes it, the answer is reused for `NAVIGATION_CACHE_TIMEOUT` seconds (default
-`60`) under the site's publication version. Any publication, revocation or rebuild
-through the package starts a new check at once. A change that sends no lifecycle
-signal stops being named within that time. Set it to `0` to check on every request.
+names thousands of posts no longer reads the whole site (#74). The site's details
+are compared on every read. For a public request, the named-page answer is reused
+for `NAVIGATION_CACHE_TIMEOUT` seconds (default `60`) under the site's publication
+version. A revocation (unpublish, delete, restriction or exclusion through Wagtail)
+and any export the package writes start a new check at once. Anything else, such as
+a bulk `update()` that sends no signal, or a republished page when `AUTO_GENERATE`
+is off, takes effect within that time. Commands and cleanup never use the cached
+answer. Set it to `0` to check on every request.
 A file built before #69, or a page published with navigation of the caller's own,
 did not record its pages, so it is checked against every page export.
 

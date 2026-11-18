@@ -7,6 +7,7 @@ from django.core.management.base import CommandError
 from wagtail.models import Page, Site
 
 from ..export.policy import ExportPolicy
+from ..export.snapshot import site_of
 from ..export.state import StaleBuild, site_freshness
 from ..export.writer import StorageConfigurationChanged, _after_commit_required
 from ..models import ExportArtifact, ExportFile, ExportScope
@@ -87,7 +88,7 @@ def select(options, *, operation):
     pages_by_site = {}
     known_sites = {site.pk: site for site in Site.objects.all()}
     for page in pages.order_by("pk").specific():
-        owner = _owner_site(page, known_sites)
+        owner = site_of(page, known_sites)
         if (owner is None or owner.pk not in site_ids) and not deleting:
             continue
         if generating and page_id is not None:
@@ -114,18 +115,6 @@ def select(options, *, operation):
         tuple(sorted(site_ids)),
         {site_id: tuple(ids) for site_id, ids in pages_by_site.items()},
     )
-
-
-def _owner_site(page, sites):
-    """``page.get_site()`` without its query per page, keeping project overrides.
-
-    Wagtail's ``get_site`` reads the site row again for every page; selecting a
-    large site made one query per page before any page was checked (#74).
-    """
-    if type(page).get_site is not Page.get_site:
-        return page.get_site()
-    parts = page.get_url_parts()
-    return sites.get(parts[0]) if parts else None
 
 
 def inspect_page(page_id, writer, *, verify_file=True):
@@ -158,57 +147,68 @@ def inspect_page(page_id, writer, *, verify_file=True):
     # finalisation, and checking it here read the whole site per index (#69).
     if record.logical_path != path or not writer.is_current(record, own=True):
         return "unavailable", page, path
+    return record_state(writer, record, record.scope.stale_before, verify_file), page, path
+
+
+def record_state(writer, record, stale_before, verify_file):
+    """``current``, ``unavailable`` or ``outdated`` for a page's own export whose
+    path and state already match its page. Shared by the one-page and batched
+    checks, so both decide alike (#74)."""
     if not _file_readable(writer, record.file, verify_file):
-        return "unavailable", page, path
-    stale_before = record.scope.stale_before
+        return "unavailable"
     if stale_before is not None and record.published_at < stale_before:
-        return "outdated", page, path
-    return "current", page, path
+        return "outdated"
+    return "current"
 
 
-def current_pages(site, page_ids, writer, *, verify_files=False):
-    """The pages of ``page_ids`` whose exports in ``site`` are current (#74).
+def inspect_batch(site, page_ids, writer, *, verify_files=False):
+    """``{page_id: state}`` for the pages of ``page_ids`` decided in bulk (#74).
 
-    The same answer as ``inspect_page(...)`` returning ``"current"``, read from
-    one reading of the site and one query for its export records instead of
-    about 25 queries per page. A page not confirmed here may still be current:
-    inspect it on its own. ``verify_files`` opens each confirmed page's stored
-    object, one storage request per page.
+    Reads only those pages (``site_freshness(site_id, page_ids)``) and the
+    site's export records, instead of about 25 queries per page. A page is
+    ``current`` exactly when ``inspect_page`` would say so; one that is
+    ineligible or unsupported and has no export needs no work. Anything else
+    (missing, outdated, an export to withdraw) is left out: inspect it on its
+    own.
     """
     try:
-        freshness = site_freshness(site.pk)
+        freshness = site_freshness(site.pk, page_ids)
     except StaleBuild:
-        return set()
+        return {}
     stale_before = (
         ExportScope.objects.filter(site_id=site.pk).values_list("stale_before", flat=True).first()
     )
-    records = ExportArtifact.objects.filter(
-        scope__site_id=site.pk, page_id__isnull=False
-    ).select_related("file")
     by_page, repeated = {}, set()
-    for record in records:
+    for record in ExportArtifact.objects.filter(
+        scope__site_id=site.pk, page_id__isnull=False
+    ).select_related("file"):
         if record.page_id in by_page:
             repeated.add(record.page_id)  # Leave anything unusual to inspect_page.
         by_page[record.page_id] = record
     supported = {}
-    current = set()
+    decided = {}
     for page_id in set(page_ids) - repeated:
         record, page = by_page.get(page_id), freshness.snapshot.pages.get(page_id)
-        if record is None or page is None:
-            continue
-        if freshness.pages.get(page_id) != (record.logical_path, record.source_state):
-            continue
-        if stale_before is not None and record.published_at < stale_before:
+        if page is None:
             continue
         model = type(page)
         if model not in supported:
             supported[model] = not unsupported_reason(model)
+        if page_id not in freshness.pages:
+            if record is None:
+                decided[page_id] = "ineligible"
+            continue
         if not supported[model]:
+            if record is None:
+                decided[page_id] = "unsupported"
             continue
-        if not _file_readable(writer, record.file, verify_files):
+        if record is None:
             continue
-        current.add(page_id)
-    return current
+        if freshness.pages[page_id] != (record.logical_path, record.source_state):
+            continue
+        if record_state(writer, record, stale_before, verify_files) == "current":
+            decided[page_id] = "current"
+    return decided
 
 
 def _file_readable(writer, file, verify):

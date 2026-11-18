@@ -4,6 +4,7 @@ from contextlib import suppress
 from pathlib import PurePosixPath
 
 from django.db.models import Q
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 from wagtail import hooks
 from wagtail.models import Page, Site
@@ -18,6 +19,7 @@ from .listings import (
     directory_entries,
     markdown_text,
     navigation_entries,
+    newest_entries,
     page_entry,
     readable_page_entries,
     sort_entries,
@@ -229,9 +231,17 @@ class IndexGenerator:
 
     def _navigation(self, site, path, page, listed):
         """The ``## Pages`` list for ``path`` from ``listed``, the site's readable
-        page exports sorted by title, and the entries it lists."""
-        entries = tuple(directory_entries(listed, path))
-        content = f"## Pages ({len(entries)})\n\n"
+        page exports sorted by title, and the entries it lists.
+
+        Beyond ``LISTING_LIMIT`` entries the list shows only the newest, and
+        names only those, so its read checks stay small (#76).
+        """
+        candidates = tuple(directory_entries(listed, path))
+        total = len(candidates)
+        entries = tuple(newest_entries(candidates, get_setting("LISTING_LIMIT")))
+        capped = len(entries) < total
+        heading = f"Latest pages ({len(entries)} of {total})" if capped else f"Pages ({total})"
+        content = f"## {heading}\n\n"
         if entries:
             lines = []
             for entry in entries:
@@ -241,6 +251,8 @@ class IndexGenerator:
                     line += " - " + markdown_text(entry.description)
                 lines.append(line)
             content += "\n".join(lines)
+            if capped:
+                content += "\n\n" + self._more(site, len(entries), total)
         else:
             content += "No exported pages are available."
         relative = path[len(site.hostname) + 1 :]
@@ -250,6 +262,7 @@ class IndexGenerator:
             "path": relative,
             "entries": entries,
             "count": len(entries),
+            "total": total,
         }
         for hook in hooks.get_hooks(INDEX_CONTENT_HOOK):
             result = hook(content, relative, context)
@@ -258,6 +271,15 @@ class IndexGenerator:
                     raise TypeError(f"{INDEX_CONTENT_HOOK} must return a Markdown string or None")
                 content = result
         return content, entries
+
+    def _more(self, site, shown, total):
+        """Where a capped list's other pages are: the sitemap, when the site routes one."""
+        sentence = f"The {shown} most recent of {total} pages."
+        try:
+            resolve("/sitemap.xml", urlconf=self.urlconf)
+        except Resolver404:
+            return sentence
+        return f"{sentence} Every page is in the [sitemap]({site.root_url}/sitemap.xml)."
 
 
 class IndexBatch:

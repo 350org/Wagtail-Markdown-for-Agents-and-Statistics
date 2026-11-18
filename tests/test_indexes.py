@@ -1,6 +1,8 @@
 """Root/directory navigation, publication ownership and batch finalisation (#20)."""
 
 import datetime
+import re
+from io import StringIO
 
 import pytest
 from sandbox.testapp.models import ArticlePage, ContentPage
@@ -407,3 +409,124 @@ def test_finalise_is_noop_after_success_and_retains_dirty_site_on_error(setup):
     assert site.pk in batch.dirty
     assert batch.finalise()
     assert batch.finalise() == []
+
+
+def capped_section(home, count):
+    """A section with ``count`` posts, published a day apart, oldest first."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    section = article(home, "news")
+    posts = [
+        article(section, f"post-{number:02d}", title=f"Post {number:02d}")
+        for number in range(count)
+    ]
+    start = timezone.now() - timedelta(days=count)
+    for number, post in enumerate(posts):
+        Page.objects.filter(pk=post.pk).update(first_published_at=start + timedelta(days=number))
+    return section, posts
+
+
+def test_long_listing_shows_only_the_newest_pages_newest_first(setup, settings):
+    from django.core.management import call_command
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "LISTING_LIMIT": 3}
+    section, posts = capped_section(home, 5)
+    call_command("agentmd_generate", "--force", stdout=StringIO())
+    text = read(writer, "example.org/news/index.md")
+    assert "## Latest pages (3 of 5)" in text
+    shown = re.findall(r"\[(Post \d\d)\]", text)
+    assert shown == ["Post 04", "Post 03", "Post 02"]
+    assert "The 3 most recent of 5 pages." in text
+    record = ExportArtifact.objects.get(logical_path="example.org/news/index.md")
+    # Only the pages it shows are named, so only those can hide it (#76).
+    assert set(record.lists) >= {posts[4].pk, posts[3].pk, posts[2].pk}
+    assert not set(record.lists) & {posts[0].pk, posts[1].pk}
+
+
+def test_short_listing_keeps_every_page_in_title_order(setup, settings):
+    from django.core.management import call_command
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "LISTING_LIMIT": 5}
+    capped_section(home, 5)
+    call_command("agentmd_generate", "--force", stdout=StringIO())
+    text = read(writer, "example.org/news/index.md")
+    assert "## Pages (5)" in text and "Latest pages" not in text
+    assert re.findall(r"\[(Post \d\d)\]", text) == [f"Post {n:02d}" for n in range(5)]
+
+
+def test_listing_date_field_orders_by_the_sites_own_date(setup, settings):
+    from datetime import timedelta
+
+    from django.core.management import call_command
+    from django.utils import timezone
+    from sandbox.testapp.models import NewsPage
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "LISTING_LIMIT": 2,
+        "LISTING_DATE_FIELDS": {"testapp.NewsPage": "published_at"},
+    }
+    section = article(home, "news")
+    now = timezone.now()
+    # Created newest first, so Wagtail's own dates run the other way.
+    for number, days in enumerate([1, 30, 2]):
+        page = section.add_child(
+            instance=NewsPage(
+                title=f"News {number}",
+                slug=f"news-{number}",
+                published_at=now - timedelta(days=days),
+                body=[("paragraph", "<p>News.</p>")],
+            )
+        )
+        page.save_revision().publish()
+    call_command("agentmd_generate", "--force", stdout=StringIO())
+    text = read(writer, "example.org/news/index.md")
+    assert re.findall(r"\[(News \d)\]", text) == ["News 0", "News 2"]
+
+
+def test_page_beyond_the_listing_does_not_hide_the_index(setup, settings, client):
+    from django.core.management import call_command
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "LISTING_LIMIT": 3}
+    section, posts = capped_section(home, 5)
+    call_command("agentmd_generate", "--force", stdout=StringIO())
+
+    def status():
+        return client.get("/markdown/news/index.md", HTTP_HOST="example.org").status_code
+
+    assert status() == 200
+    # Bulk changes send no signal, so only the read-time check applies.
+    Page.objects.filter(pk=posts[0].pk).update(live=False)  # not listed
+    assert status() == 200
+    Page.objects.filter(pk=posts[4].pk).update(live=False)  # listed
+    assert status() == 404
+
+
+def test_capped_index_read_cost_does_not_grow_with_the_section(setup, settings):
+    from django.core.management import call_command
+    from django.db import connection
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {**settings.WAGTAIL_MARKDOWN_AGENTS, "LISTING_LIMIT": 3}
+    section, _ = capped_section(home, 5)
+
+    def read_queries():
+        call_command("agentmd_generate", "--force", stdout=StringIO())
+        queries = []
+        with (
+            connection.execute_wrapper(lambda execute, *args: queries.append(1) or execute(*args)),
+            writer.open("example.org/news/index.md"),
+        ):
+            pass
+        return len(queries)
+
+    small = read_queries()
+    for number in range(5, 25):
+        article(section, f"post-{number:02d}")
+    assert read_queries() == small

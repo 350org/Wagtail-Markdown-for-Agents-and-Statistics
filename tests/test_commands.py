@@ -128,7 +128,7 @@ def test_batched_inspection_agrees_with_inspecting_each_page(setup):
     from django.utils import timezone
     from wagtail.models import PageViewRestriction
 
-    from wagtail_markdown_agents.management.export_commands import current_pages, inspect_page
+    from wagtail_markdown_agents.management.export_commands import inspect_batch, inspect_page
 
     writer, site, home = setup
     pages = [article(home, f"page-{number}") for number in range(6)]
@@ -151,9 +151,19 @@ def test_batched_inspection_agrees_with_inspecting_each_page(setup):
             if inspect_page(page_id, writer, verify_file=False)[0] == "current"
         }
 
-    assert current_pages(site, ids, writer) == each() == {home.pk, pages[4].pk, pages[5].pk}
+    def batch():
+        return {
+            pid for pid, state in inspect_batch(site, ids, writer).items() if state == "current"
+        }
+
+    assert batch() == each() == {home.pk, pages[4].pk, pages[5].pk}
+    # Every state the batch settles is the one inspect_page reports.
+    for page_id, state in inspect_batch(site, ids, writer).items():
+        assert inspect_page(page_id, writer, verify_file=False)[0] == state
+    decided = inspect_batch(site, ids, writer)
+    assert decided.get(pages[1].pk) is None  # ineligible, but its export must be withdrawn
     ExportScope.objects.filter(site_id=site.pk).update(stale_before=timezone.now())
-    assert current_pages(site, ids, writer) == each() == set()
+    assert batch() == each() == set()
 
 
 @pytest.mark.parametrize("setup", ["remote"], indirect=True)
@@ -661,3 +671,39 @@ def test_path_conflict_names_the_page_that_owns_the_path(setup):
         pytest.raises(StorageContractError, match=f"is owned by page {first.pk}$"),
     ):
         writer.generate(second)
+
+
+def test_commands_never_trust_a_cached_navigation_check(setup, settings, client):
+    """A run after a site-detail change rebuilds discovery (#74 review)."""
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "NAVIGATION_CACHE_TIMEOUT": 60,
+    }
+    article(home, "article")
+    run("agentmd_generate")
+    assert client.get("/markdown/llms.txt", HTTP_HOST="example.org").status_code == 200
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "LLMS_TXT_DESCRIPTION": "A new introduction.",
+    }
+    # The site's details are compared on every read, cache or not.
+    assert client.get("/markdown/llms.txt", HTTP_HOST="example.org").status_code == 404
+    output = run("agentmd_generate")
+    assert "discovery_scopes=1" in output
+    assert "A new introduction." in read(writer, "example.org/llms.txt")
+
+
+def test_cleanup_of_a_deleted_site_ignores_cached_checks(setup, settings, client):
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "NAVIGATION_CACHE_TIMEOUT": 60,
+    }
+    article(home, "article")
+    run("agentmd_generate")
+    assert client.get("/markdown/llms.txt", HTTP_HOST="example.org").status_code == 200
+    site_id = site.pk
+    Site.objects.filter(pk=site_id).delete()
+    writer.delete_stale(site_id)
+    assert not ExportArtifact.objects.filter(scope__site_id=site_id, page_id=None).exists()

@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db.models import BooleanField, Q
+from django.db.models.functions import Length, Substr
 from wagtail.models import Page, PageViewRestriction, Site
 
 from ..models import PageAgentSettings
@@ -15,6 +16,35 @@ def _chunks(values):
     values = sorted(values)
     for start in range(0, len(values), CHUNK):
         yield values[start : start + CHUNK]
+
+
+def site_of(page, sites):
+    """``page.get_site()`` from ``{site_id: Site}``, keeping project overrides.
+
+    Wagtail's ``get_site`` reads the site row again on every call, one query
+    per page when many pages are checked (#74). A page class that overrides
+    ``get_site`` is still asked.
+    """
+    if type(page).get_site is not Page.get_site:
+        return page.get_site()
+    parts = page.get_url_parts()
+    return sites.get(parts[0]) if parts else None
+
+
+def _children(parent_paths, *fields, **filters):
+    """``fields`` of each page whose parent path is in ``parent_paths``.
+
+    One query per chunk of parents rather than one per parent (#74); the
+    ``parent`` annotation can be one of ``fields``.
+    """
+    rows = []
+    for chunk in _chunks(parent_paths):
+        rows.extend(
+            Page.objects.annotate(parent=Substr("path", 1, Length("path") - Page.steplen))
+            .filter(parent__in=chunk, **filters)
+            .values_list(*fields)
+        )
+    return rows
 
 
 class SiteSnapshot:
@@ -98,27 +128,19 @@ class SiteSnapshot:
             self._keep(Page.objects.filter(path__in=chunk).select_related("locale"))
         self.by_path = {page.path: page for page in self.pages.values()}
         # Only a named page's own children decide whether it is an index.
-        parents = [page.path for page in named if page.numchild]
-        self.live_parents = set()
-        for path in parents:
-            if Page.objects.filter(
-                path__startswith=path, depth=len(path) // Page.steplen + 1, live=True
-            ).exists():
-                self.live_parents.add(path)
+        self.live_parents = {
+            parent
+            for (parent,) in _children(
+                [page.path for page in named if page.numchild], "parent", live=True
+            )
+        }
         # Siblings matter only where a reserved name has to be mangled.
         reserved = {
             page.path[: -Page.steplen]
             for page in self.pages.values()
             if page.slug in RESERVED_NAMES
         }
-        self.sibling_slugs = set()
-        for parent in reserved:
-            self.sibling_slugs.update(
-                (parent, slug)
-                for slug in Page.objects.filter(
-                    path__startswith=parent, depth=len(parent) // Page.steplen + 1
-                ).values_list("slug", flat=True)
-            )
+        self.sibling_slugs = set(_children(reserved, "parent", "slug"))
         self.settings = {}
         for chunk in _chunks(page_ids):
             self.settings.update(
@@ -141,12 +163,7 @@ class SiteSnapshot:
         # Each page is asked several times in one reading (eligibility, path,
         # state), and every answer resolves the page's URL.
         if page.pk not in self._page_sites:
-            if type(page).get_site is not Page.get_site:
-                site = page.get_site()
-            else:
-                parts = page.get_url_parts()
-                site = self.sites.get(parts[0]) if parts else None
-            self._page_sites[page.pk] = site
+            self._page_sites[page.pk] = site_of(page, self.sites)
         return self._page_sites[page.pk]
 
     def is_restricted(self, page):
