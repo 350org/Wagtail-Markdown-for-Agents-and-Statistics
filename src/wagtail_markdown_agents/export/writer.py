@@ -299,6 +299,7 @@ class FileWriter:
         site_id: int | None = None,
         file_id: int | None = None,
         freshness=None,
+        cached: bool = False,
     ):
         """Open a current owned logical path or raise FileNotFoundError.
 
@@ -308,6 +309,8 @@ class FileWriter:
         the opened generation; a replacement becomes a miss for that caller.
         ``freshness`` (from ``site_freshness``) lets a caller that reads many
         of one site's exports check them all against one reading of the site.
+        ``cached`` lets a public read reuse a recent navigation check (#74);
+        commands and cleanup always check afresh.
         """
         validate_path(path)
         for _ in range(3):
@@ -316,7 +319,9 @@ class FileWriter:
                 record is None
                 or (site_id is not None and record.scope.site_id != site_id)
                 or (file_id is not None and record.file_id != file_id)
-                or not _retry_locked(lambda record=record: self._current(record, freshness))
+                or not _retry_locked(
+                    lambda record=record: self._current(record, freshness, cached=cached)
+                )
             ):
                 raise FileNotFoundError(path)
             try:
@@ -330,7 +335,9 @@ class FileWriter:
                     latest
                     and latest.file_id == record.file_id
                     and latest.scope_id == record.scope_id
-                    and _retry_locked(lambda latest=latest: self._current(latest, freshness))
+                    and _retry_locked(
+                        lambda latest=latest: self._current(latest, freshness, cached=cached)
+                    )
                 ):
                     keep = True
                     return stream
@@ -366,7 +373,7 @@ class FileWriter:
         file. A changed storage configuration reports the object as absent.
         """
         try:
-            if not _retry_locked(lambda: self._current(record)):
+            if not _retry_locked(lambda: self._current(record, cached=True)):
                 return False
             return self._backend(record.file).exists(record.file.storage_key)
         except StorageContractError:
@@ -632,7 +639,7 @@ class FileWriter:
         except Exception:
             logger.exception("Failed build left candidate %s for operator recovery", file.pk)
 
-    def _current(self, record, freshness=None):
+    def _current(self, record, freshness=None, *, cached=False):
         """Whether ``record`` may still be served.
 
         A page's own document is current while it was built from the page's
@@ -662,7 +669,7 @@ class FileWriter:
                 if not record.dependency_state:
                     return True
             if freshness is None:
-                return self._navigation_current(record, site_id)
+                return self._navigation_current(record, site_id, cached=cached)
             return self._names_current(record, freshness)
         except StaleBuild:
             return False
@@ -676,26 +683,35 @@ class FileWriter:
             return freshness.exports_current  # Written before #69 recorded its names.
         return freshness.named_current(record.lists)
 
-    def _navigation_current(self, record, site_id):
+    def _navigation_current(self, record, site_id, *, cached):
         """``_names_current`` from a reading of only the pages the file names (#74).
 
-        Serving a large index read the whole site, twice per request. The answer
-        is kept for ``NAVIGATION_CACHE_TIMEOUT`` seconds under the site's
-        publication version, so a publication, revocation or rebuild through
-        the package applies at once; a page restricted or changed without one
-        stops being named within that time.
+        Serving a large index read the whole site, twice per request. The site's
+        details are compared on every call. A public read (``cached``) reuses
+        the named-page answer for ``NAVIGATION_CACHE_TIMEOUT`` seconds under the
+        site's publication version, so a revocation or an export written by the
+        package applies at once; a page restricted or changed without one stops
+        being named within that time. Commands and cleanup never use the cache.
         """
-        timeout = get_setting("NAVIGATION_CACHE_TIMEOUT")
+        site = Site.objects.filter(pk=site_id).first()
+        if site is None or record.dependency_state != site_metadata(site):
+            return False
+        timeout = get_setting("NAVIGATION_CACHE_TIMEOUT") if cached else 0
         key = None
         if timeout:
             key = (
                 f"{NAVIGATION_CACHE_PREFIX}:{site_id}:{record.scope.version}"
                 f":{record.pk}:{record.file_id}"
             )
-            cached = cache.get(key)
-            if cached is not None:
-                return cached
-        result = self._names_current(record, site_freshness(site_id, record.lists))
+            result = cache.get(key)
+            if result is not None:
+                return result
+        freshness = site_freshness(site_id, record.lists)
+        result = (
+            freshness.exports_current
+            if record.lists is None
+            else freshness.named_current(record.lists)
+        )
         if key is not None:
             cache.set(key, result, timeout)
         return result

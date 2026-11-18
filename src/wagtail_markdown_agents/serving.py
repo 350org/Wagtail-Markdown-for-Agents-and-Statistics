@@ -84,7 +84,7 @@ def serve_export(request, path, *, access_method=METHOD_EXPORT_URL):
     # Pin metadata to the exact immutable generation that is opened. In particular,
     # a concurrent replacement must not attribute bytes to a different page/scope.
     try:
-        stream = FileWriter().open(path, site_id=site.pk, file_id=artifact.file_id)
+        stream = FileWriter().open(path, site_id=site.pk, file_id=artifact.file_id, cached=True)
     except (FileNotFoundError, ExportPathError):
         return None
     try:

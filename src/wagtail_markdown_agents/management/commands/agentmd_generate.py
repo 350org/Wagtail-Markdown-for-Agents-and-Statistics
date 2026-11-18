@@ -11,7 +11,7 @@ from ...settings import get_setting
 from ..export_commands import (
     BATCH_INSPECTION,
     add_scope_arguments,
-    current_pages,
+    inspect_batch,
     inspect_page,
     report,
     require_autocommit,
@@ -61,19 +61,20 @@ class Command(BaseCommand):
             needs_discovery = False
             verify = options["verify_files"]
             page_ids = selection.pages_by_site.get(site.pk, ())
-            current = set()
-            if not options["force"] and len(page_ids) > BATCH_INSPECTION:
+            decided = {}
+            if len(page_ids) > BATCH_INSPECTION:
                 try:
-                    current = current_pages(site, page_ids, writer, verify_files=verify)
+                    decided = inspect_batch(site, page_ids, writer, verify_files=verify)
                 except Exception as exc:
                     self.stderr.write(
                         f"Site {site.hostname}: checking pages together failed ({exc}); "
                         "checking each page"
                     )
             for page_id in page_ids:
-                if page_id in current:
+                state = decided.get(page_id)
+                if state is not None and not (state == "current" and options["force"]):
                     counts["skipped"] += 1
-                    self.stdout.write(f"Page {page_id}: skipped (current)")
+                    self.stdout.write(f"Page {page_id}: skipped ({state})")
                     continue
                 try:
                     state, page, path = inspect_page(page_id, writer, verify_file=verify)
