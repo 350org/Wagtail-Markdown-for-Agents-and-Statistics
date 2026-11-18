@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from copy import copy
 from dataclasses import dataclass
 
+from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.db import DEFAULT_DB_ALIAS, OperationalError, connection, router, transaction
@@ -55,10 +56,8 @@ class BuildToken:
     site_metadata: str = ""
 
 
-#: A navigation file naming more pages than this is checked against one reading
-#: of the whole site rather than page by page: llms.txt and the root index name a
-#: few sections, a blog index or the manifest name thousands of pages (#69).
-NAMED_PAGE_CHECKS = 50
+#: Cache key prefix for navigation checks made without a caller's reading (#74).
+NAVIGATION_CACHE_PREFIX = "wagtail_markdown_agents:navigation"
 
 
 def _retry_locked(fn):
@@ -662,45 +661,44 @@ class FileWriter:
                     return False
                 if not record.dependency_state:
                     return True
-            if record.lists is None or len(record.lists) > NAMED_PAGE_CHECKS:
-                # Unrecorded or long lists: one reading of the whole site.
-                freshness = freshness or site_freshness(site_id)
-            if freshness is not None:
-                if record.dependency_state != freshness.metadata:
-                    return False
-                if record.lists is None:
-                    return freshness.exports_current
-                return freshness.named_current(record.lists)
-            site = Site.objects.filter(pk=site_id).first()
-            if site is None or record.dependency_state != site_metadata(site):
-                return False
-            return self._named_current(site_id, record.lists)
+            if freshness is None:
+                return self._navigation_current(record, site_id)
+            return self._names_current(record, freshness)
         except StaleBuild:
             return False
 
-    def _named_current(self, site_id, page_ids):
-        """Whether each of a short list of pages may still be named.
+    @staticmethod
+    def _names_current(record, freshness):
+        """Whether a navigation file's site details and named pages are unchanged."""
+        if record.dependency_state != freshness.metadata:
+            return False
+        if record.lists is None:
+            return freshness.exports_current  # Written before #69 recorded its names.
+        return freshness.named_current(record.lists)
 
-        Each must be eligible, and any export it has in this site current; see
-        ``SiteFreshness.named_current``.
+    def _navigation_current(self, record, site_id):
+        """``_names_current`` from a reading of only the pages the file names (#74).
+
+        Serving a large index read the whole site, twice per request. The answer
+        is kept for ``NAVIGATION_CACHE_TIMEOUT`` seconds under the site's
+        publication version, so a publication, revocation or rebuild through
+        the package applies at once; a page restricted or changed without one
+        stops being named within that time.
         """
-        exported = {
-            page_id: (path, state)
-            for page_id, path, state in ExportArtifact.objects.filter(
-                scope__site_id=site_id, page_id__in=page_ids
-            ).values_list("page_id", "logical_path", "source_state")
-        }
-        for page_id in set(page_ids):
-            try:
-                if page_id in exported:
-                    _, _, path, state = page_state(page_id, site_id)
-                    if (path, state) != exported[page_id]:
-                        return False
-                else:
-                    page_state(page_id)
-            except StaleBuild:
-                return False
-        return True
+        timeout = get_setting("NAVIGATION_CACHE_TIMEOUT")
+        key = None
+        if timeout:
+            key = (
+                f"{NAVIGATION_CACHE_PREFIX}:{site_id}:{record.scope.version}"
+                f":{record.pk}:{record.file_id}"
+            )
+            cached = cache.get(key)
+            if cached is not None:
+                return cached
+        result = self._names_current(record, site_freshness(site_id, record.lists))
+        if key is not None:
+            cache.set(key, result, timeout)
+        return result
 
     def is_current(self, record, freshness=None, *, own=False) -> bool:
         """Whether ``record`` may be served, from database state alone.

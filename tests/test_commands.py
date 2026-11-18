@@ -95,9 +95,105 @@ def test_freshness_skip_force_and_missing_file_repair(setup):
     assert "generated=1" in output
     record = ExportArtifact.objects.select_related("file").get(page_id=page.pk)
     writer._backend(record.file).delete(record.file.storage_key)
+    # A plain run trusts the record (#74); --verify-files finds the lost file.
     output = run("agentmd_generate", "--page-id", str(page.pk))
+    assert "skipped=1" in output
+    output = run("agentmd_generate", "--page-id", str(page.pk), "--verify-files")
     assert "generated=1" in output
     assert writer.exists(record.logical_path)
+
+
+@pytest.fixture
+def batched(monkeypatch):
+    """Check every selection against one reading of its site (#74)."""
+    from wagtail_markdown_agents.management.commands import agentmd_generate
+
+    monkeypatch.setattr(agentmd_generate, "BATCH_INSPECTION", 0)
+
+
+def test_batched_run_trusts_records_unless_verifying_files(setup, batched):
+    writer, site, home = setup
+    page = article(home, "article")
+    run("agentmd_generate")
+    record = ExportArtifact.objects.select_related("file").get(page_id=page.pk)
+    writer._backend(record.file).delete(record.file.storage_key)
+    output = run("agentmd_generate")
+    assert "generated=0" in output and "failed=0" in output
+    output = run("agentmd_generate", "--verify-files")
+    assert f"Page {page.pk}: generated" in output
+    assert writer.exists(record.logical_path)
+
+
+def test_batched_inspection_agrees_with_inspecting_each_page(setup):
+    from django.utils import timezone
+    from wagtail.models import PageViewRestriction
+
+    from wagtail_markdown_agents.management.export_commands import current_pages, inspect_page
+
+    writer, site, home = setup
+    pages = [article(home, f"page-{number}") for number in range(6)]
+    unexported = article(home, "unexported")
+    run("agentmd_generate")
+    ExportArtifact.objects.filter(page_id=unexported.pk).delete()
+    # Changes that send no lifecycle signal, so the exports stay recorded.
+    Page.objects.filter(pk=pages[0].pk).update(last_published_at=timezone.now())
+    Page.objects.filter(pk=pages[1].pk).update(live=False)
+    PageAgentSettings.objects.update_or_create(page_id=pages[2].pk, defaults={"excluded": True})
+    PageViewRestriction.objects.bulk_create(
+        [PageViewRestriction(page=pages[3], restriction_type="password", password="x")]
+    )
+    ids = [home.pk, unexported.pk, *(page.pk for page in pages)]
+
+    def each():
+        return {
+            page_id
+            for page_id in ids
+            if inspect_page(page_id, writer, verify_file=False)[0] == "current"
+        }
+
+    assert current_pages(site, ids, writer) == each() == {home.pk, pages[4].pk, pages[5].pk}
+    ExportScope.objects.filter(site_id=site.pk).update(stale_before=timezone.now())
+    assert current_pages(site, ids, writer) == each() == set()
+
+
+@pytest.mark.parametrize("setup", ["remote"], indirect=True)
+def test_plain_run_cost_does_not_grow_with_the_site(setup, batched):
+    from django.db import connection
+
+    writer, site, home = setup
+    original_open = FileWriter._open_file
+
+    def measure():
+        """Queries and page-file opens of a plain run that finds every page current."""
+        queries, opens = [], []
+
+        def open_file(self, file):
+            if file.page_id is not None:
+                opens.append(file)
+            return original_open(self, file)
+
+        FileWriter._open_file = open_file
+        try:
+            with connection.execute_wrapper(
+                lambda execute, *args: queries.append(1) or execute(*args)
+            ):
+                output = run("agentmd_generate")
+        finally:
+            FileWriter._open_file = original_open
+        assert "generated=0" in output and "failed=0" in output
+        return len(queries), len(opens)
+
+    for number in range(5):
+        article(home, f"first-{number}")
+    run("agentmd_generate")
+    small, small_opens = measure()
+    for number in range(15):
+        article(home, f"second-{number}")
+    run("agentmd_generate")
+    large, large_opens = measure()
+    # Before #74: about 25 queries and one storage open per page.
+    assert large - small <= 5, (small, large)
+    assert small_opens == large_opens  # Discovery files only, not one per page.
 
 
 @pytest.mark.parametrize(

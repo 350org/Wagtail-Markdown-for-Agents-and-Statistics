@@ -7,9 +7,14 @@ from django.core.management.base import CommandError
 from wagtail.models import Page, Site
 
 from ..export.policy import ExportPolicy
-from ..export.writer import _after_commit_required
-from ..models import ExportArtifact, ExportFile
-from ..rendering.page import PageRenderError, _require_supported_page
+from ..export.state import StaleBuild, site_freshness
+from ..export.writer import StorageConfigurationChanged, _after_commit_required
+from ..models import ExportArtifact, ExportFile, ExportScope
+from ..rendering.page import PageRenderError, _require_supported_page, unsupported_reason
+
+#: A larger selection in one site is checked against one reading of the site
+#: rather than page by page (#74).
+BATCH_INSPECTION = 50
 
 
 def add_scope_arguments(parser):
@@ -80,8 +85,9 @@ def select(options, *, operation):
         return Selection((), tuple(sorted(site_ids)), {})
     selected = []
     pages_by_site = {}
+    known_sites = {site.pk: site for site in Site.objects.all()}
     for page in pages.order_by("pk").specific():
-        owner = page.get_site()
+        owner = _owner_site(page, known_sites)
         if (owner is None or owner.pk not in site_ids) and not deleting:
             continue
         if generating and page_id is not None:
@@ -110,8 +116,24 @@ def select(options, *, operation):
     )
 
 
-def inspect_page(page_id, writer):
-    """Return availability without rendering, allocating records or repairing IO."""
+def _owner_site(page, sites):
+    """``page.get_site()`` without its query per page, keeping project overrides.
+
+    Wagtail's ``get_site`` reads the site row again for every page; selecting a
+    large site made one query per page before any page was checked (#74).
+    """
+    if type(page).get_site is not Page.get_site:
+        return page.get_site()
+    parts = page.get_url_parts()
+    return sites.get(parts[0]) if parts else None
+
+
+def inspect_page(page_id, writer, *, verify_file=True):
+    """Return availability without rendering, allocating records or repairing IO.
+
+    ``verify_file`` also opens the recorded storage object, so a lost file
+    reads as ``unavailable``; without it the database record is trusted.
+    """
     page = Page.objects.filter(pk=page_id).specific().first()
     if page is None:
         return "missing_page", None, None
@@ -136,15 +158,74 @@ def inspect_page(page_id, writer):
     # finalisation, and checking it here read the whole site per index (#69).
     if record.logical_path != path or not writer.is_current(record, own=True):
         return "unavailable", page, path
-    try:
-        with writer._open_file(record.file):
-            pass
-    except FileNotFoundError:
+    if not _file_readable(writer, record.file, verify_file):
         return "unavailable", page, path
     stale_before = record.scope.stale_before
     if stale_before is not None and record.published_at < stale_before:
         return "outdated", page, path
     return "current", page, path
+
+
+def current_pages(site, page_ids, writer, *, verify_files=False):
+    """The pages of ``page_ids`` whose exports in ``site`` are current (#74).
+
+    The same answer as ``inspect_page(...)`` returning ``"current"``, read from
+    one reading of the site and one query for its export records instead of
+    about 25 queries per page. A page not confirmed here may still be current:
+    inspect it on its own. ``verify_files`` opens each confirmed page's stored
+    object, one storage request per page.
+    """
+    try:
+        freshness = site_freshness(site.pk)
+    except StaleBuild:
+        return set()
+    stale_before = (
+        ExportScope.objects.filter(site_id=site.pk).values_list("stale_before", flat=True).first()
+    )
+    records = ExportArtifact.objects.filter(
+        scope__site_id=site.pk, page_id__isnull=False
+    ).select_related("file")
+    by_page, repeated = {}, set()
+    for record in records:
+        if record.page_id in by_page:
+            repeated.add(record.page_id)  # Leave anything unusual to inspect_page.
+        by_page[record.page_id] = record
+    supported = {}
+    current = set()
+    for page_id in set(page_ids) - repeated:
+        record, page = by_page.get(page_id), freshness.snapshot.pages.get(page_id)
+        if record is None or page is None:
+            continue
+        if freshness.pages.get(page_id) != (record.logical_path, record.source_state):
+            continue
+        if stale_before is not None and record.published_at < stale_before:
+            continue
+        model = type(page)
+        if model not in supported:
+            supported[model] = not unsupported_reason(model)
+        if not supported[model]:
+            continue
+        if not _file_readable(writer, record.file, verify_files):
+            continue
+        current.add(page_id)
+    return current
+
+
+def _file_readable(writer, file, verify):
+    """Whether ``file`` is in the configured storage, opening it only if ``verify``.
+
+    Without opening anything, a file recorded under a different storage
+    configuration (a new bucket, region or location) is not readable, so the
+    next run rebuilds it rather than trusting the old record (#74).
+    """
+    try:
+        if not verify:
+            writer._backend(file)
+            return True
+        with writer._open_file(file):
+            return True
+    except (FileNotFoundError, StorageConfigurationChanged):
+        return False
 
 
 def require_autocommit():

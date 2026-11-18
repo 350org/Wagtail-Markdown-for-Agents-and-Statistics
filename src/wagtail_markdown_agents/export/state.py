@@ -8,7 +8,7 @@ from wagtail.models import Page, Site
 from ..models import ExportArtifact, PageAgentSettings
 from ..settings import DEFAULTS, NON_CONTENT_SETTINGS, get_setting
 from .policy import ExportPolicy
-from .snapshot import SiteSnapshot
+from .snapshot import SiteSnapshot, _chunks
 from .storage import digest
 
 
@@ -111,14 +111,16 @@ class SiteFreshness:
             page = Page.objects.filter(pk=page_id).first()
             if page is None or not ExportPolicy().is_eligible(page.specific):
                 return False
-        records = ExportArtifact.objects.filter(
-            scope__site_id=self.site.pk, page_id__isnull=False
-        ).values_list("page_id", "logical_path", "source_state")
-        return all(
-            self.pages.get(page_id) == (path, source_state)
-            for page_id, path, source_state in records
-            if page_id in named
-        )
+        for chunk in _chunks(named):
+            records = ExportArtifact.objects.filter(
+                scope__site_id=self.site.pk, page_id__in=chunk
+            ).values_list("page_id", "logical_path", "source_state")
+            if not all(
+                self.pages.get(page_id) == (path, source_state)
+                for page_id, path, source_state in records
+            ):
+                return False
+        return True
 
 
 def site_metadata(site, config=None):
@@ -132,14 +134,29 @@ def site_metadata(site, config=None):
     )
 
 
-def site_freshness(site_id):
+def site_freshness(site_id, page_ids=None):
+    """One reading of a site, or of only ``page_ids`` and their ancestors.
+
+    A reading of named pages answers ``named_current`` for those pages and
+    ``page_state`` for each of them, as a whole-site reading would. Its
+    ``state`` and ``exports_current`` cover only those pages (#74).
+    """
     site = Site.objects.filter(pk=site_id).select_related("root_page").first()
     if site is None:
         raise StaleBuild(f"Site {site_id} no longer exists")
-    snapshot = SiteSnapshot(site)
+    snapshot = SiteSnapshot(site, page_ids)
     config = content_config()
     states = []
-    for page in snapshot.pages.values():
+    wanted = (
+        snapshot.pages.values()
+        if page_ids is None
+        else (
+            snapshot.pages[page_id]
+            for page_id in sorted(set(page_ids))
+            if page_id in snapshot.pages
+        )
+    )
+    for page in wanted:
         try:
             _, _, path, state = page_state(page.pk, site_id, snapshot=snapshot, config=config)
         except StaleBuild:

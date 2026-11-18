@@ -54,10 +54,15 @@ exports are rebuilt. Existing owned exports for selected ineligible/unsupported 
 are withdrawn along with their dependent discovery artefacts.
 
 Without `--force`, a selected export is skipped when its recorded source state
-still matches and its exact owned storage object can be opened, unless it is
-**outdated**: published before a site-wide refresh was requested (see below). This is a
+still matches, unless it is **outdated**: published before a site-wide refresh was
+requested (see below). A selection of more than 50 pages in a site is checked
+against one reading of that site, so a run that finds every page current makes a
+fixed number of queries rather than about 25 per page (#74). A plain run trusts the
+database record that the file was written and read back. `--verify-files` also
+opens each current page's stored object, one storage request per page, and rebuilds
+any that has gone; use it after restoring or moving storage. This is a
 publication-state check, not a new content-hash incremental mode. A changed live
-revision or a missing file causes a rebuild. Pages without a revision are exported
+revision causes a rebuild, and so does a missing file with `--verify-files`. Pages without a revision are exported
 from their live row; editing that row in code does not change the recorded state. `--force` bypasses that check, including
 when project hooks or related content have changed without a new page revision.
 The general configuration-staleness workflow (#75) and hash-based incremental/delta

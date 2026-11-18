@@ -174,6 +174,8 @@ def check_settings_shape(app_configs, **kwargs):
         messages.append(_shape("COUNT_HTML_EXCLUDE", "a list of agent labels or purposes"))
     if not _non_negative_number(get_setting("DISCOVERY_CACHE_TIMEOUT")):
         messages.append(_shape("DISCOVERY_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
+    if not _non_negative_number(get_setting("NAVIGATION_CACHE_TIMEOUT")):
+        messages.append(_shape("NAVIGATION_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
     if not isinstance(get_setting("LLMS_TXT_DESCRIPTION"), str):
         messages.append(_shape("LLMS_TXT_DESCRIPTION", "a string"))
     if get_setting("PAGE_TYPES") is not None and not _labels(get_setting("PAGE_TYPES")):

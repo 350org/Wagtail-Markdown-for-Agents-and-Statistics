@@ -75,6 +75,25 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **A plain `agentmd_generate` run no longer grows with the size of the site**
+  (#74). A selection of more than 50 pages in a site is checked against one reading
+  of the site and one query for its export records. Before, the check made about 25
+  queries per page, and opened each page's stored file, one storage request per
+  page: 16.5 minutes for about 9,300 pages on S3. Choosing pages no longer runs a
+  site query per page either. A plain run now trusts the record that a file was
+  written; the new `--verify-files` option opens each file and rebuilds any that is
+  missing, as plain runs did before.
+- **Serving an index, `llms.txt` or a hierarchy export reads only the pages it
+  names** (#74). A file that named more than 50 pages read the whole site, twice
+  per request, and the HTML page's `Link` header lookup read it once more: about
+  10 seconds for a 5,288-post blog index on a 9,300-page site. A file naming fewer
+  checked each page with several queries. Both now take a fixed number of queries,
+  plus the work for each named page. The answer is reused for the new
+  `NAVIGATION_CACHE_TIMEOUT` seconds (default `60`, `0` turns it off) under the
+  site's publication version, so a change through Wagtail applies at once. A page
+  hidden without a lifecycle signal, such as by a bulk `update()`, stops being
+  named within that time rather than on the next request.
+
 - **`manifest.json` is off by default** (#69). It is for sync and RAG pipelines
   that need to detect changes, and building it reads every stored export, which
   made every `agentmd_generate` run read the whole export tree. Turn it on with
