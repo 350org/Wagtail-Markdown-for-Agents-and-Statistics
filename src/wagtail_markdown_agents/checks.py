@@ -176,6 +176,13 @@ def check_settings_shape(app_configs, **kwargs):
         messages.append(_shape("DISCOVERY_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
     if not _non_negative_number(get_setting("NAVIGATION_CACHE_TIMEOUT")):
         messages.append(_shape("NAVIGATION_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
+    limit = get_setting("LISTING_LIMIT")
+    if limit is not None and not _positive_int(limit):
+        messages.append(_shape("LISTING_LIMIT", "None or a positive whole number of pages"))
+    if not _date_fields(get_setting("LISTING_DATE_FIELDS")):
+        messages.append(
+            _shape("LISTING_DATE_FIELDS", "{'app_label.ModelName': 'date or datetime field'}")
+        )
     if not isinstance(get_setting("LLMS_TXT_DESCRIPTION"), str):
         messages.append(_shape("LLMS_TXT_DESCRIPTION", "a string"))
     if get_setting("PAGE_TYPES") is not None and not _labels(get_setting("PAGE_TYPES")):
@@ -268,6 +275,24 @@ def _field_map(value):
         isinstance(label, str) and label.count(".") == 1 and _strings(names)
         for label, names in value.items()
     )
+
+
+def _date_fields(value):
+    """A mapping of page models to one of their date or datetime fields (#76)."""
+    from django.apps import apps
+    from django.core.exceptions import FieldDoesNotExist
+    from django.db.models import DateField
+
+    if not _string_map(value):
+        return False
+    for label, name in value.items():
+        try:
+            field = apps.get_model(label)._meta.get_field(name)
+        except (LookupError, ValueError, FieldDoesNotExist):
+            return False
+        if not isinstance(field, DateField):  # DateTimeField is a DateField.
+            return False
+    return True
 
 
 def _string_map(value):

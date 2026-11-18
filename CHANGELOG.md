@@ -75,6 +75,16 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Long index listings show only the newest pages** (#76). An index that would list
+  more than `LISTING_LIMIT` pages (new, default `20`; `None` restores the full list)
+  lists the newest, newest first, under `## Latest pages (20 of N)`, with a closing
+  line and a link to `/sitemap.xml` when the site routes one. `LISTING_DATE_FIELDS`
+  names a date field per page type to decide “newest” (else `first_published_at`);
+  the 350.org profile uses the Post `published_at` date. The index names only the
+  pages it shows, so its read check stays small: a 5,288-post blog index was 842KB.
+  The `markdown_index_content` hook context gains `total`. **After upgrading, run
+  `agentmd_generate_indexes` once**: existing indexes keep their full lists until
+  they are rebuilt.
 - **A plain `agentmd_generate` run no longer grows with the size of the site**
   (#74). A selection of more than 50 pages in a site is checked against one reading
   of the selected pages and one query for the site's export records; ineligible
