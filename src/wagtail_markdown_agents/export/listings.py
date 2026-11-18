@@ -4,12 +4,15 @@ import re
 from dataclasses import dataclass
 from html import escape
 
+from django.apps import apps
 from wagtail.models import Page
 
 from ..models import ExportArtifact
 from ..public_urls import export_url, route_url
 from ..rendering.page import PageRenderError, _published_page
+from ..settings import get_setting
 from .paths import ExportPathError, site_path
+from .snapshot import _chunks
 from .state import StaleBuild, site_freshness
 
 
@@ -139,3 +142,43 @@ def directory_entries(entries, path, *, key=lambda entry: entry.path):
             for directory in indexes
         )
     ]
+
+
+def newest_entries(entries, limit):
+    """The newest ``limit`` of ``entries``, newest first, when there are more (#76).
+
+    A list within the limit is returned unchanged. "Newest" is the date that
+    ``LISTING_DATE_FIELDS`` names for the page's type (a site's own publication
+    date), else Wagtail's ``first_published_at``. Dates are read in bulk, one
+    query per configured type, so a blog index does not query each post.
+    """
+    entries = list(entries)
+    if limit is None or len(entries) <= limit:
+        return entries
+    dates = listing_dates([entry.page_id for entry in entries])
+
+    def newest(entry):
+        date = dates.get(entry.page_id)
+        return (date is not None, date or 0, entry.page_id)
+
+    return sorted(entries, key=newest, reverse=True)[:limit]
+
+
+def listing_dates(page_ids):
+    """``{page_id: date}`` for ordering listings; pages without a date are left out."""
+    dates = {}
+    for chunk in _chunks(set(page_ids)):
+        dates.update(
+            Page.objects.filter(pk__in=chunk, first_published_at__isnull=False).values_list(
+                "pk", "first_published_at"
+            )
+        )
+    for label, field in (get_setting("LISTING_DATE_FIELDS") or {}).items():
+        model = apps.get_model(label)
+        for chunk in _chunks(set(page_ids)):
+            dates.update(
+                (pk, value)
+                for pk, value in model.objects.filter(pk__in=chunk).values_list("pk", field)
+                if value is not None
+            )
+    return dates

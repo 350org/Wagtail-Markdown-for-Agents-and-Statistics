@@ -30,6 +30,11 @@ settings:
   # Pages hidden from site search and the sitemap are hidden from agents too.
   exclude_when: [hide_from_search]
 
+  # A capped index lists the newest posts by the date the site shows and sorts
+  # its blog by, not when Wagtail first published them (imported posts) (#76).
+  listing_date_fields:
+    wtrx.Post: published_at
+
   # The size each block's template shows the image at, so agents get the same
   # image as visitors. Blocks exported through their own template already use
   # the template's size. Page classes set the page hero's size. When blocks

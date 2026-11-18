@@ -59,6 +59,17 @@ listed directly rather than hidden behind an invented link. Counts describe the
 entries in that list, not all descendants recursively. Empty lists say
 “No exported pages are available.” Titles and descriptions are escaped plain text.
 
+A list longer than `LISTING_LIMIT` (default `20`; `None` lists every page) shows only
+the newest pages, newest first, under `## Latest pages (20 of 5288)`, and ends with
+“The 20 most recent of 5288 pages.” and a link to `/sitemap.xml` when the site routes
+one (#76). “Newest” is the field that `LISTING_DATE_FIELDS` names for the page's type
+(`{"app_label.Model": "published_at"}`, a date or datetime field), else Wagtail's
+`first_published_at`; dates are read in one query per type. The index records only the
+pages it shows, so a page beyond the list that becomes private does not hide it, and
+its read check costs the same however long the section grows. A blog index of 5,288
+posts was 842KB and largely repeated the sitemap. Both settings leave page documents
+unchanged; after changing them, run `agentmd_generate_indexes`.
+
 Standalone indexes cover every directory needed by a readable page export, including
 intermediate directories introduced by a path hook. Parent listings link directly
 to page exports; standalone indexes are additional directory entry points and do not
@@ -93,7 +104,8 @@ from wagtail import hooks
 def customise_index(content, path, context):
     # path is site-relative, e.g. "campaigns/index.md".
     # context contains site, path, page (published owner or None),
-    # entries (an immutable tuple of IndexEntry), and count.
+    # entries (an immutable tuple of IndexEntry), count (entries shown) and
+    # total (entries before LISTING_LIMIT).
     # Each entry exposes page_id, path (hostname-prefixed), url, title, description.
     if context["page"] and context["page"]._meta.label == "myapp.AuthoredIndexPage":
         return ""  # This project's page renderer already supplies its listing.

@@ -33,6 +33,8 @@ Silence a check you have deliberately chosen to ignore with Django's
 | `STATS_RETENTION_DAYS` | Positive whole number of days kept by `agentmd_prune_stats` (#36) | `90` |
 | `COUNT_HTML_EXCLUDE` | List of registry agent labels or purposes whose HTML reads aren't counted (#61) | `[]` |
 | `DISCOVERY_CACHE_TIMEOUT` | Seconds, `0` or more; `0` disables the discovery cache | `60` |
+| `LISTING_LIMIT` | `None` or a positive whole number of pages an index lists before it shows only the newest (#76) | `20` |
+| `LISTING_DATE_FIELDS` | `{"app_label.ModelName": "date or datetime field"}` deciding “newest” per type | `{}` |
 | `NAVIGATION_CACHE_TIMEOUT` | Seconds, `0` or more; `0` checks an index's named pages on every request (#74) | `60` |
 | `LLMS_TXT_DESCRIPTION` | String | `""` |
 | `PAGE_TYPES` | `None` or a list of `"app_label.ModelName"` | `None` |

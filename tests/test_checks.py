@@ -87,6 +87,13 @@ def test_non_dict_settings_survive_startup_and_all_checks(settings, config, urlc
         ("STATS_RETENTION_DAYS", "90"),
         ("DISCOVERY_CACHE_TIMEOUT", -1),
         ("DISCOVERY_CACHE_TIMEOUT", "60"),
+        ("NAVIGATION_CACHE_TIMEOUT", -1),
+        ("LISTING_LIMIT", 0),
+        ("LISTING_LIMIT", "20"),
+        ("LISTING_DATE_FIELDS", ["published_at"]),
+        ("LISTING_DATE_FIELDS", {"testapp.NewsPage": "author_name"}),
+        ("LISTING_DATE_FIELDS", {"testapp.NewsPage": "missing"}),
+        ("LISTING_DATE_FIELDS", {"testapp.Missing": "published_at"}),
         ("LLMS_TXT_DESCRIPTION", None),
         ("PAGE_TYPES", "testapp.ArticlePage"),
         ("PAGE_TYPES", ["ArticlePage"]),
@@ -113,6 +120,8 @@ def test_wrong_shapes_error_and_name_the_key(settings, key, value):
         {"PAGE_TYPES": ["testapp.ArticlePage"], "PAGE_FIELDS": {"testapp.ArticlePage": ["body"]}},
         {"RENDERERS": {"a.B": "c.d"}, "SITES": ["example.org"], "CONTENT_SIGNAL": ""},
         {"SITES": "all", "LLMS_TXT_DESCRIPTION": "Intro"},
+        {"LISTING_LIMIT": None, "NAVIGATION_CACHE_TIMEOUT": 0},
+        {"LISTING_LIMIT": 5, "LISTING_DATE_FIELDS": {"testapp.NewsPage": "published_at"}},
     ],
 )
 def test_valid_shapes_pass(settings, config):
