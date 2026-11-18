@@ -42,10 +42,10 @@ def measure(writer, site, monkeypatch):
         counts["opens"] += 1
         return original_open(self, file)
 
-    def snapshot(self, site):
+    def snapshot(self, site, *args, **kwargs):
         # Every reading of a site's state (site_state, site_freshness) builds one.
         counts["site_scans"] += 1
-        original_snapshot(self, site)
+        original_snapshot(self, site, *args, **kwargs)
 
     monkeypatch.setattr(FileWriter, "_open_file", open_file)
     monkeypatch.setattr(SiteSnapshot, "__init__", snapshot)

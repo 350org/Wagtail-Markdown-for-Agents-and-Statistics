@@ -110,6 +110,8 @@ def test_page_whose_locale_differs_from_its_tree_exports_under_that_tree(transla
     for candidate in (english_cookies, stray):
         assert ExportPolicy(snapshot).relative_path(candidate) == paths[candidate.pk]
         assert ExportPolicy().relative_path(candidate) == paths[candidate.pk]
+        named = SiteSnapshot(site, [candidate.pk])  # #74
+        assert ExportPolicy(named).relative_path(candidate) == paths[candidate.pk]
     response = client.get(
         urlsplit(stray.full_url).path + "?output_format=md", HTTP_HOST="example.org"
     )
@@ -186,12 +188,15 @@ def test_translated_root_at_different_depth_and_inherited_restriction(translated
     Site.clear_site_root_paths_cache()
     snapshot = SiteSnapshot(site)
     assert ExportPolicy(snapshot).relative_path(french_page) == "example.org/fr/article.md"
+    named = SiteSnapshot(site, [french_page.pk])  # #74
+    assert ExportPolicy(named).relative_path(french_page) == "example.org/fr/article.md"
     assert ExportPolicy().relative_path(french_page) == "example.org/fr/article.md"
     french_page.unpublish()
     assert ExportPolicy().relative_path(french_home) == "example.org/fr/index.md"
     PageViewRestriction.objects.create(page=container, restriction_type="login")
     snapshot = SiteSnapshot(site)
     assert not ExportPolicy(snapshot).is_eligible(french_home)
+    assert not ExportPolicy(SiteSnapshot(site, [french_home.pk])).is_eligible(french_home)
     assert not ExportPolicy().is_eligible(french_home)
 
 

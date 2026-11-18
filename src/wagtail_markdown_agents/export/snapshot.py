@@ -5,11 +5,28 @@ from django.db.models import BooleanField, Q
 from wagtail.models import Page, PageViewRestriction, Site
 
 from ..models import PageAgentSettings
-from .policy import excluded_by_attribute
+from .policy import RESERVED_NAMES, excluded_by_attribute
+
+#: Values per ``IN (...)`` lookup, well inside every supported database's limit.
+CHUNK = 2000
+
+
+def _chunks(values):
+    values = sorted(values)
+    for start in range(0, len(values), CHUNK):
+        yield values[start : start + CHUNK]
 
 
 class SiteSnapshot:
-    def __init__(self, site):
+    """Every page of a site's trees, or only the pages one check names.
+
+    ``page_ids`` limits the reading to those pages and their ancestors, with
+    just the children, siblings, restrictions and settings that eligibility
+    and export paths read for them (#74). Policy answers for those pages are
+    the same as from a whole-site reading; other pages are not in it.
+    """
+
+    def __init__(self, site, page_ids=None):
         root = site.root_page
         roots = (
             list(root.get_translations(inclusive=True))
@@ -21,15 +38,32 @@ class SiteSnapshot:
         for tree_root in roots:
             tree_filter |= Q(path__startswith=tree_root.path)
             related_filter |= Q(page__path__startswith=tree_root.path)
-        self.pages = {}
-        for page in Page.objects.filter(tree_filter).select_related("locale").order_by("pk"):
+        ancestors = [
+            tree_root.path[:length]
+            for tree_root in roots
+            for length in range(Page.steplen, len(tree_root.path), Page.steplen)
+        ]
+        self._attribute_names = None
+        self._page_sites = {}
+        self._attribute_excluded = set()
+        self.sites = {item.pk: item for item in Site.objects.select_related("root_page")}
+        if page_ids is None:
+            self._read_site(tree_filter, related_filter, ancestors)
+        else:
+            self._read_pages(set(page_ids), roots, tree_filter, ancestors)
+
+    def _keep(self, rows):
+        for page in rows:
             specific = page.specific_deferred
             # Deferred specific instances do not retain the base row's related
             # field cache on every supported Wagtail version.
             specific.locale = page.locale
             self.pages[page.pk] = specific
+
+    def _read_site(self, tree_filter, related_filter, ancestors):
+        self.pages = {}
+        self._keep(Page.objects.filter(tree_filter).select_related("locale").order_by("pk"))
         self.by_path = {page.path: page for page in self.pages.values()}
-        self.sites = {item.pk: item for item in Site.objects.select_related("root_page")}
         self.live_parents = {
             page.path[: -Page.steplen] for page in self.pages.values() if page.live
         }
@@ -42,19 +76,64 @@ class SiteSnapshot:
                 "page_id", "excluded", "extra_frontmatter"
             )
         }
-        ancestors = [
-            tree_root.path[:length]
-            for tree_root in roots
-            for length in range(Page.steplen, len(tree_root.path), Page.steplen)
-        ]
-        self._attribute_names = None
-        self._page_sites = {}
-        self._attribute_excluded = set()
         self.restricted_paths = set(
             PageViewRestriction.objects.filter(related_filter | Q(page__path__in=ancestors))
             .exclude(restriction_type=PageViewRestriction.NONE)
             .values_list("page__path", flat=True)
         )
+
+    def _read_pages(self, page_ids, roots, tree_filter, ancestors):
+        self.pages = {}
+        for chunk in _chunks(page_ids):
+            self._keep(Page.objects.filter(tree_filter, pk__in=chunk).select_related("locale"))
+        named = list(self.pages.values())
+        root_paths = [tree_root.path for tree_root in roots]
+        lineage = {
+            page.path[:length]
+            for page in named
+            for length in range(Page.steplen, len(page.path), Page.steplen)
+            if any(page.path[:length].startswith(path) for path in root_paths)
+        } - {page.path for page in named}
+        for chunk in _chunks(lineage):
+            self._keep(Page.objects.filter(path__in=chunk).select_related("locale"))
+        self.by_path = {page.path: page for page in self.pages.values()}
+        # Only a named page's own children decide whether it is an index.
+        parents = [page.path for page in named if page.numchild]
+        self.live_parents = set()
+        for path in parents:
+            if Page.objects.filter(
+                path__startswith=path, depth=len(path) // Page.steplen + 1, live=True
+            ).exists():
+                self.live_parents.add(path)
+        # Siblings matter only where a reserved name has to be mangled.
+        reserved = {
+            page.path[: -Page.steplen]
+            for page in self.pages.values()
+            if page.slug in RESERVED_NAMES
+        }
+        self.sibling_slugs = set()
+        for parent in reserved:
+            self.sibling_slugs.update(
+                (parent, slug)
+                for slug in Page.objects.filter(
+                    path__startswith=parent, depth=len(parent) // Page.steplen + 1
+                ).values_list("slug", flat=True)
+            )
+        self.settings = {}
+        for chunk in _chunks(page_ids):
+            self.settings.update(
+                (row.pop("page_id"), row)
+                for row in PageAgentSettings.objects.filter(page_id__in=chunk).values(
+                    "page_id", "excluded", "extra_frontmatter"
+                )
+            )
+        self.restricted_paths = set()
+        for chunk in _chunks(set(self.by_path) | set(ancestors)):
+            self.restricted_paths.update(
+                PageViewRestriction.objects.filter(page__path__in=chunk)
+                .exclude(restriction_type=PageViewRestriction.NONE)
+                .values_list("page__path", flat=True)
+            )
 
     def site_for_page(self, page):
         # Preserve project routing overrides. Standard get_site merely looks up

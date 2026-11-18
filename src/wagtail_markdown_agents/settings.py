@@ -42,6 +42,9 @@ DEFAULTS: dict[str, Any] = {
     "LINK_HEADER": True,
     # Seconds to cache discovery resolution per site/path/storage; 0 disables.
     "DISCOVERY_CACHE_TIMEOUT": 60,
+    # Seconds to reuse the check that an index's or llms.txt's named pages are
+    # still public, per site publication version; 0 checks every request (#74).
+    "NAVIGATION_CACHE_TIMEOUT": 60,
     # Days of agent access statistics kept by agentmd_prune_stats (#36).
     "STATS_RETENTION_DAYS": 90,
     # Count HTML page reads by registry agents, next to Markdown (#61).
@@ -73,6 +76,7 @@ NON_CONTENT_SETTINGS = frozenset(
         "MANIFEST",
         "LINK_HEADER",
         "DISCOVERY_CACHE_TIMEOUT",
+        "NAVIGATION_CACHE_TIMEOUT",
         "STATS_RETENTION_DAYS",
         "COUNT_HTML",
         "COUNT_HTML_EXCLUDE",

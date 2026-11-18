@@ -8,7 +8,15 @@ from ...export.writer import FileWriter
 from ...models import ExportArtifact
 from ...rendering.page import PageRenderError
 from ...settings import get_setting
-from ..export_commands import add_scope_arguments, inspect_page, report, require_autocommit, select
+from ..export_commands import (
+    BATCH_INSPECTION,
+    add_scope_arguments,
+    current_pages,
+    inspect_page,
+    report,
+    require_autocommit,
+    select,
+)
 
 #: Builds per page (and per site finalisation) before a superseded build fails.
 #: The writer rejects any build that a concurrent publication, revocation or
@@ -26,6 +34,11 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--dry-run", action="store_true", help="Inspect the plan without writing"
+        )
+        parser.add_argument(
+            "--verify-files",
+            action="store_true",
+            help="Open each current page's stored file and rebuild any that is missing",
         )
 
     def handle(self, *args, **options) -> None:
@@ -46,9 +59,24 @@ class Command(BaseCommand):
             pending_indexes = []
             site_failed = False
             needs_discovery = False
-            for page_id in selection.pages_by_site.get(site.pk, ()):
+            verify = options["verify_files"]
+            page_ids = selection.pages_by_site.get(site.pk, ())
+            current = set()
+            if not options["force"] and len(page_ids) > BATCH_INSPECTION:
                 try:
-                    state, page, path = inspect_page(page_id, writer)
+                    current = current_pages(site, page_ids, writer, verify_files=verify)
+                except Exception as exc:
+                    self.stderr.write(
+                        f"Site {site.hostname}: checking pages together failed ({exc}); "
+                        "checking each page"
+                    )
+            for page_id in page_ids:
+                if page_id in current:
+                    counts["skipped"] += 1
+                    self.stdout.write(f"Page {page_id}: skipped (current)")
+                    continue
+                try:
+                    state, page, path = inspect_page(page_id, writer, verify_file=verify)
                     owner = page.get_site() if page is not None else None
                     if owner is None or owner.pk != site.pk:
                         counts["skipped"] += 1
@@ -121,7 +149,7 @@ class Command(BaseCommand):
                     self._retry(batch.finalise, f"Site {site.hostname}: retrying discovery")
                     counts["discovery_scopes"] += 1
                 for page_id in pending_indexes:
-                    state, _, _ = inspect_page(page_id, writer)
+                    state, _, _ = inspect_page(page_id, writer, verify_file=verify)
                     result = "generated" if state == "current" else "skipped"
                     counts[result] += 1
                     self.stdout.write(f"Page {page_id}: {result}")

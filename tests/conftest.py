@@ -17,10 +17,28 @@ from wagtail_markdown_agents.settings import DEFAULTS
 
 
 @pytest.fixture(autouse=True)
+def empty_cache():
+    """Cached checks are keyed by row IDs, which a flushed database reuses."""
+    from django.core.cache import cache
+
+    cache.clear()
+
+
+@pytest.fixture(autouse=True)
 def manifest_on(monkeypatch):
     """The suite exercises the manifest; it is off by default (#69), which
     tests/test_routine_refresh.py covers with an explicit MANIFEST=False."""
     monkeypatch.setitem(DEFAULTS, "MANIFEST", True)
+
+
+@pytest.fixture(autouse=True)
+def navigation_checked_every_request(monkeypatch):
+    """The suite proves the read-time privacy check on the very next request.
+
+    The shipped default reuses the answer for 60 seconds (#74); the tests that
+    set NAVIGATION_CACHE_TIMEOUT explicitly cover that.
+    """
+    monkeypatch.setitem(DEFAULTS, "NAVIGATION_CACHE_TIMEOUT", 0)
 
 
 @pytest.fixture(autouse=True)

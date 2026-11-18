@@ -15,8 +15,11 @@ pytestmark = pytest.mark.django_db(transaction=True)
 setup = test_writer.setup
 
 
-@pytest.mark.parametrize("mode", ["plain", "restricted", "excluded", "nested", "hook", "types"])
-def test_snapshot_matches_policy_and_state(setup, settings, mode):
+@pytest.mark.parametrize("reading", ["site", "named"])
+@pytest.mark.parametrize(
+    "mode", ["plain", "restricted", "restricted-section", "excluded", "nested", "hook", "types"]
+)
+def test_snapshot_matches_policy_and_state(setup, settings, mode, reading):
     writer, storage, site, page = setup
     root = site.root_page
     section = root.add_child(instance=ArticlePage(title="Index", slug="index"))
@@ -27,6 +30,8 @@ def test_snapshot_matches_policy_and_state(setup, settings, mode):
     leaf.save_revision().publish()
     if mode == "restricted":
         PageViewRestriction.objects.create(page=root.get_parent(), restriction_type="login")
+    elif mode == "restricted-section":
+        PageViewRestriction.objects.create(page=section, restriction_type="login")
     elif mode == "excluded":
         PageAgentSettings.objects.create(page=leaf, excluded=True)
     elif mode == "nested":
@@ -48,9 +53,13 @@ def test_snapshot_matches_policy_and_state(setup, settings, mode):
         hooks.register_temporarily("markdown_export_eligible", veto),
         hooks.register_temporarily("markdown_export_path", relocate),
     ):
-        snapshot = SiteSnapshot(Site.objects.select_related("root_page").get(pk=site.pk))
-        plain, batched = ExportPolicy(), ExportPolicy(snapshot)
+        reading_site = Site.objects.select_related("root_page").get(pk=site.pk)
+        whole = SiteSnapshot(reading_site)
+        plain = ExportPolicy()
         for candidate in root.get_descendants(inclusive=True).specific():
+            # A reading of just this page must answer as the whole site's does (#74).
+            snapshot = whole if reading == "site" else SiteSnapshot(reading_site, [candidate.pk])
+            batched = ExportPolicy(snapshot)
             assert batched.is_eligible(candidate) == plain.is_eligible(candidate)
             assert batched.relative_path(candidate) == plain.relative_path(candidate)
             try:

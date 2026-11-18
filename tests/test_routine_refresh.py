@@ -68,9 +68,9 @@ def measure(monkeypatch, action):
         counts["opens"] += 1
         return original_open(self, file)
 
-    def snapshot(self, site):
+    def snapshot(self, site, *args, **kwargs):
         counts["site_scans"] += 1
-        original_snapshot(self, site)
+        original_snapshot(self, site, *args, **kwargs)
 
     def publish(self, token, markdown, **kwargs):
         counts["published"].append(token.path)
@@ -416,3 +416,41 @@ def test_hierarchy_export_is_hidden_when_a_named_page_turns_private(setup, setti
     PageViewRestriction.objects.create(page=child, restriction_type="login")
     assert not ExportArtifact.objects.filter(page_id=parent.pk).exists()
     assert ExportArtifact.objects.filter(page_id=other.pk).exists()
+
+
+def test_cached_navigation_check_follows_publication_version(setup, settings, client):
+    """The serving check is reused until the site's next publication (#74).
+
+    A change through Wagtail withdraws what names the page at once; one that
+    sends no signal stops being named within NAVIGATION_CACHE_TIMEOUT seconds.
+    """
+    from django.core.cache import cache
+
+    writer, site, home = setup
+    settings.WAGTAIL_MARKDOWN_AGENTS = {
+        **settings.WAGTAIL_MARKDOWN_AGENTS,
+        "AUTO_GENERATE": False,
+        "INCLUDE_HIERARCHY": True,
+        "NAVIGATION_CACHE_TIMEOUT": 60,
+    }
+    parent = article(home, "parent")
+    child = article(parent, "child", title="Secret child")
+    other = article(home, "other")
+    writer.generate(parent)
+
+    def status(path):
+        return client.get(f"/markdown/{path}", HTTP_HOST="example.org").status_code
+
+    assert status("parent/index.md") == 200
+    PageViewRestriction.objects.bulk_create(
+        [PageViewRestriction(page=child, restriction_type="login")]
+    )
+    assert status("parent/index.md") == 200  # The cached answer, for now.
+    writer.generate(other)  # Any publication in the site starts a new check.
+    assert status("parent/index.md") == 404
+    PageViewRestriction.objects.all().delete()
+    cache.clear()  # As when the cached answer expires.
+    assert status("parent/index.md") == 200
+    # A change through Wagtail withdraws what names the page, cache or not.
+    PageViewRestriction.objects.create(page=child, restriction_type="login")
+    assert status("parent/index.md") == 404
