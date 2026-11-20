@@ -107,7 +107,8 @@ cached.
 
 A successful response is the stored bytes with `Content-Type: text/markdown;
 charset=utf-8`, `Cache-Control: private, no-store, max-age=0`, `Vary: Accept,
-User-Agent`, `X-Markdown-Source` (the canonical HTML URL) and the configurable
+User-Agent`, `X-Markdown-Source` (the canonical HTML URL), `Link: <page URL>;
+rel="canonical"` and the configurable
 `Content-Signal`. `CONTENT_SIGNAL` defaults to `ai-input=yes, search=yes`, an
 operator policy statement that says nothing about `ai-train`; set it to `""` to omit
 the header. Optional server-specific headers such as `X-Accel-Expires: 0` or

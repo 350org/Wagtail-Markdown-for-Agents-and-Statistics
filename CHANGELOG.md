@@ -8,6 +8,15 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- **Markdown responses name the page as canonical** (#79). Every page-owned
+  Markdown response, whether from the export route or from query, Accept or
+  User-Agent negotiation, sends `Link: <page URL>; rel="canonical"` next to
+  `X-Markdown-Source`, so search engines and AI search indexes cite the page
+  rather than the Markdown file. Aggregates get none. The
+  `construct_markdown_response_headers` hook can change or remove it. Links inside
+  the Markdown still point to export URLs, so agents go from one Markdown file to
+  the next without fetching HTML.
+
 - **HTML page reads by registry agents are counted, on by default** (#61). A
   successful HTML page GET whose User-Agent matches the agent registry records
   one daily `html` counter in `AgentAccess`, using the same upsert, row shape and

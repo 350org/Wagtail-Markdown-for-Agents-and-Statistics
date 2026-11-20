@@ -69,9 +69,11 @@ def test_html_200_carries_link_and_vary_accept(corpus, client, events):
     head = client.head("/article/", HTTP_HOST="example.org", **BROWSER)
     assert head.status_code == 200 and head["Link"] == LINK
     assert alternate_url(record) == "http://example.org/article/?output_format=md"
-    # The Markdown response itself is never given a discovery header.
+    # The Markdown response itself is never given a discovery header; it names
+    # the page as canonical instead (#79).
     response = get(client, "/article/", **MARKDOWN)
-    assert is_markdown(response) and not response.has_header("Link")
+    assert is_markdown(response)
+    assert response["Link"] == '<http://example.org/article/>; rel="canonical"'
     body(response)
     assert len(events) == 1
 

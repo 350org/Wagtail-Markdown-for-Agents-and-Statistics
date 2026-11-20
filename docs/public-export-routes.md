@@ -93,6 +93,11 @@ Successful responses default to:
 - `Cache-Control: private, no-store, max-age=0`
 - `Vary: Accept, User-Agent`
 - `X-Markdown-Source`: canonical HTML URL for page-owned exports; omitted for aggregates
+- `Link: <page URL>; rel="canonical"` for page-owned exports, so search engines and
+  AI search indexes cite the page rather than the Markdown file; omitted for aggregates.
+  It is always the page's Wagtail URL. If a site's HTML names a different canonical
+  (for example an editor-set URL for a cross-posted press release), search engines
+  follow the chain from the Markdown to the page to that URL.
 - `Content-Signal`: `ai-input=yes, search=yes`
 
 `CONTENT_SIGNAL` is an operator policy statement enabling AI input and search in

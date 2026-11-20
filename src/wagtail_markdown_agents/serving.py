@@ -6,6 +6,7 @@ import re
 from django.core.exceptions import ImproperlyConfigured
 from django.http import FileResponse, HttpResponseNotAllowed
 from django.http.request import split_domain_port
+from django.utils.encoding import iri_to_uri
 from wagtail import hooks
 from wagtail.models import Page, Site
 
@@ -124,11 +125,13 @@ def _headers(request, context):
     if not isinstance(content_signal, str):
         raise ImproperlyConfigured("WAGTAIL_MARKDOWN_AGENTS CONTENT_SIGNAL must be a string")
     page = context["page"]
+    source = page.full_url if page else None
     values = {
         "Cache-Control": "private, no-store, max-age=0",
         "Vary": "Accept, User-Agent",
         "Content-Signal": content_signal,
-        "X-Markdown-Source": page.full_url if page else None,
+        "X-Markdown-Source": source,
+        "Link": f'<{iri_to_uri(source)}>; rel="canonical"' if source else None,
     }
     for hook in hooks.get_hooks(HEADERS_HOOK):
         hook(values, request, context)
