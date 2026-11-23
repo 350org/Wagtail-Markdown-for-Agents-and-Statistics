@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2026-11-06.1",
+  "version": "2026-11-23.1",
   "agents": [
     {
       "label": "GPTBot",
@@ -171,12 +171,13 @@
       "purposes": [
         "search"
       ],
-      "auto_markdown": false,
+      "auto_markdown": true,
       "sources": [
+        "https://developers.facebook.com/docs/sharing/webmasters/crawler",
         "https://radar.cloudflare.com/bots/directory/meta-web-indexer"
       ],
-      "reviewed": "2026-09-22",
-      "notes": "Purpose follows Radar description of Meta AI search; its Social / Link Preview category conflicts. Recognition only pending operator and serving validation."
+      "reviewed": "2026-11-23",
+      "notes": "Meta documents it as the crawler for Meta AI search, which cites and links to the pages it reads; the documentation URL is in its own User-Agent. Served automatically from 2026-11-23.1: it followed Markdown links in production logs. Radar's Social / Link Preview category conflicts with Meta's description; purpose follows the operator."
     },
     {
       "label": "MistralAI-User",

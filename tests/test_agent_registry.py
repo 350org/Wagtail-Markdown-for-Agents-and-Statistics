@@ -139,6 +139,8 @@ def test_every_inherited_string_is_active_excluded_or_deferred():
         "Perplexity-User",
         "meta-externalagent",
         "meta-externalfetcher/",
+        # Operator-documented Meta AI search crawler, served from 2026-11-23.1.
+        "meta-webindexer",
         "MistralAI-User",
         "DuckAssistBot",
         *RESTORED_AUTO,

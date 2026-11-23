@@ -8,6 +8,12 @@ versioning: [SemVer](https://semver.org/).
 
 ### Added
 
+- Agent registry `2026-11-23.1` serves Markdown automatically to `meta-webindexer`,
+  Meta's crawler for Meta AI search, which was recognition-only. Meta now documents it,
+  and it followed Markdown links in production logs. That makes 24 identities served
+  automatically out of 72. The Cloudflare cache-bypass expression gains its token, so
+  regenerate the rule (`python -m wagtail_markdown_agents.cloudflare`) when deploying.
+
 - **Markdown responses name the page as canonical** (#79). Every page-owned
   Markdown response, whether from the export route or from query, Accept or
   User-Agent negotiation, sends `Link: <page URL>; rel="canonical"` next to
