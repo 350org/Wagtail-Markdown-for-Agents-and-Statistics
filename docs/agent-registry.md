@@ -1,7 +1,7 @@
 # Agent registry
 
-Registry `2026-11-06.1` contains 72 recognised HTTP identities and enables
-automatic Markdown for 23. It builds on the bounded `2026-09-22.1` baseline, which
+Registry `2026-11-23.1` contains 72 recognised HTTP identities and enables
+automatic Markdown for 24. It builds on the bounded `2026-09-22.1` baseline, which
 had 23 identities. Every one of the 69 strings inherited from the WordPress plugin now
 has a recorded disposition:
 
@@ -52,6 +52,9 @@ operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` a
 [review](contributing/agent-registry-review.md#additions-in-2026-09-282).
 `2026-11-06.1` adds Anthropic's hosted browser, `Claude-Agent`, as recognition-only; see
 [the review](contributing/agent-registry-review.md#additions-in-2026-11-061).
+`2026-11-23.1` serves `meta-webindexer` automatically, now that Meta documents it as
+its Meta AI search crawler; see
+[the review](contributing/agent-registry-review.md#changes-in-2026-11-231).
 
 | Stored label | Estimated purpose | Automatic Markdown |
 | --- | --- | --- |
@@ -65,7 +68,7 @@ operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` a
 | `Perplexity-User` | on-demand | Yes |
 | `meta-externalagent` | training | Yes |
 | `meta-externalfetcher/` | on-demand | Yes |
-| `meta-webindexer` | search | No |
+| `meta-webindexer` | search | Yes, from `2026-11-23.1` |
 | `MistralAI-User` | on-demand | Yes |
 | `DuckAssistBot` | on-demand | Yes |
 | `Google-Agent` | on-demand | No |

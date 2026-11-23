@@ -179,6 +179,29 @@ automatically to 23, so the Cloudflare cache-bypass expression is unchanged. The
 has no historical counters. The SAIL addresses are recorded as evidence only: this
 package does not check where a request comes from.
 
+## Changes in 2026-11-23.1
+
+Meta now documents `meta-webindexer` as the crawler for Meta AI search: it "navigates
+the web to improve Meta AI search result quality", and Meta AI cites and links to the
+pages it reads. The documentation URL is the one in its own User-Agent. That settles
+the operator question left open on 22 September, and makes it a public, dedicated AI
+search crawler with an operator-documented token, which the automatic Markdown policy
+serves.
+
+Serving was checked in production access logs from two sites running the WordPress
+plugin, 16–22 November 2026. It followed `?output_format=md` links 58 times, every one
+a 200, while about 1,000 of its page reads got HTML. The WordPress plugin (1.8.0-rc.3)
+and the shared agent-signals list (revision 3) serve it from the same week.
+
+| Stored label | HTTP token | Operator | Purpose | Evidence | Change |
+| --- | --- | --- | --- | --- | --- |
+| `meta-webindexer` | `meta-webindexer` | Meta | search | [1](https://developers.facebook.com/docs/sharing/webmasters/crawler) [2](https://radar.cloudflare.com/bots/directory/meta-web-indexer) | Recognition-only → automatic Markdown |
+
+Radar's Social / Link Preview category still conflicts; the purpose follows Meta. Registry
+`2026-11-23.1` recognises 72 identities and serves Markdown automatically to 24, so the
+Cloudflare cache-bypass expression gains `meta-webindexer`: regenerate it on deploy. The
+label and its counters are unchanged.
+
 ## Read-time category changes
 
 Categories are calculated when reports are read, so these corrections apply to
