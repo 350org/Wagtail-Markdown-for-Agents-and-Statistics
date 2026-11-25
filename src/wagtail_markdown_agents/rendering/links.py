@@ -14,7 +14,7 @@ from markdown_it.rules_inline import autolink, image, link
 from wagtail.models import Page, PageViewRestriction
 
 from ..export.paths import ExportPathError
-from ..export.state import StaleBuild, page_state, site_freshness
+from ..export.state import StaleBuild, page_state
 from ..export.writer import FileWriter
 from ..models import ExportArtifact
 from ..public_urls import export_url
@@ -48,30 +48,22 @@ class LinkResolver:
         self.trees = None
         site_id = self.site.pk if self.site else None
         # A batch's reading of the site checks every target (an index lists
-        # all its children); without one, a reading is made only when needed.
+        # all its children); without one, each target is checked on its own.
         self.batch = freshness if freshness and freshness.site.pk == site_id else None
-        self.freshness = self.batch
 
     def _require_current(self, path, record):
         """Raise FileNotFoundError unless a link target's export may be served.
 
         The check uses database state alone, as listings do: opening each
         target cost remote storage requests per link, and an index links to
-        every page it lists (#69). Checking an index or discovery file reads
-        the whole site, so one reading serves every such target in this
-        render (#66). Without a batch's reading, leaf exports keep the
-        cheaper per-page check.
+        every page it lists (#69). A batch's reading checks every target at
+        once (#66). Without one, a page's own document is checked alone, and
+        an index or discovery file through the pages it names, as serving
+        checks it: reading the whole site for one link made publishing a page
+        that links to an index grow with the site (#90).
         """
-        freshness = self.batch
-        if freshness is None and (record.page_id is None or record.dependency_state):
-            if self.freshness is None:
-                try:
-                    self.freshness = site_freshness(self.site.pk)
-                except StaleBuild as exc:
-                    raise FileNotFoundError(path) from exc
-            freshness = self.freshness
         if record.scope.site_id != self.site.pk or not FileWriter().is_current(
-            record, freshness, own=True
+            record, self.batch, own=True
         ):
             raise FileNotFoundError(path)
 

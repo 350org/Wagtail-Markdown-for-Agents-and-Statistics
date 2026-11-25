@@ -54,6 +54,10 @@ class BuildToken:
     # navigation was built from. dependency_state above is the whole-site
     # reading checked at commit.
     site_metadata: str = ""
+    # The pages a navigation build names. When given, the site readings above
+    # (dependency_state, and source_state for a site file) cover only these
+    # pages, so commit does not read the whole site (#90).
+    reading: tuple | None = None
 
 
 #: Cache key prefix for navigation checks made without a caller's reading (#74).
@@ -104,6 +108,18 @@ def _locked(site_id):
             time.sleep(0.01)
 
 
+def _reading(page_ids):
+    return None if page_ids is None else tuple(sorted(set(page_ids)))
+
+
+def _reading_state(site_id, page_ids=None):
+    """``(site, state)`` of the whole site, or of a reading of only ``page_ids``."""
+    if page_ids is None:
+        return site_state(site_id)
+    fresh = site_freshness(site_id, page_ids)
+    return fresh.site, fresh.state
+
+
 def _after_commit_required():
     if connection.in_atomic_block or not connection.get_autocommit():
         raise RuntimeError("Publish Markdown after commit, using transaction.on_commit()")
@@ -140,12 +156,16 @@ class FileWriter:
                     "The v0.1 export writer requires CMS and export records on the default database"
                 )
 
-    def begin(self, page, *, depends_on_site=False, dependency_state=None) -> BuildToken:
+    def begin(
+        self, page, *, depends_on_site=False, dependency_state=None, reading=None
+    ) -> BuildToken:
         """Capture before rendering; a supplied page contributes only its ID.
 
         ``dependency_state`` is a site state digest the caller has just read, used
         as the build's dependency instead of reading the site again. Publication
-        still compares it with the site's state at commit (#66).
+        still compares it with the site's state at commit (#66). ``reading``
+        names the pages that state covers (``site_freshness(site, reading)``);
+        without it the dependency is the whole site.
         """
         if isinstance(page, Page) and page._state.db not in {None, DEFAULT_DB_ALIAS}:
             raise ImproperlyConfigured("The export page must come from the default database")
@@ -159,7 +179,7 @@ class FileWriter:
                 or get_setting("INCLUDE_HIERARCHY")
                 or current.get_children().live().exists()
             ):
-                dependency = dependency_state or site_state(site.pk)[1]
+                dependency = dependency_state or _reading_state(site.pk, reading)[1]
                 metadata = site_metadata(site)
             return BuildToken(
                 site.pk,
@@ -170,11 +190,13 @@ class FileWriter:
                 dependency,
                 scope.content_version,
                 metadata,
+                _reading(reading),
             )
 
-    def begin_site(self, site_id: int, path: str) -> BuildToken:
+    def begin_site(self, site_id: int, path: str, *, reading=None) -> BuildToken:
+        """Capture a site file's build; ``reading`` as for :meth:`begin`."""
         with _locked(site_id) as scope:
-            site, state = site_state(site_id)
+            site, state = _reading_state(site_id, reading)
             site_path(path, site.hostname)
             return BuildToken(
                 site_id,
@@ -183,6 +205,7 @@ class FileWriter:
                 path,
                 state,
                 content_version=scope.content_version,
+                reading=_reading(reading),
                 site_metadata=site_metadata(site),
             )
 
@@ -193,11 +216,20 @@ class FileWriter:
         from ..rendering.page import _published_page
 
         _after_commit_required()
-        token = self.begin(page, depends_on_site=depends_on_site or bool(navigation))
+        # Hierarchy metadata names the page's relatives, so only they (and the
+        # page) need checking at commit, not the whole site (#90). A caller's
+        # own navigation names pages this cannot know, so it records nothing
+        # and every export of the site counts.
+        reading = None
+        if not navigation and get_setting("INCLUDE_HIERARCHY"):
+            page_id = page.pk if isinstance(page, Page) else page
+            named = Page.objects.filter(pk=page_id).first()
+            if named is not None:
+                reading = [page_id, *hierarchy_page_ids(_published_page(named))]
+        token = self.begin(
+            page, depends_on_site=depends_on_site or bool(navigation), reading=reading
+        )
         current = Page.objects.get(pk=token.page_id)
-        # Hierarchy metadata names the page's relatives. A caller's own
-        # navigation names pages this cannot know, so it records nothing and
-        # every export of the site counts.
         lists = None
         if token.site_metadata and not navigation and get_setting("INCLUDE_HIERARCHY"):
             lists = hierarchy_page_ids(_published_page(current))
@@ -566,7 +598,7 @@ class FileWriter:
                 raise StaleBuild("A page publication or revocation superseded this site build")
             raise ConcurrentAggregateUpdate("Another aggregate update superseded this site build")
         if token.page_id is None:
-            site, state = site_state(token.site_id)
+            site, state = _reading_state(token.site_id, token.reading)
             site_path(token.path, site.hostname)
         else:
             _, _, path, state = page_state(token.page_id, token.site_id)
@@ -574,7 +606,10 @@ class FileWriter:
                 raise StaleBuild("The page's export path changed during rendering")
         if state != token.source_state:
             raise StaleBuild("Publication inputs changed during rendering")
-        if token.dependency_state and site_state(token.site_id)[1] != token.dependency_state:
+        if (
+            token.dependency_state
+            and _reading_state(token.site_id, token.reading)[1] != token.dependency_state
+        ):
             raise StaleBuild("Related site content changed during rendering")
 
     def _swap(self, scope, token, file, lists=None):

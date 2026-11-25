@@ -18,7 +18,7 @@ from .listings import IndexEntry as IndexEntry
 from .listings import (
     directory_entries,
     markdown_text,
-    navigation_entries,
+    named_navigation_entries,
     newest_entries,
     page_entry,
     readable_page_entries,
@@ -176,36 +176,51 @@ class IndexGenerator:
         """Publish one page's index from the current exports below it.
 
         For routine publication (#69): neither the site's other indexes nor
-        its discovery files are rebuilt, and only exports below this index
-        are read. Raises PageRenderError for a page that cannot be exported
-        and StaleBuild when the site changes while rendering.
+        its discovery files are rebuilt. It runs inside the editor's request,
+        so it reads only the pages this index lists, never the whole site
+        (#90): the site root's index lists a handful of sections however many
+        pages sit below them. Commit checks just the pages the document names.
+        Raises PageRenderError for a page that cannot be exported and
+        StaleBuild when the site changes while rendering.
         """
         _after_commit_required()
         site = page.get_site()
         if site is None:
             raise StaleBuild(f"Page {page.pk} has no site")
-        fresh = site_freshness(site.pk)
-        token = self.writer.begin(page, depends_on_site=True, dependency_state=fresh.state)
-        navigation, linked = self._navigation(
-            site,
-            token.path,
-            _published_page(page),
-            navigation_entries(self.writer, site, token.path, fresh, urlconf=self.urlconf),
+        published = _published_page(page)
+        path = ExportPolicy().relative_path(page)
+        # Each page publication or withdrawal advances content_version; one
+        # after this read makes the token disagree with the listing.
+        listed_version = (
+            ExportScope.objects.filter(site_id=site.pk)
+            .values_list("content_version", flat=True)
+            .first()
         )
+        listed, _, _ = named_navigation_entries(site, path, extra=[page.pk], urlconf=self.urlconf)
+        navigation, linked = self._navigation(site, path, published, listed)
+        named = [entry.page_id for entry in linked] + frontmatter.hierarchy_page_ids(published)
+        reading = [page.pk, *named]
+        token = self.writer.begin(
+            page,
+            depends_on_site=True,
+            dependency_state=site_freshness(site.pk, reading).state,
+            reading=reading,
+        )
+        if token.path != path:
+            raise StaleBuild("The page's export path changed during rendering")
+        if listed_version is not None:
+            self._check_listing(token, listed_version)
+        # Links in the page's own body are checked one by one, as a leaf's
+        # are: the listing's reading does not cover the pages they name.
         content = render_page(
             page,
             site=site,
             navigation=navigation,
-            root_index=token.path == f"{site.hostname}/index.md",
-            freshness=fresh,
+            root_index=path == f"{site.hostname}/index.md",
             checked_urls=[entry.url for entry in linked],
         )
         return self.writer.publish(
-            token,
-            content,
-            replace_index=token.path.endswith("/index.md"),
-            lists=[entry.page_id for entry in linked]
-            + frontmatter.hierarchy_page_ids(_published_page(page)),
+            token, content, replace_index=path.endswith("/index.md"), lists=named
         )
 
     @staticmethod

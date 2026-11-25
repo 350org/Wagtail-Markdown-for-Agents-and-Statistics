@@ -70,15 +70,44 @@ def readable_page_entries(writer, site, *, urlconf=None, freshness=None):
     return sort_entries(_entries(current_page_records(writer, site, freshness), urlconf, freshness))
 
 
-def navigation_entries(writer, site, path, freshness, *, urlconf=None):
-    """The entries the index at ``path`` lists, sorted by title.
+def named_navigation_entries(site, path, *, extra=(), urlconf=None):
+    """``(entries, freshness, page_ids)`` for the index at ``path``, reading
+    only the pages it lists.
 
-    Only exports below the index are read, and a page is looked up only when
-    it is listed, so rebuilding one index does not read the whole site (#69).
+    Routine publication rebuilds an index inside the editor's request, so it
+    must not read the whole site (#90). Which exports the index lists follows
+    from their paths alone; only those pages, plus ``extra``, are read
+    (``site_freshness(site, page_ids)``), and the reading checks each one is
+    current. An index that is not current hides nothing, so the pages below
+    it are listed in its place, as a whole-site listing would list them.
+    The returned reading covers ``page_ids``: the listed pages and ``extra``.
     """
-    records = current_page_records(writer, site, freshness, prefix=path.removesuffix("index.md"))
-    listed = directory_entries(records, path, key=lambda record: record.logical_path)
-    return sort_entries(_entries(listed, urlconf, freshness))
+    rows = list(
+        ExportArtifact.objects.filter(
+            scope__site_id=site.pk,
+            page_id__isnull=False,
+            logical_path__startswith=path.removesuffix("index.md"),
+        ).values_list("pk", "page_id", "logical_path", "source_state")
+    )
+    stale = set()
+    while True:
+        listed = directory_entries(
+            [row for row in rows if row[0] not in stale], path, key=lambda row: row[2]
+        )
+        page_ids = sorted({row[1] for row in listed} | set(extra))
+        freshness = site_freshness(site.pk, page_ids)
+        outdated = {row[0] for row in listed if freshness.pages.get(row[1]) != (row[2], row[3])}
+        if not outdated:
+            break
+        stale |= outdated
+    records = []
+    for chunk in _chunks([row[0] for row in listed]):
+        records.extend(
+            ExportArtifact.objects.filter(pk__in=chunk)
+            .select_related("scope", "file")
+            .defer("scope__manifest_state")
+        )
+    return sort_entries(_entries(records, urlconf, freshness)), freshness, page_ids
 
 
 def _entries(records, urlconf, freshness):
@@ -127,21 +156,26 @@ def directory_entries(entries, path, *, key=lambda entry: entry.path):
     descendants = [
         entry for entry in entries if key(entry).startswith(prefix) and key(entry) != path
     ]
-    indexes = [
+    indexes = {
         key(entry).removesuffix("index.md")
         for entry in descendants
         if key(entry).endswith("/index.md")
-    ]
+    }
+
     # A readable child page index represents its subtree. When absent,
     # promote the available exports, avoiding invented/missing targets.
-    return [
-        entry
-        for entry in descendants
-        if not any(
-            key(entry).startswith(directory) and key(entry) != directory + "index.md"
-            for directory in indexes
-        )
-    ]
+    # Each entry checks only its own directories, so a site's root index
+    # costs the number of exports, not exports times indexes (#90).
+    def hidden(entry_path):
+        own = entry_path.removesuffix("index.md") if entry_path.endswith("/index.md") else None
+        directory = prefix
+        for part in entry_path[len(prefix) :].split("/")[:-1]:
+            directory += part + "/"
+            if directory in indexes and directory != own:
+                return True
+        return False
+
+    return [entry for entry in descendants if not hidden(key(entry))]
 
 
 def newest_entries(entries, limit):

@@ -112,7 +112,10 @@ it, checking every page-owned index meant one scan each, so listing a large site
 grew quadratically (#66). Keep a reading only for the operation that made it; the
 commit-time checks in `publish` still read the site afresh. Likewise
 `begin(page, depends_on_site=True, dependency_state=...)` takes a site state digest
-the caller has just read instead of reading it again.
+the caller has just read instead of reading it again. Pass `reading=page_ids` (to
+`begin` or `begin_site`) when that digest came from `site_freshness(site_id,
+page_ids)`: the commit-time check then reads only those pages, not the whole site.
+Routine index rebuilds and `llms.txt` use it with the pages they name (#90).
 Ordinary changes to images, snippets and external settings still need the rebuild
 procedure in the [publish lifecycle guide](publish-lifecycle.md).
 
