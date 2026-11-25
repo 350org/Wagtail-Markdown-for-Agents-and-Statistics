@@ -17,9 +17,11 @@ from wagtail.models import PageViewRestriction, Site
 
 from tests import test_lifecycle
 from tests.test_indexes import article, read
-from wagtail_markdown_agents.export.indexes import IndexBatch
+from tests.test_page_rendering import split_document
+from wagtail_markdown_agents.export.indexes import IndexBatch, IndexGenerator
 from wagtail_markdown_agents.export.lifecycle import request_refresh
 from wagtail_markdown_agents.export.snapshot import SiteSnapshot
+from wagtail_markdown_agents.export.state import StaleBuild
 from wagtail_markdown_agents.export.writer import FileWriter
 from wagtail_markdown_agents.models import ExportArtifact, ExportScope
 
@@ -53,8 +55,13 @@ def quiet(settings):
 
 
 def measure(monkeypatch, action):
-    """Run ``action``, counting queries, export opens, site scans and publications."""
-    counts = {"queries": 0, "opens": 0, "site_scans": 0, "published": []}
+    """Run ``action``, counting queries, export opens, site readings and publications.
+
+    ``site_scans`` counts readings of the whole site; ``named_scans`` readings
+    of only some pages (``site_freshness(site, page_ids)``), whose cost follows
+    the pages named, not the site (#90).
+    """
+    counts = {"queries": 0, "opens": 0, "site_scans": 0, "named_scans": 0, "published": []}
 
     def count_query(execute, sql, params, many, context):
         counts["queries"] += 1
@@ -68,9 +75,9 @@ def measure(monkeypatch, action):
         counts["opens"] += 1
         return original_open(self, file)
 
-    def snapshot(self, site, *args, **kwargs):
-        counts["site_scans"] += 1
-        original_snapshot(self, site, *args, **kwargs)
+    def snapshot(self, site, page_ids=None):
+        counts["site_scans" if page_ids is None else "named_scans"] += 1
+        original_snapshot(self, site, page_ids)
 
     def publish(self, token, markdown, **kwargs):
         counts["published"].append(token.path)
@@ -140,8 +147,9 @@ def test_publishing_a_top_level_section_refreshes_the_top_level(setup, quiet, mo
         "example.org/llms.txt",
     ]
     assert counts["opens"] == 0, counts
-    # Two readings per index (navigation, commit) and three for llms.txt.
-    assert counts["site_scans"] <= 7, counts
+    # The request never reads the whole site (#90): each file reads only the
+    # pages it lists, then the pages it names at commit.
+    assert counts["site_scans"] == 0, counts
     output = read(writer, "example.org/section-0/index.md")
     assert "Renamed section" in output and "## Pages (3)" in output
     assert "Renamed section" in read(writer, "example.org/llms.txt")
@@ -155,7 +163,7 @@ def test_publishing_the_home_page_reads_no_other_export(setup, quiet, monkeypatc
     counts = measure(monkeypatch, lambda: republish(home, "New home"))
     assert counts["published"] == ["example.org/index.md"]
     assert counts["opens"] == 0, counts
-    assert counts["site_scans"] <= 2, counts
+    assert counts["site_scans"] == 0, counts
     output = read(writer)
     assert "New home" in output and "## Pages (3)" in output
 
@@ -454,3 +462,100 @@ def test_cached_navigation_check_follows_publication_version(setup, settings, cl
     # A change through Wagtail withdraws what names the page, cache or not.
     PageViewRestriction.objects.create(page=child, restriction_type="login")
     assert status("parent/index.md") == 404
+
+
+# Publishing inside the editor's request never reads the whole site (#90).
+# On a site of about 9,400 pages, publishing the home page did two whole-site
+# readings and listed every export, and ran past the web server's timeout.
+
+
+def test_home_publication_work_does_not_grow_with_the_site(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    quiet(home, sections=2, leaves=2)
+    small = measure(monkeypatch, lambda: republish(home, "Small site"))
+    quiet(home, sections=1, leaves=20, prefix="blog")
+    large = measure(monkeypatch, lambda: republish(home, "Large site"))
+    assert small["site_scans"] == large["site_scans"] == 0, (small, large)
+    # Four times the pages, all below the sections the home page lists.
+    assert large["queries"] <= small["queries"] + 5, (small["queries"], large["queries"])
+    assert "## Pages (3)" in read(writer)
+
+
+def test_routine_home_index_matches_the_finalised_one(setup, quiet):
+    writer, site, home = setup
+    quiet(home, sections=3, leaves=2)
+    finalised = split_document(read(writer))[1]
+    republish(home, "Home")
+    assert split_document(read(writer))[1] == finalised
+
+
+def test_an_outdated_section_index_lists_its_pages_in_its_place(setup, quiet):
+    writer, site, home = setup
+    built = quiet(home, sections=2, leaves=2)
+    # The section's export no longer matches its page, as after a change that
+    # sent no signal: the root index lists the section's pages instead.
+    ExportArtifact.objects.filter(logical_path="example.org/section-0/index.md").update(
+        source_state="0" * 64
+    )
+    republish(home, "Home")
+    output = read(writer)
+    assert "/markdown/section-0/index.md" not in output
+    for leaf in built[0][1]:
+        assert f"[{leaf.title}]" in output, output
+    assert "/markdown/section-1/index.md" in output
+
+
+def test_a_named_page_turning_private_during_the_build_aborts_it(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    built = quiet(home, sections=2, leaves=2)
+    before = files(["example.org/index.md"])
+    original = writer._upload
+
+    def upload(file, text):
+        original(file, text)
+        # Without signals, as a bulk change or another process would make it.
+        PageViewRestriction.objects.bulk_create(
+            [PageViewRestriction(page=built[0][0], restriction_type="login")]
+        )
+
+    monkeypatch.setattr(writer, "_upload", upload)
+    with pytest.raises(StaleBuild):
+        IndexGenerator(writer).regenerate(home.specific)
+    assert files(["example.org/index.md"]) == before
+
+
+def test_a_page_the_index_does_not_name_does_not_abort_it(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    built = quiet(home, sections=2, leaves=2)
+    original = writer._upload
+
+    def upload(file, text):
+        original(file, text)
+        # Below a section the root index lists: not a page it names.
+        PageViewRestriction.objects.bulk_create(
+            [PageViewRestriction(page=built[0][1][0], restriction_type="login")]
+        )
+
+    monkeypatch.setattr(writer, "_upload", upload)
+    IndexGenerator(writer).regenerate(home.specific)
+    assert "/markdown/section-0/index.md" in read(writer)
+
+
+def test_a_leaf_linking_to_an_index_reads_no_whole_site(setup, quiet, monkeypatch):
+    writer, site, home = setup
+    built = quiet(home, sections=2, leaves=1)
+    leaf = built[0][1][0]
+    leaf.refresh_from_db()
+    leaf.body = [
+        (
+            "paragraph",
+            '<p>See <a href="/section-1/">the section</a>, <a href="/">home</a> and '
+            '<a href="/markdown/llms.txt">the site list</a>.</p>',
+        )
+    ]
+    counts = measure(monkeypatch, lambda: leaf.save_revision().publish())
+    assert counts["site_scans"] == 0, counts
+    output = read(writer, "example.org/section-0/section0-leaf-0.md")
+    assert "](http://example.org/markdown/section-1/index.md)" in output, output
+    assert "](http://example.org/markdown/index.md)" in output, output
+    assert "](http://example.org/markdown/llms.txt)" in output, output

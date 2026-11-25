@@ -42,6 +42,13 @@ When a top-level page is published (its export is `host/page.md` or
 the top-level pages, so this is a handful of entries read from the database. Editing
 the home page, or any page below the top level, leaves `llms.txt` as it is.
 
+None of this reads the whole site (#90). An index finds the exports it lists from
+their paths in the database, then reads only those pages, and checks only the pages
+it names before it is saved. The root index of a site with thousands of posts lists
+its sections, so it reads a handful of pages. A section index reads the pages
+it lists. Links in a page's body to an index or `llms.txt` are checked through the
+pages that file names, as serving checks them.
+
 It does **not** rebuild the site's other page indexes, standalone indexes or
 `manifest.json`. Publishing a page withdraws only that page's earlier
 export, so those files keep their last build and stay served: a new page, a new

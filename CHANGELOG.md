@@ -181,6 +181,17 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- **Publishing the home page, a section page or any top-level page no longer
+  times out on a large site** (#90). Rebuilding its index, and `llms.txt` for a
+  top-level page, read every page of the site twice inside the editor's request:
+  on a site of about 9,400 pages that ran past the web server's 30-second limit.
+  The page was saved, but the editor saw an error and the Markdown wasn't
+  updated. These files now read only the pages they list, and check only the pages
+  they name before they are saved. A page whose body links to an index page or
+  `llms.txt` no longer reads the whole site to check that link, so publishing a
+  post that links to its section is quicker too. Listings are unchanged, and
+  `agentmd_generate` works as before. No migration or regeneration is needed.
+
 - **A page with no exported children no longer ends with an empty `## Pages (0)`
   list** (#84). The list made the page read like a section with missing content. A
   page's own index now leaves the section out when nothing is listed, and
