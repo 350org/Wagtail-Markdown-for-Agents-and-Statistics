@@ -530,3 +530,56 @@ def test_capped_index_read_cost_does_not_grow_with_the_section(setup, settings):
     for number in range(5, 25):
         article(section, f"post-{number:02d}")
     assert read_queries() == small
+
+
+def test_page_index_without_exported_children_has_no_pages_section(setup, client):
+    """A page whose children are all unexported reads as a page, not an empty section (#84)."""
+    writer, site, home = setup
+    contact = article(home, "contact", title="Contact")
+    thanks = article(contact, "thanks", title="Thanks")
+    PageAgentSettings.objects.create(page=thanks, excluded=True)
+    writer.generate(contact)
+    IndexGenerator(writer).generate(site.pk)
+    path = "example.org/contact/index.md"
+    _, body = split_document(read(writer, path))
+    assert "contact body." in body
+    assert "## Pages" not in body
+    assert "No exported pages are available." not in body
+    assert body.rstrip("\n").endswith("contact body.")
+    response = client.get("/markdown/contact/index.md", HTTP_HOST="example.org")
+    assert response.status_code == 200
+    # Routine publication rebuilds the same document (#69).
+    IndexGenerator(writer).regenerate(contact)
+    assert split_document(read(writer, path))[1] == body
+
+
+def test_root_page_index_keeps_empty_list_text(setup):
+    """The site root says so when nothing below it is exported (#84)."""
+    writer, site, home = setup
+    hidden = article(home, "hidden")
+    PageAgentSettings.objects.create(page=hidden, excluded=True)
+    IndexGenerator(writer).generate(site.pk)
+    _, body = split_document(read(writer))
+    assert "Home body." in body
+    assert "## Pages (0)" in body
+    assert "No exported pages are available." in body
+
+
+def test_index_hook_can_add_a_section_to_an_omitted_list(setup):
+    """Hooks still run when the list is left out, and receive empty content (#84)."""
+    writer, site, home = setup
+    contact = article(home, "contact")
+    thanks = article(contact, "thanks")
+    PageAgentSettings.objects.create(page=thanks, excluded=True)
+    seen = []
+
+    def custom(content, path, context):
+        seen.append((path, content, context["total"]))
+        return "## Related\n\nSee the campaigns." if path == "contact/index.md" else None
+
+    with hooks.register_temporarily(INDEX_CONTENT_HOOK, custom):
+        IndexGenerator(writer).generate(site.pk)
+    assert ("contact/index.md", "", 0) in seen
+    _, body = split_document(read(writer, "example.org/contact/index.md"))
+    assert "## Related\n\nSee the campaigns." in body
+    assert "## Pages" not in body

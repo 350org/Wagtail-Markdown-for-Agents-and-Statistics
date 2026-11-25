@@ -56,8 +56,11 @@ A directory lists its available page exports in case-insensitive title order, wi
 logical path and page ID as stable tie-breakers. A readable child page-owned index
 represents its subtree. If that intermediate index is unavailable, descendants are
 listed directly rather than hidden behind an invented link. Counts describe the
-entries in that list, not all descendants recursively. Empty lists say
-“No exported pages are available.” Titles and descriptions are escaped plain text.
+entries in that list, not all descendants recursively. An empty list says
+“No exported pages are available.” in a generated directory index and at the site
+root. A page's own index with nothing to list, such as a contact page whose only child
+is hidden from search, leaves the `## Pages` section out, so it reads as an ordinary
+page (#84). `markdown_index_content` hooks still run there, with empty `content`. Titles and descriptions are escaped plain text.
 
 A list longer than `LISTING_LIMIT` (default `20`; `None` lists every page) shows only
 the newest pages, newest first, under `## Latest pages (20 of 5288)`, and ends with

@@ -164,6 +164,13 @@ versioning: [SemVer](https://semver.org/).
 
 ### Fixed
 
+- **A page with no exported children no longer ends with an empty `## Pages (0)`
+  list** (#84). The list made the page read like a section with missing content. A
+  page's own index now leaves the section out when nothing is listed, and
+  `markdown_index_content` hooks receive empty `content` there. Generated directory
+  indexes and the site root still say "No exported pages are available." Existing
+  exports change only when rebuilt (`agentmd_generate --force`).
+
 - On a large site, publishing a page in the admin failed with a server error, and
   the section indexes, `llms.txt` and `manifest.json` went missing. Every
   publication withdrew all of them, then rebuilt them inside the editor's request.

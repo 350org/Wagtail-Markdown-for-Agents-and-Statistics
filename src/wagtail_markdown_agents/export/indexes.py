@@ -235,6 +235,11 @@ class IndexGenerator:
 
         Beyond ``LISTING_LIMIT`` entries the list shows only the newest, and
         names only those, so its read checks stay small (#76).
+
+        A page's own index with nothing to list leaves the section out: the
+        page reads as a page, not an empty section (#84). Generated directory
+        indexes and the site root keep saying that nothing is exported.
+        Index hooks still run, with empty ``content``.
         """
         candidates = tuple(directory_entries(listed, path))
         total = len(candidates)
@@ -242,7 +247,9 @@ class IndexGenerator:
         capped = len(entries) < total
         heading = f"Latest pages ({len(entries)} of {total})" if capped else f"Pages ({total})"
         content = f"## {heading}\n\n"
-        if entries:
+        if not entries and page is not None and path != f"{site.hostname}/index.md":
+            content = ""
+        elif entries:
             lines = []
             for entry in entries:
                 destination = entry.url.replace("(", "%28").replace(")", "%29")
