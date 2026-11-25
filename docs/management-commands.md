@@ -186,7 +186,8 @@ template's source. Templates it includes by name (`{% include "..." %}` or
 | Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
 
 `<script>`, `<style>` and `<template>` are not hints: conversion drops them with
-their contents.
+their contents. So it does with an image whose `src` is missing or `#`, and a link with
+no `href` that only runs a script, such as slideshow arrows (#83).
 Template comments are ignored.
 
 Hints come from the source, so treat them as prompts to check the output, not

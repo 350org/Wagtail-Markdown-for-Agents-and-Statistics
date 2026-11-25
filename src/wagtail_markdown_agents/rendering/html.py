@@ -5,7 +5,9 @@ through :func:`convert_html`, so all produce the same headings, lists, code
 fences and spacing, and the conversion hooks apply to each. markdownify drops
 ``<script>`` and ``<style>`` elements together with their contents, and
 ``<template>`` is dropped the same way; the tests pin that behaviour. An
-``<iframe>`` with a web address becomes a link to it (#82).
+``<iframe>`` with a web address becomes a link to it (#82). An image with no
+source to fetch (``src="#"``) and an ``<a>`` without ``href`` that only runs a
+script are dropped (#83).
 
 Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
@@ -113,6 +115,11 @@ class _Converter(MarkdownConverter):
         # Non-breaking spaces are not whitespace here and are kept.
         if el.get("href") and "_noformat" not in parent_tags:
             text = _WHITESPACE_RUN.sub(" ", text)
+        elif _is_scripted_control(el):
+            # No href and an event handler: a slideshow arrow or a toggle, a
+            # control for a script rather than content (#83). A named anchor
+            # without one still converts to its content.
+            return ""
         return super().convert_a(el, text, parent_tags)
 
     def convert_hN(self, n, el, text, parent_tags):
@@ -157,14 +164,23 @@ class _Converter(MarkdownConverter):
         # decorative ImageBlock. A missing alt says nothing, so it is kept.
         if el.get("alt") == "":
             return ""
-        if el.get("src"):
-            el["src"] = absolute_url(el["src"])
+        # A missing, empty or fragment-only src (src="#") is a placeholder for
+        # a script to fill: there is no image to fetch (#83).
+        src = (el.get("src") or "").strip()
+        if not src or src.startswith("#"):
+            return ""
+        el["src"] = absolute_url(src)
         markdown = super().convert_img(el, text, parent_tags)
         if not markdown:
             return markdown
         before = " " if _touches_text(el.previous_sibling, at_end=True) else ""
         after = " " if _touches_text(el.next_sibling, at_end=False) else ""
         return f"{before}{markdown}{after}"
+
+
+def _is_scripted_control(el) -> bool:
+    """Whether a link-less ``<a>`` carries an event handler (``onclick`` and the like)."""
+    return not el.get("href") and any(name.lower().startswith("on") for name in el.attrs)
 
 
 def _iframe_url(src) -> str:

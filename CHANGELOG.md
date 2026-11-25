@@ -90,6 +90,14 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Placeholder images and script-only controls are dropped from converted HTML**
+  (#83). A JavaScript slideshow pasted into raw HTML exported `![](#)` and lines of
+  `❮` `❯`. An `<img>` whose `src` is missing, empty or only a fragment, and an `<a>`
+  without `href` that has an event attribute (`onclick` and the like), now convert to
+  nothing. Neither rule looks at classes or hidden state, so accordion answers and
+  `<noscript>` links are unaffected; named anchors (`<a id>`, `<a name>`) still give
+  their content. Exports change once rebuilt (`agentmd_generate --force`).
+
 - **An `<iframe>` in raw HTML or a block template exports as a link to its source**
   (#82). It used to convert to nothing, so an embedded map, quiz or form left no trace.
   The link text is the iframe's `title`, else its `src`; a site-relative `src` is made
