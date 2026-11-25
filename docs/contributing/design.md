@@ -191,7 +191,12 @@ reference links, conservative query handling, redirects and generation order.
 All HTML conversion paths remove script/style/template nodes and their contents
 before conversion. Other hidden markup (`hidden`, `aria-hidden`, `<dialog>`,
 `<noscript>`) is kept: the HTML alone can't tell a collapsed accordion panel or a
-`<noscript>` signup link from a success message, so a block renderer decides. Output fixtures cover code whitespace/language, table captions and empty
+`<noscript>` signup link from a success message, so a block renderer decides. Two
+placeholders are dropped because they carry nothing either way (#83): an `<img>` whose
+`src` is missing, empty or only a fragment (`src="#"`), and an `<a>` without `href`
+that has an event attribute (`onclick` and the like), such as slideshow arrows. Neither
+rule looks at classes or hidden state, and a named anchor (`<a id>`, `<a name>`) still
+converts to its content. Output fixtures cover code whitespace/language, table captions and empty
 cells, escaped pipes, entities, Unicode and image/text spacing as well as block types.
 Expose pre-conversion, converter-options and page post-render hooks with documented
 ordering and return contracts, as described below and in the

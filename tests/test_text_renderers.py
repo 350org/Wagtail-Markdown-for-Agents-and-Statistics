@@ -302,3 +302,57 @@ def test_embed_after_a_dropped_script_gets_no_padding_space():
     html = '<p>Raw</p><script>x()</script><iframe src="https://x.org/" title="X"></iframe>'
 
     assert rich(html) == "Raw\n\n[X](https://x.org/)"
+
+
+@pytest.mark.parametrize(
+    "img",
+    [
+        '<img src="#" style="width:100%">',
+        '<img src="#slide-1" alt="Slide">',
+        '<img src="">',
+        "<img alt='Gone'>",
+    ],
+    ids=["fragment", "named-fragment", "empty", "missing"],
+)
+def test_image_with_nothing_to_fetch_is_omitted(img):
+    # A placeholder for a script to fill has no image an agent can fetch (#83).
+    assert rich(f"<p>Before</p><div>{img}</div><p>After</p>") == "Before\n\nAfter"
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        '<a class="prev" onclick="plusSlides(-1)">&#10094;</a>',
+        '<a ONCLICK="go()">Next</a>',
+        '<a onkeydown="go()" role="button">Open</a>',
+    ],
+    ids=["onclick", "upper-case", "other-event"],
+)
+def test_scripted_control_without_href_is_omitted(link):
+    # A link with no href that only runs a script is a control, not content (#83).
+    assert rich(f"<p>Before</p>{link}<p>After</p>") == "Before\n\nAfter"
+
+
+def test_named_anchor_and_scripted_link_with_href_are_kept():
+    html = (
+        '<p><a id="x">Text</a> and <a name="y">more</a></p>'
+        '<p><a href="/act/" onclick="track()">Act</a></p>'
+    )
+
+    assert rich(html) == "Text and more\n\n[Act](/act/)"
+
+
+def test_slideshow_leaves_no_controls_or_gaps():
+    html = (
+        '<div class="slide-container"><img src="#" style="width:100%"></div>'
+        '<a class="prev" onclick="plusSlides(-1)">&#10094;</a>'
+        '<a class="next" onclick="plusSlides(1)">&#10095;</a>'
+        '<div class="caption-container"><p id="caption"></p></div>'
+        '<section class="thumbnail-container">'
+        '<a class="thumbnail-prev" onclick="moveSwitcher(-1)">&#10094;</a>'
+        '<div class="thumbnail"><img class="demo cursor" src="https://x.org/q.png" alt=""></div>'
+        '<a class="thumbnail-next" onclick="moveSwitcher(1)">&#10095;</a>'
+        "</section><p>After the slideshow.</p>"
+    )
+
+    assert rich(html) == "After the slideshow."
