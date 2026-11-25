@@ -210,7 +210,12 @@ def stream_value(article):
             },
             {"type": "bullets", "value": ["one", "two * three", ""]},
             {"type": "pages", "value": [get_involved.pk, None]},
-            {"type": "raw_html", "value": "<p>Raw <em>HTML</em></p><script>x()</script>"},
+            {
+                "type": "raw_html",
+                "value": "<p>Raw <em>HTML</em></p><script>x()</script>"
+                '<iframe src="https://www.google.com/maps/d/embed?mid=abc" title="Campaign map">'
+                "</iframe>",
+            },
             {"type": "divider", "value": None},
         ]
     )

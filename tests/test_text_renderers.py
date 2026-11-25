@@ -228,3 +228,77 @@ def test_text_block_keeps_line_breaks_and_paragraphs():
 @pytest.mark.parametrize("value", [None, ""])
 def test_empty_plain_text_renders_empty(value):
     assert render_block(blocks.CharBlock(), value, {}) == ""
+
+
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        (
+            '<p>See the map.</p><iframe src="https://www.google.com/maps/d/embed?mid=abc"'
+            ' title="Campaign  map"></iframe>',
+            "See the map.\n\n[Campaign map](https://www.google.com/maps/d/embed?mid=abc)",
+        ),
+        (
+            '<div><iframe src="https://quiz.example.org/fr/"></iframe></div>',
+            "[https://quiz.example.org/fr/](https://quiz.example.org/fr/)",
+        ),
+        (
+            '<iframe src="/embed/map/" title="Map"></iframe>',
+            "[Map](http://localhost:8000/embed/map/)",
+        ),
+        (
+            '<iframe src="//player.example/v/1" title="Video"></iframe>',
+            "[Video](https://player.example/v/1)",
+        ),
+        (
+            '<iframe src="https://x.org/a b(1)" title="[Quiz] *now*"></iframe>',
+            r"[\[Quiz\] \*now\*](https://x.org/a%20b%281%29)",
+        ),
+        (
+            '<p>Before<iframe src="https://x.org/" title="X"></iframe>after</p>',
+            "Before [X](https://x.org/) after",
+        ),
+    ],
+    ids=["title", "no-title", "site-relative", "protocol-relative", "escaped", "inline"],
+)
+def test_iframe_becomes_a_link_to_its_source(html, expected):
+    # An iframe has no text, so without this an agent loses the embed (#82).
+    assert rich(html) == expected
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "",
+        "   ",
+        "about:blank",
+        "javascript:alert(1)",
+        "JavaScript:void(0)",
+        "data:text/html,x",
+        "#",
+    ],
+)
+def test_iframe_without_a_fetchable_source_is_omitted(src):
+    assert rich(f'<p>Before</p><iframe src="{src}" title="T"></iframe><p>After</p>') == (
+        "Before\n\nAfter"
+    )
+
+
+def test_iframe_without_src_is_omitted():
+    assert rich('<p>Before</p><iframe title="T"></iframe><p>After</p>') == "Before\n\nAfter"
+
+
+def test_iframe_inside_a_link_gives_its_text_only():
+    # Link text must stay inline: a link can't hold another link.
+    html = (
+        '<p><a href="https://350.org/act/">Act '
+        '<iframe src="https://x.org/" title="X"></iframe>now</a></p>'
+    )
+
+    assert rich(html) == "[Act now](https://350.org/act/)"
+
+
+def test_embed_after_a_dropped_script_gets_no_padding_space():
+    html = '<p>Raw</p><script>x()</script><iframe src="https://x.org/" title="X"></iframe>'
+
+    assert rich(html) == "Raw\n\n[X](https://x.org/)"

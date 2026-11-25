@@ -78,4 +78,6 @@ Targets by country
 
 Raw *HTML*
 
+[Campaign map](https://www.google.com/maps/d/embed?mid=abc)
+
 ---

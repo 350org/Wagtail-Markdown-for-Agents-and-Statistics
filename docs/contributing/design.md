@@ -79,7 +79,10 @@ explicitly ahead of the `StructBlock` renderer (#10). Images render at their ori
 size with Wagtail's alt-text rule (contextual alt text, else description, else title);
 a decorative `ImageBlock` image renders nothing. In converted HTML (rich text and
 the template fallback) an `<img alt="">`, WCAG's decorative marker, is omitted the
-same way, along with any link left empty; an image with no `alt` attribute is kept. Every image URL in the output —
+same way, along with any link left empty; an image with no `alt` attribute is kept. An `<iframe>` whose `src` is a web
+address becomes a link, `[title](src)` or `[src](src)` without a title (#82), because it
+has no text and an agent would otherwise lose the embed; `about:blank`, `javascript:`
+and `data:` sources are dropped, and inside a link it gives its text only. Every image URL in the output —
 block images and rich-text images alike — is absolute when `WAGTAILADMIN_BASE_URL`
 is set, as `Rendition.full_url` is. `EmbedBlock` renders a link whose text is the
 title from Wagtail's embed cache when one exists, else an autolink; generation never

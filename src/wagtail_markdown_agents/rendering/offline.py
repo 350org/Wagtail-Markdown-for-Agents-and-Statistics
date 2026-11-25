@@ -6,9 +6,9 @@ stored and otherwise calls the provider's oEmbed API, so export would depend on
 a third party and could hang a publish. While the template fallback renders,
 :func:`offline_embeds` leaves Wagtail no embed finders, so the provider
 lookup fails as an unsupported provider: an unexpired stored embed still
-renders, and Wagtail's tag renders nothing for any other. A video player's
-iframe converts to nothing anyway; an embed whose HTML carries text, such as a
-quoted post, is exported only once Wagtail has stored it. A block renderer
+renders, and Wagtail's tag renders nothing for any other. A stored video
+player's iframe becomes a link to the player (#82), and a stored embed whose
+HTML carries text, such as a quoted post, exports that text. A block renderer
 that links the URL is how media reliably reaches the export.
 
 Wagtail's own page rendering is unaffected: the guard applies only inside
