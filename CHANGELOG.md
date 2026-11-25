@@ -90,6 +90,15 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **An `<iframe>` in raw HTML or a block template exports as a link to its source**
+  (#82). It used to convert to nothing, so an embedded map, quiz or form left no trace.
+  The link text is the iframe's `title`, else its `src`; a site-relative `src` is made
+  absolute with `WAGTAILADMIN_BASE_URL`, and a protocol-relative one gets `https:`.
+  `about:blank`, `javascript:`, `data:` and empty sources are still dropped, and an
+  iframe inside a link gives only its text. Exports change wherever HTML contains
+  iframes, once rebuilt (`agentmd_generate --force`). This adds no network access:
+  stored embeds are still the only ones a template can render during export.
+
 - **Long index listings show only the newest pages** (#76). An index that would list
   more than `LISTING_LIMIT` pages (new, default `20`; `None` restores the full list)
   lists the newest, newest first, under `## Latest pages (20 of N)`, with a closing

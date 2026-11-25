@@ -121,6 +121,8 @@ GALLERY = """\
 
 Visible *copy*.
 
+[https://video.example.org/player](https://video.example.org/player)
+
 # image_grid
 
 ## In pictures
@@ -165,5 +167,6 @@ def test_template_fallback_gallery(rendered_cases):
     output = "\n\n".join(f"# {name}\n\n{text}" for name, text in rendered_cases.items())
     assert output == GALLERY
     assert "![" not in rendered_cases["callout"]  # Decorative background only.
-    assert "player" not in rendered_cases["raw_html"]
+    # The player iframe is a link to it (#82), not dropped.
+    assert rendered_cases["raw_html"].endswith("(https://video.example.org/player)")
     assert "DO NOT EXPORT" not in output and "INERT CONTENT" not in output

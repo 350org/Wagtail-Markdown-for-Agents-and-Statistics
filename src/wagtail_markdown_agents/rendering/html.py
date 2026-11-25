@@ -4,7 +4,8 @@ Every HTML path — rich text, plain text and the template fallback — goes
 through :func:`convert_html`, so all produce the same headings, lists, code
 fences and spacing, and the conversion hooks apply to each. markdownify drops
 ``<script>`` and ``<style>`` elements together with their contents, and
-``<template>`` is dropped the same way; the tests pin that behaviour.
+``<template>`` is dropped the same way; the tests pin that behaviour. An
+``<iframe>`` with a web address becomes a link to it (#82).
 
 Hooks (Wagtail's ``hooks.register``; run by ``order``, then registration order):
 
@@ -135,6 +136,22 @@ class _Converter(MarkdownConverter):
         # can't tell a collapsed panel or a <noscript> link from noise.
         return ""
 
+    def convert_iframe(self, el, text, parent_tags):
+        # An iframe has no text, so it would convert to nothing and the agent
+        # would lose the only pointer to the embed (a map, a quiz, a form).
+        # Link to its source instead, as EmbedBlock and rich-text media embeds
+        # do (#82). Inside a link it gives its text only: link text must stay
+        # inline, and a link can't hold another one.
+        url = _iframe_url(el.get("src"))
+        if not url or _inside_link(el):
+            return text
+        title = " ".join((el.get("title") or "").split())
+        label = self.escape(title or url, parent_tags).replace("[", r"\[").replace("]", r"\]")
+        destination = url.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+        before = " " if _touches_text(el.previous_sibling, at_end=True) else ""
+        after = " " if _touches_text(el.next_sibling, at_end=False) else ""
+        return f"{before}[{label}]({destination}){after}"
+
     def convert_img(self, el, text, parent_tags):
         # alt="" marks an image as decorative (WCAG), the HTML equivalent of a
         # decorative ImageBlock. A missing alt says nothing, so it is kept.
@@ -148,6 +165,23 @@ class _Converter(MarkdownConverter):
         before = " " if _touches_text(el.previous_sibling, at_end=True) else ""
         after = " " if _touches_text(el.next_sibling, at_end=False) else ""
         return f"{before}{markdown}{after}"
+
+
+def _iframe_url(src) -> str:
+    """An iframe's source as a URL an agent can open, or ``""``.
+
+    Only web pages: ``about:blank``, ``javascript:``, ``data:`` and fragment
+    sources have nothing to fetch. A protocol-relative source is given
+    ``https:``, because a Markdown link has no page to inherit a scheme from.
+    """
+    src = (src or "").strip()
+    if src.startswith("//"):
+        return "https:" + src
+    if src.startswith("/"):
+        return absolute_url(src)
+    if src.lower().startswith(("http://", "https://")):
+        return src
+    return ""
 
 
 def _inside_link(el) -> bool:
@@ -172,6 +206,10 @@ _LINE_ELEMENTS = frozenset(
 )  # fmt: skip
 
 
+# Elements conversion drops with their contents, so nothing can touch them.
+_DROPPED_ELEMENTS = frozenset({"script", "style", "template"})
+
+
 def _touches_text(sibling, *, at_end: bool) -> bool:
     """Whether an image's neighbour would run into it without a space."""
     if sibling is None:
@@ -181,4 +219,4 @@ def _touches_text(sibling, *, at_end: bool) -> bool:
         if not text:
             return False
         return not (text[-1] if at_end else text[0]).isspace()
-    return sibling.name not in _LINE_ELEMENTS
+    return sibling.name not in _LINE_ELEMENTS | _DROPPED_ELEMENTS

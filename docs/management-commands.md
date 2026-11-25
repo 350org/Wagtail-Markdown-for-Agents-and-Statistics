@@ -180,7 +180,7 @@ template's source. Templates it includes by name (`{% include "..." %}` or
 | Hint | Why it matters |
 | --- | --- |
 | `{% include_block %}` | Child blocks render through their own templates. A renderer registered for a child is never used. |
-| `{% embed %}` | Export never calls the embed provider, and an embedded player converts to nothing, so the media is missing from the Markdown. A renderer can link its URL instead. |
+| `{% embed %}` | Export never calls the embed provider, so an embed Wagtail hasn't stored renders nothing and the media is missing from the Markdown. A stored player's iframe becomes a link to the player, not to the media page. A renderer can link the URL instead. |
 | `request` | There is no request during export. Output that depends on it will differ from the HTML page. |
 | `<noscript>`, `<dialog>` | Their text is exported where it appears in the template, even though a visitor rarely sees it there. |
 | Hidden markup | Text inside `hidden`, `class="hidden"`, `aria-hidden="true"` (except on icons and images) or `display: none` is exported, for example a form's success message. |
