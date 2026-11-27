@@ -43,10 +43,25 @@ IP addresses or User-Agent headers. Settings:
 | Key | Default | Effect |
 | --- | --- | --- |
 | `COUNT_HTML` | `True` | `False` stops recording HTML reads. Counts already recorded stay until pruned. |
-| `COUNT_HTML_EXCLUDE` | `[]` | Registry labels (`"GPTBot"`) or purposes (`"training"`, `"search"`, `"on-demand"`, `"mixed"`, `"unknown"`) whose HTML reads aren't recorded, case-insensitive. For busy sites that don't want a counter write for every crawler page view. |
+| `COUNT_HTML_EXCLUDE` | `[]` | Registry labels (`"GPTBot"`), purposes (`"training"`, `"search"`, `"on-demand"`, `"mixed"`, `"unknown"`) or kinds (`"agent"`, `"browser"`, `"reference"`) whose HTML reads aren't recorded, case-insensitive. For busy sites that don't want a counter write for every crawler page view. |
 
 Neither setting changes rendered documents, so changing them doesn't trigger
 regeneration.
+
+**Reference crawlers are counted by default** (#96). Googlebot, bingbot and the other
+`reference` entries read most pages every day, so they add a row per page per day. They
+are the baseline that makes the AI agents' HTML counts mean something, and the report
+shows them apart. A site that doesn't want the rows sets
+`COUNT_HTML_EXCLUDE = ["reference"]`. Pruning (#71) bounds the growth either way.
+
+**In the report**, **HTML reads by agent** has two tables: AI agents (`agent` and
+`browser` entries, and retired labels), then reference crawlers. The list of pages read
+most as HTML leaves reference crawlers out. Each table has a **Chose Markdown** column:
+Markdown asked for by query, `Accept` header or export URL, leaving out Markdown given
+on the User-Agent. It's the evidence for serving an unserved agent on its User-Agent,
+as for `meta-webindexer` and `KeenableBot`. It doesn't compare served and unserved
+agents fairly: a served agent gets Markdown at the HTML URL without asking, so its
+figure falls towards zero. Serving an agent also breaks its series.
 
 **HTML counts are a lower bound.** Pages answered by a page cache, Cloudflare (#50)
 or another CDN never reach Django and aren't counted. Requests refused upstream
@@ -73,9 +88,9 @@ use the first matching entry from the dataset, preserving its canonical spelling
 Identification still runs with `NEGOTIATE_USER_AGENT = False`; that setting affects
 serving only. All other clients, including curl and browsers, share the empty
 label `""`, displayed as `unknown`. Arbitrary header fragments are never stored.
-With registry `2026-11-23.1`, at most 73 labels can be newly recorded per page,
-method and UTC date (72 identities plus unknown), regardless of how many different
-User-Agent values arrive.
+With registry `2026-11-27.1`, at most 53 labels can be newly recorded per page,
+method and UTC date (52 active identities plus unknown), regardless of how many
+different User-Agent values arrive. Retired labels are never recorded again.
 Methods are at most 20 characters.
 
 No IP addresses, request URLs or full User-Agent headers are persisted. Known

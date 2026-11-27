@@ -18,7 +18,7 @@ from wagtail.permission_policies import ModelPermissionPolicy
 from .data.agents import AGENTS
 from .data.operators import OPERATOR_NAMES, operator_for_agent
 from .models import AgentAccess
-from .negotiation import METHOD_HTML
+from .negotiation import METHOD_HTML, METHOD_USER_AGENT
 from .settings import get_setting
 from .stats import (
     ACCESS_METHODS,
@@ -289,7 +289,8 @@ def format_rows(agent_rows, intent_for_agent, serves_markdown):
     """Markdown and HTML side by side for each named agent (#61).
 
     Agents with HTML reads lead. The unknown bucket is left out: its HTML is
-    never counted, so a share for it would mean nothing.
+    never counted, so a share for it would mean nothing. ``chose`` is Markdown by
+    any method except the User-Agent rule (#96).
     """
     rows = []
     for row in agent_rows:
@@ -305,6 +306,7 @@ def format_rows(agent_rows, intent_for_agent, serves_markdown):
                 "intent_label": INTENT_LABELS[intent],
                 "serves_markdown": serves_markdown(row["agent"]),
                 "markdown": markdown,
+                "chose": row["chose"] or 0,
                 "html": html,
                 "share": share(markdown, markdown + html),
                 "html_pages": row["html_pages"] or 0,
@@ -312,6 +314,19 @@ def format_rows(agent_rows, intent_for_agent, serves_markdown):
         )
     rows.sort(key=lambda row: (-row["html"], -row["markdown"], row["agent"].casefold()))
     return rows
+
+
+def format_group(rows):
+    """One table of the HTML reads section, with its totals."""
+    markdown = sum(row["markdown"] for row in rows)
+    html = sum(row["html"] for row in rows)
+    return {
+        "rows": rows,
+        "markdown_total": markdown,
+        "chose_total": sum(row["chose"] for row in rows),
+        "html_total": html,
+        "share_total": share(markdown, markdown + html),
+    }
 
 
 def top_pages(page_rows, report_total):
@@ -451,7 +466,9 @@ class AgentAccessReportView(ReportView):
         """HTML reads next to Markdown, per named agent and per page (#61).
 
         Both formats, all report filters except the access method: the
-        comparison needs every Markdown method. Two grouped queries.
+        comparison needs every Markdown method. Two grouped queries. Reference
+        crawlers get their own table and stay out of the page list (#96): they
+        read every page, so they'd bury the AI agents.
         """
         # Named agents only: the unknown bucket's HTML is never counted.
         scope = (
@@ -459,13 +476,16 @@ class AgentAccessReportView(ReportView):
         ).order_by()
         is_html = Q(access_method=METHOD_HTML)
         is_markdown = Q(access_method__in=MARKDOWN_METHODS)
+        chose_markdown = Q(access_method__in=MARKDOWN_METHODS - {METHOD_USER_AGENT})
         agent_rows = scope.values("agent").annotate(
             html=Sum("count", filter=is_html),
             markdown=Sum("count", filter=is_markdown),
+            chose=Sum("count", filter=chose_markdown),
             html_pages=Count("page_id", filter=is_html, distinct=True),
         )
         by_ua = get_setting("NEGOTIATE_USER_AGENT")
         policies = {agent.label: agent.auto_markdown for agent in AGENTS}
+        reference = {agent.label for agent in AGENTS if agent.kind == "reference"}
 
         def serves_markdown(label):
             if label not in policies:
@@ -476,7 +496,8 @@ class AgentAccessReportView(ReportView):
         for row in rows:
             row["url"] = self.filter_url(agent=f"label:{row['agent']}")
         pages = list(
-            scope.values("page_id")
+            scope.exclude(agent__in=reference)
+            .values("page_id")
             .annotate(html=Sum("count", filter=is_html), markdown=Sum("count", filter=is_markdown))
             .filter(html__gt=0)
             .order_by("-html", "page_id")[:10]
@@ -485,14 +506,10 @@ class AgentAccessReportView(ReportView):
             row["markdown"] = row["markdown"] or 0
             row["title"] = page_label(row["page_id"], self.dimensions[1])
             row["url"] = self.filter_url(page_id=row["page_id"], page_search="")
-        markdown = sum(row["markdown"] for row in rows)
-        html = sum(row["html"] for row in rows)
         return {
-            "rows": rows,
+            "agents": format_group([row for row in rows if row["agent"] not in reference]),
+            "reference": format_group([row for row in rows if row["agent"] in reference]),
             "pages": pages,
-            "markdown_total": markdown,
-            "html_total": html,
-            "share_total": share(markdown, markdown + html),
             "counting": get_setting("COUNT_HTML"),
         }
 

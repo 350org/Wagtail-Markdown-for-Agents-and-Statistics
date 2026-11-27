@@ -116,22 +116,20 @@
         {% if not summary.formats.counting %}
             <p class="help">{% trans "HTML reads aren't being counted on this site (COUNT_HTML is off). Counts recorded earlier are still shown." %}</p>
         {% endif %}
-        {% if summary.formats.rows %}
-            <div class="agentmd-table-scroll">
-                <table class="listing agentmd-format-agents">
-                    <thead><tr><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Purpose" %}</th><th scope="col">{% trans "Gets Markdown by User-Agent" %}</th><th scope="col">{% trans "Markdown" %}</th><th scope="col">{% trans "HTML" %}</th><th scope="col">{% trans "Markdown share" %}</th><th scope="col">{% trans "Pages read as HTML" %}</th></tr></thead>
-                    <tbody>{% for row in summary.formats.rows %}
-                        <tr><th scope="row"><a href="{{ row.url }}">{{ row.agent }}</a></th><td>{{ row.intent_label }}</td><td>{% if row.serves_markdown is None %}—{% elif row.serves_markdown %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}</td><td>{{ row.markdown|intcomma }}</td><td>{{ row.html|intcomma }}</td><td>{{ row.share }}</td><td>{{ row.html_pages|intcomma }}</td></tr>
-                    {% endfor %}</tbody>
-                    <tfoot><tr><th scope="row">{% trans "All named agents" %}</th><td></td><td></td><td>{{ summary.formats.markdown_total|intcomma }}</td><td>{{ summary.formats.html_total|intcomma }}</td><td>{{ summary.formats.share_total }}</td><td></td></tr></tfoot>
-                </table>
-            </div>
+        <p>{% trans "Chose Markdown counts Markdown asked for by link, Accept header or export URL, not given on the User-Agent. It's the evidence for serving an agent Markdown on its User-Agent. An agent that already gets Markdown that way has no need to choose it, so don't compare served and unserved agents on it." %}</p>
+        {% if summary.formats.agents.rows or summary.formats.reference.rows %}
+            {% trans "AI agents" as agents_title %}{% trans "All AI agents" as agents_total %}
+            {% include "wagtail_markdown_agents/report_format_table.html" with group=summary.formats.agents title=agents_title total_label=agents_total table_class="agentmd-format-agents" only %}
+            {% if summary.formats.reference.rows %}
+                {% trans "Reference crawlers" as reference_title %}{% trans "All reference crawlers" as reference_total %}{% trans "Search engines whose index feeds AI answers, such as Googlebot and bingbot. Shown apart as a baseline for the AI agents, and left out of the page list below. Never served Markdown on their User-Agent. Set COUNT_HTML_EXCLUDE to ['reference'] to stop counting their HTML reads." as reference_help %}
+                {% include "wagtail_markdown_agents/report_format_table.html" with group=summary.formats.reference title=reference_title total_label=reference_total help=reference_help table_class="agentmd-format-reference" only %}
+            {% endif %}
         {% else %}
             <p>{% trans "No reads by named agents in this range." %}</p>
         {% endif %}
         {% if summary.formats.pages %}
             <h3>{% trans "Pages read as HTML" %}</h3>
-            <p>{% trans "The 10 pages with the most HTML reads by named agents. Select a page to filter the whole report." %}</p>
+            <p>{% trans "The 10 pages with the most HTML reads by AI agents, leaving out reference crawlers. Select a page to filter the whole report." %}</p>
             <div class="agentmd-table-scroll">
                 <table class="listing agentmd-format-pages">
                     <thead><tr><th scope="col">{% trans "Page" %}</th><th scope="col">{% trans "HTML" %}</th><th scope="col">{% trans "Markdown" %}</th></tr></thead>

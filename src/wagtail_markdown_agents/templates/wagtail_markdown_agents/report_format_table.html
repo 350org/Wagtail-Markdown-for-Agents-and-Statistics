@@ -1,0 +1,16 @@
+{% load wagtailadmin_tags i18n %}
+<h3>{{ title }}</h3>
+{% if help %}<p>{{ help }}</p>{% endif %}
+{% if group.rows %}
+    <div class="agentmd-table-scroll">
+        <table class="listing {{ table_class }}">
+            <thead><tr><th scope="col">{% trans "Agent" %}</th><th scope="col">{% trans "Purpose" %}</th><th scope="col">{% trans "Gets Markdown by User-Agent" %}</th><th scope="col">{% trans "Markdown" %}</th><th scope="col">{% trans "Chose Markdown" %}</th><th scope="col">{% trans "HTML" %}</th><th scope="col">{% trans "Markdown share" %}</th><th scope="col">{% trans "Pages read as HTML" %}</th></tr></thead>
+            <tbody>{% for row in group.rows %}
+                <tr><th scope="row"><a href="{{ row.url }}">{{ row.agent }}</a></th><td>{{ row.intent_label }}</td><td>{% if row.serves_markdown is None %}—{% elif row.serves_markdown %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}</td><td>{{ row.markdown|intcomma }}</td><td>{{ row.chose|intcomma }}</td><td>{{ row.html|intcomma }}</td><td>{{ row.share }}</td><td>{{ row.html_pages|intcomma }}</td></tr>
+            {% endfor %}</tbody>
+            <tfoot><tr><th scope="row">{{ total_label }}</th><td></td><td></td><td>{{ group.markdown_total|intcomma }}</td><td>{{ group.chose_total|intcomma }}</td><td>{{ group.html_total|intcomma }}</td><td>{{ group.share_total }}</td><td></td></tr></tfoot>
+        </table>
+    </div>
+{% else %}
+    <p>{% trans "No reads by AI agents in this range." %}</p>
+{% endif %}

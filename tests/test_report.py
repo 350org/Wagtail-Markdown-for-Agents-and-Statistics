@@ -599,21 +599,23 @@ def test_html_reads_by_agent_put_both_formats_side_by_side(report, settings):
     counter(page_id=111, agent="Applebot-Extended", access_method="ua", count=1)
     response = report()
     formats = response.context["summary"]["formats"]
+    agents = formats["agents"]
     assert [
         (row["agent"], row["serves_markdown"], row["markdown"], row["html"], row["share"])
-        for row in formats["rows"]
+        for row in agents["rows"]
     ] == [
         ("Claude-Agent", False, 0, 8, "0%"),
         ("GPTBot", True, 9, 3, "75%"),
         ("ClaudeBot", True, 5, 0, "100%"),
         ("Applebot-Extended", None, 1, 0, "100%"),
     ]
-    assert [row["html_pages"] for row in formats["rows"]] == [1, 2, 0, 0]
-    assert (formats["markdown_total"], formats["html_total"], formats["share_total"]) == (
+    assert [row["html_pages"] for row in agents["rows"]] == [1, 2, 0, 0]
+    assert (agents["markdown_total"], agents["html_total"], agents["share_total"]) == (
         15,
         11,
         "58%",
     )
+    assert formats["reference"]["rows"] == []
     assert [(row["page_id"], row["html"], row["markdown"]) for row in formats["pages"]] == [
         (111, 9, 15),
         (222, 2, 0),
@@ -622,7 +624,7 @@ def test_html_reads_by_agent_put_both_formats_side_by_side(report, settings):
     assert content.index("Agents by access method") < content.index("HTML reads by agent")
     assert content.index("HTML reads by agent") < content.index("Daily records")
     settings.WAGTAIL_MARKDOWN_AGENTS = {"NEGOTIATE_USER_AGENT": False}
-    rows = report().context["summary"]["formats"]["rows"]
+    rows = report().context["summary"]["formats"]["agents"]["rows"]
     assert {row["agent"]: row["serves_markdown"] for row in rows}["GPTBot"] is False
 
 
@@ -640,7 +642,7 @@ def test_html_reads_follow_the_report_filters_except_access_method(report):
     )
 
     def table(**params):
-        rows = report(**params).context["summary"]["formats"]["rows"]
+        rows = report(**params).context["summary"]["formats"]["agents"]["rows"]
         return [(row["agent"], row["markdown"], row["html"]) for row in rows]
 
     assert table() == [("Claude-Agent", 0, 8), ("GPTBot", 6, 7)]
@@ -650,6 +652,48 @@ def test_html_reads_follow_the_report_filters_except_access_method(report):
     assert table(intent="training") == [("GPTBot", 6, 7)]
     assert table(method="export-url") == [("Claude-Agent", 0, 8), ("GPTBot", 6, 7)]
     assert table(preset="90") == [("GPTBot", 6, 107), ("Claude-Agent", 0, 8)]
+
+
+def test_chose_markdown_leaves_out_the_user_agent_rule(report):
+    # #96: Markdown by link, Accept header or export URL is a choice; by UA it isn't.
+    counter(page_id=111, agent="GPTBot", access_method="ua", count=6)
+    counter(page_id=111, agent="GPTBot", access_method="export-url", count=3)
+    counter(page_id=111, agent="GPTBot", access_method="accept-header", count=2)
+    counter(page_id=111, agent="CCBot", access_method="query-param", count=4)
+    counter(page_id=111, agent="CCBot", access_method="html", count=1)
+    response = report()
+    agents = response.context["summary"]["formats"]["agents"]
+    assert [(row["agent"], row["markdown"], row["chose"]) for row in agents["rows"]] == [
+        ("CCBot", 4, 4),
+        ("GPTBot", 11, 5),
+    ]
+    assert agents["chose_total"] == 9
+    content = response.content.decode()
+    assert "Chose Markdown" in content
+    assert "compare served and unserved agents on it" in content
+
+
+def test_reference_crawlers_have_their_own_table_and_stay_out_of_the_page_list(report):
+    counter(page_id=111, agent="GPTBot", access_method="html", count=2)
+    counter(page_id=222, agent="Googlebot", access_method="html", count=40)
+    counter(page_id=333, agent="bingbot", access_method="html", count=9)
+    counter(page_id=333, agent="bingbot", access_method="export-url", count=1)
+    response = report()
+    formats = response.context["summary"]["formats"]
+    assert [row["agent"] for row in formats["agents"]["rows"]] == ["GPTBot"]
+    assert [
+        (row["agent"], row["serves_markdown"], row["html"], row["chose"])
+        for row in formats["reference"]["rows"]
+    ] == [("Googlebot", False, 40, 0), ("bingbot", False, 9, 1)]
+    assert (formats["reference"]["html_total"], formats["agents"]["html_total"]) == (49, 2)
+    assert [row["page_id"] for row in formats["pages"]] == [111]
+    content = response.content.decode()
+    assert content.index("AI agents") < content.index("Reference crawlers")
+    assert content.index("Reference crawlers") < content.index("Pages read as HTML</h3>")
+    assert 'class="listing agentmd-format-reference"' in content
+    # Without reference rows, there's no reference table.
+    AgentAccess.objects.filter(agent__in=["Googlebot", "bingbot"]).delete()
+    assert "agentmd-format-reference" not in report().content.decode()
 
 
 def test_html_section_states_and_off_switch(report, settings):

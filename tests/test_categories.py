@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from wagtail import hooks
 
-from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENTS
+from wagtail_markdown_agents.data.agents import AGENT_CATEGORIES, AGENTS, RETIRED_AGENTS
 from wagtail_markdown_agents.models import AgentAccess
 from wagtail_markdown_agents.negotiation import detect_agent
 from wagtail_markdown_agents.stats import categorise_agent, get_agent_categories
@@ -120,10 +120,11 @@ def test_retired_labels_keep_their_frozen_classification():
     fixture = Path(__file__).with_name("fixtures") / "agents-wordpress-1.7.0.json"
     reference = json.loads(fixture.read_text())
     assert {k: list(v) for k, v in LEGACY_CATEGORIES.items()} == reference["categories"]
-    active = {agent.label.lower() for agent in AGENTS}
+    # Registry entries, active or retired (#96), own their labels' purposes.
+    registry = {agent.label.lower() for agent in AGENTS + RETIRED_AGENTS}
     for category, labels in LEGACY_CATEGORIES.items():
         for label in labels:
-            if label.lower() not in active:
+            if label.lower() not in registry:
                 assert categorise_agent(label) == category
 
 

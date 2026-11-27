@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2026-11-23.1",
+  "version": "2026-11-27.1",
   "agents": [
     {
       "label": "GPTBot",
@@ -11,6 +11,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developers.openai.com/api/docs/bots"
@@ -27,6 +28,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developers.openai.com/api/docs/bots"
@@ -43,6 +45,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
@@ -59,6 +62,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
@@ -75,6 +79,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler"
@@ -91,6 +96,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developers.openai.com/api/docs/bots"
@@ -107,6 +113,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://docs.perplexity.ai/docs/resources/perplexity-crawlers"
@@ -123,6 +130,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://docs.perplexity.ai/docs/resources/perplexity-crawlers"
@@ -139,6 +147,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/meta-externalagent"
@@ -155,6 +164,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/meta-externalfetcher"
@@ -171,6 +181,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developers.facebook.com/docs/sharing/webmasters/crawler",
@@ -188,6 +199,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/mistralai-user"
@@ -204,6 +216,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot"
@@ -220,6 +233,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers",
@@ -237,6 +251,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://support.claude.com/en/articles/18234133-how-do-anthropic-hosted-browsers-identify-themselves-when-they-browse-the-web-on-a-user-s-behalf",
@@ -254,6 +269,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": false,
       "sources": [
         "https://developer.amazon.com/amazonbot",
@@ -271,6 +287,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": false,
       "sources": [
         "https://commoncrawl.org/ccbot",
@@ -278,22 +295,6 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Radar training category is an estimate for a general corpus crawler; recognition only."
-    },
-    {
-      "label": "FacebookBot",
-      "operator": "Meta",
-      "tokens": [
-        "FacebookBot"
-      ],
-      "purposes": [
-        "training"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://developers.cloudflare.com/ai-crawl-control/reference/bots/"
-      ],
-      "reviewed": "2026-09-22",
-      "notes": "Documented separately from facebookexternalhit and meta-externalagent; recognition only pending operator validation."
     },
     {
       "label": "Applebot",
@@ -305,6 +306,7 @@
         "search",
         "training"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://support.apple.com/en-gb/119829"
@@ -316,19 +318,23 @@
       "label": "Googlebot",
       "operator": "Google",
       "tokens": [
-        "Googlebot"
+        "Googlebot",
+        "Googlebot-Image",
+        "Googlebot-News",
+        "Googlebot-Video"
       ],
       "purposes": [
         "search",
         "training"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers",
         "https://radar.cloudflare.com/bots/directory/google"
       ],
-      "reviewed": "2026-09-22",
-      "notes": "General search crawler with multiple downstream uses. Do not automatically change its representation."
+      "reviewed": "2026-11-27",
+      "notes": "General search crawler with multiple downstream uses. Do not automatically change its representation. From 2026-11-27.1 its image, news and video products count as Googlebot, as in agent-signals revision 4."
     },
     {
       "label": "bingbot",
@@ -340,6 +346,7 @@
         "search",
         "training"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/bing"
@@ -358,44 +365,13 @@
       "purposes": [
         "other"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
       ],
       "reviewed": "2026-09-28",
       "notes": "Generic research crawler; operator documentation does not establish training intent. Include documented image/video variants."
-    },
-    {
-      "label": "CloudVertexBot",
-      "operator": "Google",
-      "tokens": [
-        "Google-CloudVertexBot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Site-owner-requested Vertex AI indexing. Retain historical stored label; require the full documented HTTP token."
-    },
-    {
-      "label": "OAI-AdsBot",
-      "operator": "OpenAI",
-      "tokens": [
-        "OAI-AdsBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://developers.openai.com/api/docs/bots"
-      ],
-      "reviewed": "2026-09-22",
-      "notes": "Advertising validation, not foundation-model training or a request for Markdown."
     },
     {
       "label": "KimiBot",
@@ -406,6 +382,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://www.kimi.com/policies/kimi-crawlers",
@@ -423,6 +400,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developer.amazon.com/amazonbot",
@@ -441,6 +419,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developers.cloudflare.com/ai-search/configuration/data-source/website/parse-types/",
@@ -458,6 +437,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://docs.getliner.com/docs/linerbot",
@@ -475,6 +455,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://docs.parallel.ai/resources/crawler",
@@ -492,6 +473,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://www.kernel.sh/docs/bots",
@@ -509,6 +491,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://docs.direqt-search.com/direqt-bots/direqt-crawlers-and-user-agents",
@@ -526,6 +509,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": false,
       "sources": [
         "https://developers.cloudflare.com/ai-crawl-control/reference/bots/",
@@ -543,6 +527,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://webmaster.petalsearch.com/site/petalbot",
@@ -560,6 +545,7 @@
       "purposes": [
         "search"
       ],
+      "kind": "reference",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/bravebot",
@@ -567,57 +553,6 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Radar lists this verified token; Brave's own page says its crawler does not advertise a differentiated user agent. General search."
-    },
-    {
-      "label": "Element451Bot",
-      "operator": "Element451",
-      "tokens": [
-        "Element451Bot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://help.element451.io/en/articles/10302715-getting-started-with-knowledge-hub",
-        "https://radar.cloudflare.com/bots/directory/element451bot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Knowledge-base ingestion for sites an Element451 customer connects; owner-connected, so recognition only."
-    },
-    {
-      "label": "atlassian-bot",
-      "operator": "Atlassian",
-      "tokens": [
-        "atlassian-bot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://support.atlassian.com/organization-administration/docs/connect-custom-website-to-rovo/",
-        "https://radar.cloudflare.com/bots/directory/atlassian-bot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Rovo search and agent indexing of websites the customer owns; owner-connected, so recognition only. WordPress estimated training."
-    },
-    {
-      "label": "alphalens-bot",
-      "operator": "Alphalens",
-      "tokens": [
-        "alphalens-bot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://alphalensbot.com",
-        "https://radar.cloudflare.com/bots/directory/alphalens-bot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Company and product discovery index; the operator does not describe AI use."
     },
     {
       "label": "ICC-Crawler/",
@@ -628,6 +563,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": false,
       "sources": [
         "https://ucri.nict.go.jp/en/icccrawler.html",
@@ -645,6 +581,7 @@
       "purposes": [
         "training"
       ],
+      "kind": "agent",
       "auto_markdown": false,
       "sources": [
         "https://ds.rois.ac.jp/center8/crawler/",
@@ -652,89 +589,6 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Japanese-language data resource collection; AI framing is Radar's. Keep historical label, including slash."
-    },
-    {
-      "label": "bigsur.ai",
-      "operator": "Big Sur AI",
-      "tokens": [
-        "bigsur.ai"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/big-sur-ai"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Builds a corpus for a customer's own site agents. Token documented by Radar only; the operator says requests may go through a proxy service."
-    },
-    {
-      "label": "NavuBot",
-      "operator": "Navu",
-      "tokens": [
-        "NavuBot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://navu.co/ensuring-navu-has-access-to-your-site/",
-        "https://radar.cloudflare.com/bots/directory/navu"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Indexes customer or prospect sites for their own AI chat. WordPress estimated training."
-    },
-    {
-      "label": "QualifiedBot",
-      "operator": "Qualified",
-      "tokens": [
-        "QualifiedBot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://www.qualified.com/legal/qualified-crawler-user-agent",
-        "https://radar.cloudflare.com/bots/directory/qualifiedbot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Crawls customer websites to power Qualified AI features; may also use an unmarked Chromium user agent. WordPress estimated training."
-    },
-    {
-      "label": "ChathiveCrawler",
-      "operator": "Oniroco",
-      "tokens": [
-        "ChathiveCrawler",
-        "OnirocoCrawler"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://developers.chathive.app/crawler/overview"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Chathive is now Oniroco; the default is OnirocoCrawler/1.0 and customers can change it. Customer chatbot ingestion. WordPress estimated on-demand."
-    },
-    {
-      "label": "CitibotSiteCrawler",
-      "operator": "Citibot",
-      "tokens": [
-        "CitibotSiteCrawler"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/citibotsitecrawler"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Collects government website data for Citibot civic AI tools. Token documented by Radar only. WordPress estimated training."
     },
     {
       "label": "CloudflareBrowserRenderingCrawler",
@@ -747,6 +601,7 @@
         "training",
         "other"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://developers.cloudflare.com/browser-run/quick-actions/crawl-endpoint/",
@@ -764,6 +619,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/novellum-ai-crawl"
@@ -780,6 +636,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/devin"
@@ -796,6 +653,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://docs.twin.so/web-agent",
@@ -813,6 +671,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/apify-website-content-crawler",
@@ -830,6 +689,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://radar.cloudflare.com/bots/directory/cledara-saas-management-agent"
@@ -846,6 +706,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "browser",
       "auto_markdown": false,
       "sources": [
         "https://app.hark.com/about/bot",
@@ -853,294 +714,6 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "User-requested research, form filling and account actions; operator says it requests HTML responses only."
-    },
-    {
-      "label": "HIFIBot",
-      "operator": "HIFI",
-      "tokens": [
-        "HIFIBot"
-      ],
-      "purposes": [
-        "on-demand"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/hifibot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Logs in to royalty portals on behalf of clients. Not an AI content agent; recognised for continuity."
-    },
-    {
-      "label": "Nava/",
-      "operator": "Nava",
-      "tokens": [
-        "Nava"
-      ],
-      "purposes": [
-        "on-demand"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://dev.labs-asp.navateam.com/bot-disclosure",
-        "https://radar.cloudflare.com/bots/directory/nava-labs-asp-dev"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Caseworker-directed browser agent that fills benefit forms. Keep historical label, including slash."
-    },
-    {
-      "label": "Instapaper",
-      "operator": "Instapaper",
-      "tokens": [
-        "Instapaper",
-        "Instaparser"
-      ],
-      "purposes": [
-        "on-demand"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/instapaper"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "User-triggered read-later fetch that parses HTML. Radar lists Instapaper/4.0 and Instaparser/1.0."
-    },
-    {
-      "label": "EasyScan",
-      "operator": "IT-Recht Kanzlei",
-      "tokens": [
-        "EasyScan"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/easyscan",
-        "https://www.it-recht-kanzlei.de/website-scanner-fuer-mandanten.php"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Privacy-policy compliance scanner. WordPress estimated on-demand."
-    },
-    {
-      "label": "QATechBot",
-      "operator": "QA.tech",
-      "tokens": [
-        "QATechBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://docs.qa.tech/bot",
-        "https://radar.cloudflare.com/bots/directory/qatechbot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Authorised end-to-end tests in a real browser; not crawling. WordPress estimated on-demand."
-    },
-    {
-      "label": "Retool/",
-      "operator": "Retool",
-      "tokens": [
-        "Retool"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/retool",
-        "https://community.retool.com/t/how-does-the-user-agent-header-work/26238"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Requests from user-built internal tools. Keep historical label, including slash. WordPress estimated on-demand."
-    },
-    {
-      "label": "make.com",
-      "operator": "Make",
-      "tokens": [
-        "make.com"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/make-com-2"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Workflow automation. Radar also lists Make/production and Integromat/production; those generic tokens are not added. WordPress estimated training."
-    },
-    {
-      "label": "magpie-crawler",
-      "operator": "Brandwatch",
-      "tokens": [
-        "magpie-crawler"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://www.brandwatch.com/legal/magpie-crawler/",
-        "https://radar.cloudflare.com/bots/directory/magpiecrawler"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Social media monitoring index; the operator does not describe AI use. WordPress estimated training."
-    },
-    {
-      "label": "Awario",
-      "operator": "Awario",
-      "tokens": [
-        "AwarioBot",
-        "AwarioSmartBot",
-        "AwarioRssBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://awario.com/bots.html",
-        "https://radar.cloudflare.com/bots/directory/awario"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Brand-mention monitoring. Keep the historical label; match the three documented product tokens. WordPress estimated training."
-    },
-    {
-      "label": "BorderxBot",
-      "operator": "BorderX",
-      "tokens": [
-        "BorderxBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://www.nubestore.ai/borderxbot.html",
-        "https://radar.cloudflare.com/bots/directory/borderxbot-2"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "E-commerce product crawler. WordPress estimated training."
-    },
-    {
-      "label": "netEstate NE Crawler",
-      "operator": "netEstate",
-      "tokens": [
-        "netEstate NE Crawler"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/datenbank",
-        "https://www.netestate.de/informationsextraktion/software/impressums-crawler/"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Extracts contact details from imprint pages. The URL in its user agent no longer resolves. WordPress estimated training."
-    },
-    {
-      "label": "AdpResearchBot/",
-      "operator": "ADP",
-      "tokens": [
-        "AdpResearchBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://payroll-bot.adp.com/docs",
-        "https://radar.cloudflare.com/bots/directory/payroll-bot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Collects payroll and legal documentation from government sites; operator says it does not train AI models. Keep historical label, including slash."
-    },
-    {
-      "label": "SelectikaScraper",
-      "operator": "Selectika",
-      "tokens": [
-        "SelectikaScraper"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://selectika.com/bot/",
-        "https://radar.cloudflare.com/bots/directory/selectika-ai"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Retail catalogue ingestion arranged with partners. WordPress estimated training."
-    },
-    {
-      "label": "SemrushBot-OCOB",
-      "operator": "Semrush",
-      "tokens": [
-        "SemrushBot-OCOB"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://www.semrush.com/bot/",
-        "https://radar.cloudflare.com/bots/directory/semrushbot-ocob"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Crawls for the Semrush Content Toolkit; operator does not mention training. WordPress estimated training."
-    },
-    {
-      "label": "SemrushBot-SWA/",
-      "operator": "Semrush",
-      "tokens": [
-        "SemrushBot-SWA"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://www.semrush.com/bot/",
-        "https://radar.cloudflare.com/bots/directory/semrush-swa"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "SEO Writing Assistant URL accessibility check. Keep historical label, including slash. WordPress estimated training."
-    },
-    {
-      "label": "WARDBot",
-      "operator": "WEBSPARK",
-      "tokens": [
-        "WARDBot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://ward.ai/robot",
-        "https://radar.cloudflare.com/bots/directory/wardbot"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Uptime monitoring of user-listed URLs. WordPress estimated training."
-    },
-    {
-      "label": "ygs-scraper-bot",
-      "operator": "YGS Group",
-      "tokens": [
-        "ygs-scraper-bot"
-      ],
-      "purposes": [
-        "other"
-      ],
-      "auto_markdown": false,
-      "sources": [
-        "https://radar.cloudflare.com/bots/directory/ygs-group-falconer-scraper"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Content-licensing scraper for partners that gave permission. Token documented by Radar only; operator page was behind a challenge. WordPress estimated training."
     },
     {
       "label": "Kimi-User",
@@ -1151,28 +724,13 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://www.kimi.com/policies/kimi-crawlers"
       ],
       "reviewed": "2026-09-28",
       "notes": "Operator: user-initiated actions such as summarising an article or live retrieval; not bulk crawling."
-    },
-    {
-      "label": "Kimi-SearchBot",
-      "operator": "Moonshot AI",
-      "tokens": [
-        "Kimi-SearchBot"
-      ],
-      "purposes": [
-        "search"
-      ],
-      "auto_markdown": true,
-      "sources": [
-        "https://www.kimi.com/policies/kimi-crawlers"
-      ],
-      "reviewed": "2026-09-28",
-      "notes": "Operator: analyses pages for relevance and builds the Kimi search index."
     },
     {
       "label": "Amzn-User",
@@ -1183,6 +741,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://developer.amazon.com/amazonbot"
@@ -1199,6 +758,7 @@
       "purposes": [
         "on-demand"
       ],
+      "kind": "agent",
       "auto_markdown": true,
       "sources": [
         "https://parallel.ai/parallel-web-systems-bots",
@@ -1206,6 +766,674 @@
       ],
       "reviewed": "2026-09-28",
       "notes": "Operator: accesses content on behalf of users; not automatic crawling."
+    },
+    {
+      "label": "Geminibot",
+      "operator": "Google",
+      "tokens": [
+        "Geminibot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Seen in logs riding on other clients, such as curl/7.81.0 Geminibot (chancery-lane-project/wp-mfa-plugin#41). Not on Google's common, special-case or user-triggered crawler pages (checked 2026-11-26), so the operator is by name and the purpose from behaviour, as in agent-signals. Not served on its User-Agent: no evidence it uses Markdown yet."
+    },
+    {
+      "label": "Google-GeminiNotebook",
+      "operator": "Google",
+      "tokens": [
+        "Google-GeminiNotebook"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Google's user-triggered fetcher for Gemini Notebook. It replaces Google-NotebookLM, which Google lists as a former agent (supported until August 2026); NotebookLM was never in this registry."
+    },
+    {
+      "label": "RiverBot",
+      "operator": "",
+      "tokens": [
+        "RiverBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://river.ai/bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Operator page: collects data for AI model training and evaluation; robots.txt, an IP list and Web Bot Auth. Purpose follows the operator, not observed behaviour (agent-signals#8). Operator left out, as in agent-signals revision 4."
+    },
+    {
+      "label": "ibou-search",
+      "operator": "",
+      "tokens": [
+        "ibou-search"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://ibou.com/crawlers.html"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Operator page: a search engine crawler that does not train models. The documented User-Agent adds www.ibou.com; both forms match on the token. Operator left out, as in agent-signals revision 4."
+    },
+    {
+      "label": "LinkupBot",
+      "operator": "Linkup",
+      "tokens": [
+        "LinkupBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://linkup.so/bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Operator page: builds a search index for search and AI grounding. Linkup-User (on-demand) exists but isn't listed."
+    },
+    {
+      "label": "YouBot",
+      "operator": "You.com",
+      "tokens": [
+        "YouBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://docs.you.com/youbot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "You.com's search crawler; the URL is the one in its own User-Agent. No You.com page describing it was found (about.you.com/youbot is a 404), so the purpose is uncertain. Not served: no Markdown requests seen (agent-signals#5)."
+    },
+    {
+      "label": "KeenableBot",
+      "operator": "Keenable",
+      "tokens": [
+        "KeenableBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "kind": "agent",
+      "auto_markdown": true,
+      "sources": [
+        "https://keenable.ai/bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Operator page: a web search index for AI agents. Served automatically from 2026-11-27.1 under the evidence rule: it asked for Markdown through Accept 257 times in six days (agent-signals#5). Keenable-User exists but isn't listed."
+    },
+    {
+      "label": "ClueWeb-Crawler",
+      "operator": "",
+      "tokens": [
+        "ClueWeb-Crawler"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "kind": "agent",
+      "auto_markdown": true,
+      "sources": [
+        "https://boston.lti.cs.cmu.edu/CMU-ClueWeb-Crawler/"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Carnegie Mellon's crawler for the ClueWeb research corpora; training, as for CCBot. The project page (the URL in its User-Agent) failed with a TLS error on 2026-11-26, so the evidence is from logs only. Served automatically from 2026-11-27.1 under the evidence rule: it followed Markdown alternate links 521 times in six days (agent-signals#5). Operator left out: CMU states no purpose."
+    },
+    {
+      "label": "AzureAI-SearchBot",
+      "operator": "",
+      "tokens": [
+        "AzureAI-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "kind": "agent",
+      "auto_markdown": false,
+      "sources": [
+        "https://github.com/chancery-lane-project/agent-signals/issues/7"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "An AI search crawler seen in logs: 247 requests in seven days, a third of them for robots.txt, from Azure networks. Microsoft doesn't document it, so the operator is left out, as in agent-signals. Not served: it never asked for Markdown."
+    },
+    {
+      "label": "FacebookBot",
+      "operator": "Meta",
+      "tokens": [
+        "FacebookBot"
+      ],
+      "purposes": [
+        "training"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://developers.cloudflare.com/ai-crawl-control/reference/bots/"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): agent-signals revision 4 leaves it out: Meta no longer documents it, and it isn't in any logs. Its label stays for past report rows. Before: Documented separately from facebookexternalhit and meta-externalagent; recognition only pending operator validation."
+    },
+    {
+      "label": "CloudVertexBot",
+      "operator": "Google",
+      "tokens": [
+        "Google-CloudVertexBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Site-owner-requested Vertex AI indexing. Retain historical stored label; require the full documented HTTP token."
+    },
+    {
+      "label": "OAI-AdsBot",
+      "operator": "OpenAI",
+      "tokens": [
+        "OAI-AdsBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://developers.openai.com/api/docs/bots"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): It checks advertising landing pages, so it isn't an AI agent under the rule. Its label stays for past report rows. Before: Advertising validation, not foundation-model training or a request for Markdown."
+    },
+    {
+      "label": "Element451Bot",
+      "operator": "Element451",
+      "tokens": [
+        "Element451Bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://help.element451.io/en/articles/10302715-getting-started-with-knowledge-hub",
+        "https://radar.cloudflare.com/bots/directory/element451bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Knowledge-base ingestion for sites an Element451 customer connects; owner-connected, so recognition only."
+    },
+    {
+      "label": "atlassian-bot",
+      "operator": "Atlassian",
+      "tokens": [
+        "atlassian-bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://support.atlassian.com/organization-administration/docs/connect-custom-website-to-rovo/",
+        "https://radar.cloudflare.com/bots/directory/atlassian-bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Rovo search and agent indexing of websites the customer owns; owner-connected, so recognition only. WordPress estimated training."
+    },
+    {
+      "label": "alphalens-bot",
+      "operator": "Alphalens",
+      "tokens": [
+        "alphalens-bot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://alphalensbot.com",
+        "https://radar.cloudflare.com/bots/directory/alphalens-bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Company and product discovery index; the operator does not describe AI use."
+    },
+    {
+      "label": "bigsur.ai",
+      "operator": "Big Sur AI",
+      "tokens": [
+        "bigsur.ai"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/big-sur-ai"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Builds a corpus for a customer's own site agents. Token documented by Radar only; the operator says requests may go through a proxy service."
+    },
+    {
+      "label": "NavuBot",
+      "operator": "Navu",
+      "tokens": [
+        "NavuBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://navu.co/ensuring-navu-has-access-to-your-site/",
+        "https://radar.cloudflare.com/bots/directory/navu"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Indexes customer or prospect sites for their own AI chat. WordPress estimated training."
+    },
+    {
+      "label": "QualifiedBot",
+      "operator": "Qualified",
+      "tokens": [
+        "QualifiedBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.qualified.com/legal/qualified-crawler-user-agent",
+        "https://radar.cloudflare.com/bots/directory/qualifiedbot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Crawls customer websites to power Qualified AI features; may also use an unmarked Chromium user agent. WordPress estimated training."
+    },
+    {
+      "label": "ChathiveCrawler",
+      "operator": "Oniroco",
+      "tokens": [
+        "ChathiveCrawler",
+        "OnirocoCrawler"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://developers.chathive.app/crawler/overview"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Chathive is now Oniroco; the default is OnirocoCrawler/1.0 and customers can change it. Customer chatbot ingestion. WordPress estimated on-demand."
+    },
+    {
+      "label": "CitibotSiteCrawler",
+      "operator": "Citibot",
+      "tokens": [
+        "CitibotSiteCrawler"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/citibotsitecrawler"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): AI ingestion only for a site owner's own AI tools. Its label stays for past report rows. Before: Collects government website data for Citibot civic AI tools. Token documented by Radar only. WordPress estimated training."
+    },
+    {
+      "label": "HIFIBot",
+      "operator": "HIFI",
+      "tokens": [
+        "HIFIBot"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/hifibot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Logs in to royalty portals on behalf of clients. Not an AI content agent; recognised for continuity."
+    },
+    {
+      "label": "Nava/",
+      "operator": "Nava",
+      "tokens": [
+        "Nava"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://dev.labs-asp.navateam.com/bot-disclosure",
+        "https://radar.cloudflare.com/bots/directory/nava-labs-asp-dev"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Caseworker-directed browser agent that fills benefit forms. Keep historical label, including slash."
+    },
+    {
+      "label": "Instapaper",
+      "operator": "Instapaper",
+      "tokens": [
+        "Instapaper",
+        "Instaparser"
+      ],
+      "purposes": [
+        "on-demand"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/instapaper"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: read-later parsing. Its label stays for past report rows. Before: User-triggered read-later fetch that parses HTML. Radar lists Instapaper/4.0 and Instaparser/1.0."
+    },
+    {
+      "label": "EasyScan",
+      "operator": "IT-Recht Kanzlei",
+      "tokens": [
+        "EasyScan"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/easyscan",
+        "https://www.it-recht-kanzlei.de/website-scanner-fuer-mandanten.php"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: privacy compliance scanner. Its label stays for past report rows. Before: Privacy-policy compliance scanner. WordPress estimated on-demand."
+    },
+    {
+      "label": "QATechBot",
+      "operator": "QA.tech",
+      "tokens": [
+        "QATechBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://docs.qa.tech/bot",
+        "https://radar.cloudflare.com/bots/directory/qatechbot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: automated browser tests. Its label stays for past report rows. Before: Authorised end-to-end tests in a real browser; not crawling. WordPress estimated on-demand."
+    },
+    {
+      "label": "Retool/",
+      "operator": "Retool",
+      "tokens": [
+        "Retool"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/retool",
+        "https://community.retool.com/t/how-does-the-user-agent-header-work/26238"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: workflow tool. Its label stays for past report rows. Before: Requests from user-built internal tools. Keep historical label, including slash. WordPress estimated on-demand."
+    },
+    {
+      "label": "make.com",
+      "operator": "Make",
+      "tokens": [
+        "make.com"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/make-com-2"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: workflow tool. Its label stays for past report rows. Before: Workflow automation. Radar also lists Make/production and Integromat/production; those generic tokens are not added. WordPress estimated training."
+    },
+    {
+      "label": "magpie-crawler",
+      "operator": "Brandwatch",
+      "tokens": [
+        "magpie-crawler"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.brandwatch.com/legal/magpie-crawler/",
+        "https://radar.cloudflare.com/bots/directory/magpiecrawler"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: social and brand monitoring. Its label stays for past report rows. Before: Social media monitoring index; the operator does not describe AI use. WordPress estimated training."
+    },
+    {
+      "label": "Awario",
+      "operator": "Awario",
+      "tokens": [
+        "AwarioBot",
+        "AwarioSmartBot",
+        "AwarioRssBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://awario.com/bots.html",
+        "https://radar.cloudflare.com/bots/directory/awario"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: social and brand monitoring. Its label stays for past report rows. Before: Brand-mention monitoring. Keep the historical label; match the three documented product tokens. WordPress estimated training."
+    },
+    {
+      "label": "BorderxBot",
+      "operator": "BorderX",
+      "tokens": [
+        "BorderxBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.nubestore.ai/borderxbot.html",
+        "https://radar.cloudflare.com/bots/directory/borderxbot-2"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: E-commerce product crawler. WordPress estimated training."
+    },
+    {
+      "label": "netEstate NE Crawler",
+      "operator": "netEstate",
+      "tokens": [
+        "netEstate NE Crawler"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/datenbank",
+        "https://www.netestate.de/informationsextraktion/software/impressums-crawler/"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: contact extraction. Its label stays for past report rows. Before: Extracts contact details from imprint pages. The URL in its user agent no longer resolves. WordPress estimated training."
+    },
+    {
+      "label": "AdpResearchBot/",
+      "operator": "ADP",
+      "tokens": [
+        "AdpResearchBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://payroll-bot.adp.com/docs",
+        "https://radar.cloudflare.com/bots/directory/payroll-bot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Collects payroll and legal documentation from government sites; operator says it does not train AI models. Keep historical label, including slash."
+    },
+    {
+      "label": "SelectikaScraper",
+      "operator": "Selectika",
+      "tokens": [
+        "SelectikaScraper"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://selectika.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/selectika-ai"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Retail catalogue ingestion arranged with partners. WordPress estimated training."
+    },
+    {
+      "label": "SemrushBot-OCOB",
+      "operator": "Semrush",
+      "tokens": [
+        "SemrushBot-OCOB"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.semrush.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/semrushbot-ocob"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: SEO checks. Its label stays for past report rows. Before: Crawls for the Semrush Content Toolkit; operator does not mention training. WordPress estimated training."
+    },
+    {
+      "label": "SemrushBot-SWA/",
+      "operator": "Semrush",
+      "tokens": [
+        "SemrushBot-SWA"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.semrush.com/bot/",
+        "https://radar.cloudflare.com/bots/directory/semrush-swa"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: SEO checks. Its label stays for past report rows. Before: SEO Writing Assistant URL accessibility check. Keep historical label, including slash. WordPress estimated training."
+    },
+    {
+      "label": "WARDBot",
+      "operator": "WEBSPARK",
+      "tokens": [
+        "WARDBot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://ward.ai/robot",
+        "https://radar.cloudflare.com/bots/directory/wardbot"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent: uptime monitoring. Its label stays for past report rows. Before: Uptime monitoring of user-listed URLs. WordPress estimated training."
+    },
+    {
+      "label": "ygs-scraper-bot",
+      "operator": "YGS Group",
+      "tokens": [
+        "ygs-scraper-bot"
+      ],
+      "purposes": [
+        "other"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://radar.cloudflare.com/bots/directory/ygs-group-falconer-scraper"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): Not an AI agent under the rule in agent-signals#9. Its label stays for past report rows. Before: Content-licensing scraper for partners that gave permission. Token documented by Radar only; operator page was behind a challenge. WordPress estimated training."
+    },
+    {
+      "label": "Kimi-SearchBot",
+      "operator": "Moonshot AI",
+      "tokens": [
+        "Kimi-SearchBot"
+      ],
+      "purposes": [
+        "search"
+      ],
+      "auto_markdown": false,
+      "retired": true,
+      "sources": [
+        "https://www.kimi.com/policies/kimi-crawlers"
+      ],
+      "reviewed": "2026-11-27",
+      "notes": "Retired in 2026-11-27.1 (#96): agent-signals revision 4 leaves it out: its only sightings were a secrets scanner with an undocumented User-Agent. Add it back when the documented User-Agent appears in logs. Its label stays for past report rows. Before: Operator: analyses pages for relevance and builds the Kimi search index."
     }
   ]
 }
