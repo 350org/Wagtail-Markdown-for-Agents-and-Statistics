@@ -31,7 +31,7 @@ Silence a check you have deliberately chosen to ignore with Django's
 | `AUTO_GENERATE`, `LINK_HEADER`, `NEGOTIATE_QUERY_PARAM`, `NEGOTIATE_ACCEPT_HEADER`, `NEGOTIATE_USER_AGENT`, `COUNT_HTML`, `INCLUDE_HIERARCHY`, `INCLUDE_OWNER`, `MANIFEST` | `True` or `False` | `True`, `True`, `True`, `True`, `True`, `True`, `False`, `False`, `False` |
 | `CONTENT_SIGNAL` | Header value without control characters; `""` omits the header | `"ai-input=yes, search=yes"` |
 | `STATS_RETENTION_DAYS` | Positive whole number of days kept by `agentmd_prune_stats` (#36) | `90` |
-| `COUNT_HTML_EXCLUDE` | List of registry agent labels or purposes whose HTML reads aren't counted (#61) | `[]` |
+| `COUNT_HTML_EXCLUDE` | List of registry agent labels, purposes or kinds (`agent`, `browser`, `reference`) whose HTML reads aren't counted (#61, #96) | `[]` |
 | `DISCOVERY_CACHE_TIMEOUT` | Seconds, `0` or more; `0` disables the discovery cache | `60` |
 | `LISTING_LIMIT` | `None` or a positive whole number of pages an index lists before it shows only the newest (#76) | `20` |
 | `LISTING_DATE_FIELDS` | `{"app_label.ModelName": "date or datetime field"}` deciding “newest” per type | `{}` |

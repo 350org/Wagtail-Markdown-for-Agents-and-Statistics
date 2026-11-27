@@ -168,7 +168,7 @@ def counts_html(user_agent: str) -> bool:
     """Whether an HTML page read with this User-Agent is counted (#61).
 
     Only registry agents, while ``COUNT_HTML`` is on, and not left out by
-    ``COUNT_HTML_EXCLUDE`` (agent labels or purposes, case-insensitive).
+    ``COUNT_HTML_EXCLUDE`` (agent labels, purposes or kinds, case-insensitive).
     """
     if not get_setting("COUNT_HTML"):
         return False
@@ -178,7 +178,8 @@ def counts_html(user_agent: str) -> bool:
     excluded = {name.casefold() for name in get_setting("COUNT_HTML_EXCLUDE")}
     if not excluded:
         return True
-    return agent.label.casefold() not in excluded and categorise_agent(agent.label) not in excluded
+    names = {agent.label.casefold(), categorise_agent(agent.label), agent.kind}
+    return not names & excluded
 
 
 def record_html_read(request, response) -> None:

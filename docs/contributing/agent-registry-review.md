@@ -202,6 +202,83 @@ Radar's Social / Link Preview category still conflicts; the purpose follows Meta
 Cloudflare cache-bypass expression gains `meta-webindexer`: regenerate it on deploy. The
 label and its counters are unchanged.
 
+## Changes in 2026-11-27.1
+
+Registry `2026-11-27.1` has the same 52 active agents as revision 4 of the shared list
+in `chancery-lane-project/agent-signals` (released as 0.3.0 on 27 November 2026). It
+does #96 (trim to one rule, add `kind`) and #60 (nine new agents) in one version. The
+rule for an active entry, and `kind`, are in the [registry guide](../agent-registry.md#the-rule-for-an-active-entry).
+It replaces the #19 policy of recognising every inherited agent.
+
+Serving changes for three agents. The Cloudflare cache-bypass expression gains
+`keenablebot` and `clueweb-crawler` and loses `kimi-searchbot`: 25 agents are served
+automatically, with 26 tokens.
+
+### Added
+
+All nine are `kind: agent`. Operator pages were re-read on 26 November 2026.
+
+| Stored label | Operator | Purpose | Automatic Markdown | Evidence |
+| --- | --- | --- | --- | --- |
+| `Geminibot` | Google (by name) | on-demand | No | Logs only (`curl/7.81.0 Geminibot`). Not on Google's crawler pages |
+| `Google-GeminiNotebook` | Google | on-demand | No | [Google's user-triggered fetchers](https://developers.google.com/crawling/docs/crawlers-fetchers/google-user-triggered-fetchers). Replaces Google-NotebookLM, which Google lists as a former agent and which was never in this registry |
+| `RiverBot` | none | training | No | [river.ai/bot](https://river.ai/bot): AI model training and evaluation. Purpose follows the operator (agent-signals#8) |
+| `ibou-search` | none | search | No | [ibou.com/crawlers.html](https://ibou.com/crawlers.html): a search engine that doesn't train models |
+| `LinkupBot` | Linkup | search | No | [linkup.so/bot](https://linkup.so/bot): a search index for search and AI grounding |
+| `YouBot` | You.com | search | No | No You.com page found; uncertain purpose. No Markdown requests seen |
+| `KeenableBot` | Keenable | search | **Yes** | [keenable.ai/bot](https://keenable.ai/bot). Asked for Markdown through `Accept` 257 times in six days |
+| `ClueWeb-Crawler` | none | training | **Yes** | Logs only: the project page failed with a TLS error. Followed Markdown alternate links 521 times in six days |
+| `AzureAI-SearchBot` | none | search | No | Logs only, from Azure networks. Microsoft doesn't document it |
+
+KeenableBot and ClueWeb-Crawler are served under the evidence rule: an agent is served
+once logs show it choosing Markdown, as for `meta-webindexer` in `2026-11-23.1`. Neither
+had past rows here, so no historical report changes. "none" means the operator is left
+out, as in agent-signals; these labels are reported as Unattributed.
+
+Googlebot's `Googlebot-Image`, `Googlebot-News` and `Googlebot-Video` products now count
+as `Googlebot`, as in revision 4.
+
+### Retired
+
+A retired entry stays in `agent-registry.json` with `"retired": true`. It no longer
+matches requests and is never served, but its label keeps the purpose and operator it
+had, so past report rows read the same. Its notes keep the reason and its earlier notes.
+
+| Stored label | Reason |
+| --- | --- |
+| `WARDBot`, `netEstate NE Crawler`, `EasyScan`, `QATechBot`, `Retool/`, `make.com`, `magpie-crawler`, `Awario`, `BorderxBot`, `AdpResearchBot/`, `SelectikaScraper`, `SemrushBot-OCOB`, `SemrushBot-SWA/`, `ygs-scraper-bot`, `HIFIBot`, `Nava/`, `Instapaper`, `alphalens-bot` | Not AI agents: compliance and uptime scanners, SEO checks, automation tools, brand monitoring, read-later services |
+| `Element451Bot`, `atlassian-bot`, `CloudVertexBot`, `bigsur.ai`, `QualifiedBot`, `NavuBot`, `CitibotSiteCrawler`, `ChathiveCrawler` | AI ingestion only for a site owner's own AI tools |
+| `OAI-AdsBot` | Checks advertising landing pages, so it isn't an AI agent under the rule |
+| `Kimi-SearchBot` | Left out of revision 4: its only sightings were a secrets scanner with an undocumented User-Agent. Add it back when the documented one appears. **It was served automatically, and now gets HTML** |
+| `FacebookBot` | Left out of revision 4: Meta no longer documents it, and it isn't in any logs |
+
+### Kinds
+
+- `browser` (9): `Google-Agent`, `Claude-Agent`, `Devin`, `TwinAgent`,
+  `ApifyWebsiteContentCrawler`, `CledaraBot`, `HarkBot`,
+  `CloudflareBrowserRenderingCrawler`, `Novellum`.
+- `reference` (6): `Googlebot`, `bingbot`, `Applebot`, `PetalBot`, `GoogleOther`,
+  `Bravebot`.
+- `agent`: the other 37.
+
+None of the `browser` or `reference` entries was served before, so `kind` changes no
+serving.
+
+### Matching
+
+Revision 4 matches `ClaudeBot/` and `Applebot/` with their slash, because agent-signals
+matches by substring: `+claudebot@anthropic.com` in a Claude-SearchBot or Claude-User
+header would otherwise make it ClaudeBot (agent-signals#2), and `Applebot` would be found
+inside `Applebot-Extended`. This registry matches whole product tokens, which already gives
+the same answers, so the tokens are unchanged. Tests pin both cases.
+
+Against revision 4's 164 conformance User-Agents, 162 give the same identity here. The
+other two come from the different matching methods: agent-signals finds `GPTBot` inside
+`MyGPTBotClone/1.0`, and it cuts the header at 2,048 bytes before matching. Those
+differences, and the policy ones (serving `ICC-Crawler` and `Cotoyogi`, purposes such as
+PetalBot's, operators such as ShapBot's, labels with a trailing slash), are for the
+differences file in #93.
+
 ## Read-time category changes
 
 Categories are calculated when reports are read, so these corrections apply to
@@ -239,9 +316,12 @@ existing counters for the restored labels. Stored labels and counts are unchange
 - **cohere-ai, FishBot, Anchor Browser, amazon-kendra-:** reconsider when the operator
   documents a concrete HTTP User-Agent. Kendra would also need prefix matching, which
   the product-token matcher deliberately does not support.
-- **Radar-only tokens:** Devin, TwinAgent, CledaraBot, HIFIBot, EasyScan, bigsur.ai,
-  CitibotSiteCrawler, Novellum, ygs-scraper-bot and make.com are recognised on Radar
-  evidence alone.
+- **Radar-only tokens:** Devin, TwinAgent, CledaraBot and Novellum are recognised on
+  Radar evidence alone. (HIFIBot, EasyScan, bigsur.ai, CitibotSiteCrawler,
+  ygs-scraper-bot and make.com were too, until `2026-11-27.1` retired them.)
+- **Logs-only agents (`2026-11-27.1`):** Geminibot, ClueWeb-Crawler and
+  AzureAI-SearchBot have no operator page that could be read. YouBot has no You.com page
+  describing it.
 - **Bravebot:** Radar lists a verified token, while Brave's own page says it does not
   send a differentiated user agent.
 - **ApifyWebsiteContentCrawler:** the operator says the crawler does not currently use

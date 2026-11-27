@@ -111,6 +111,27 @@ def test_exclusions_by_label_or_purpose(corpus, client, settings, exclude, count
     assert set(AgentAccess.objects.values_list("agent", flat=True)) == counted
 
 
+GOOGLEBOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+
+
+@pytest.mark.parametrize(
+    "exclude,counted",
+    [
+        # Reference crawlers are counted by default, as the baseline (#96).
+        ([], {"GPTBot", "Claude-Agent", "Googlebot"}),
+        (["reference"], {"GPTBot", "Claude-Agent"}),
+        (["Browser"], {"GPTBot", "Googlebot"}),
+        (["agent"], {"Claude-Agent", "Googlebot"}),
+    ],
+)
+def test_exclusions_by_kind(corpus, client, settings, exclude, counted):
+    writer, site, page, record = corpus
+    configure(settings, NEGOTIATE_USER_AGENT=False, COUNT_HTML_EXCLUDE=exclude)
+    for ua in (GPTBOT, CLAUDE_AGENT, GOOGLEBOT):
+        assert is_html(get(client, "/article/", HTTP_USER_AGENT=ua))
+    assert set(AgentAccess.objects.values_list("agent", flat=True)) == counted
+
+
 def test_unknown_clients_cannot_be_recorded_as_html():
     with pytest.raises(ValueError, match="registry agents only"):
         record_access(page_id=1, user_agent="curl/8", access_method="html")

@@ -171,7 +171,7 @@ def check_settings_shape(app_configs, **kwargs):
     if not _positive_int(get_setting("STATS_RETENTION_DAYS")):
         messages.append(_shape("STATS_RETENTION_DAYS", "a positive whole number of days"))
     if not _strings(get_setting("COUNT_HTML_EXCLUDE")):
-        messages.append(_shape("COUNT_HTML_EXCLUDE", "a list of agent labels or purposes"))
+        messages.append(_shape("COUNT_HTML_EXCLUDE", "a list of agent labels, purposes or kinds"))
     if not _non_negative_number(get_setting("DISCOVERY_CACHE_TIMEOUT")):
         messages.append(_shape("DISCOVERY_CACHE_TIMEOUT", "a number of seconds, 0 or more"))
     if not _non_negative_number(get_setting("NAVIGATION_CACHE_TIMEOUT")):

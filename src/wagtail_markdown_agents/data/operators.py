@@ -4,7 +4,7 @@ This reporting map never participates in User-Agent detection or Markdown servin
 Keep historical entries so old counters retain their attribution.
 """
 
-from .agents import AGENTS
+from .agents import AGENTS, RETIRED_AGENTS
 
 OPERATOR_NAMES = {
     "openai": "OpenAI",
@@ -27,6 +27,9 @@ OPERATOR_NAMES = {
     "semrush": "Semrush",
     "atlassian": "Atlassian",
     "microsoft": "Microsoft",
+    "linkup": "Linkup",
+    "you-com": "You.com",
+    "keenable": "Keenable",
     # Operators of identities restored by registry 2026-09-28.1 (#19).
     "adp": "ADP",
     "alphalens": "Alphalens",
@@ -63,8 +66,8 @@ OPERATOR_NAMES = {
     "ygs": "YGS Group",
 }
 
-# Historical labels from the reviewed WordPress map. Active registry labels take
-# precedence, so a future registry correction also updates historical reporting.
+# Historical labels from the reviewed WordPress map. Registry labels, active or
+# retired, take precedence, so a registry correction also updates past reporting.
 HISTORICAL_OPERATOR_LABELS = {
     "openai": ("ChatGPT-User", "OAI-SearchBot", "GPTBot"),
     "anthropic": ("Claude-User", "Claude-Web", "Claude-SearchBot", "ClaudeBot", "anthropic-ai"),
@@ -87,21 +90,26 @@ HISTORICAL_OPERATOR_LABELS = {
     "atlassian": ("atlassian-bot",),
 }
 
-_active = tuple(
+# An entry without an operator (as in agent-signals) is reported as unattributed.
+# Its label still claims the exact match, so a substring of another operator's
+# label can't attribute it.
+_registry = tuple(
     (
         agent.label.casefold(),
-        next(key for key, name in OPERATOR_NAMES.items() if name == agent.operator),
+        next(key for key, name in OPERATOR_NAMES.items() if name == agent.operator)
+        if agent.operator
+        else "unattributed",
     )
-    for agent in AGENTS
+    for agent in AGENTS + RETIRED_AGENTS
 )
-_active_labels = {label for label, _ in _active}
+_registry_labels = {label for label, _ in _registry}
 _historical = tuple(
     (label.casefold(), key)
     for key, labels in HISTORICAL_OPERATOR_LABELS.items()
     for label in labels
-    if label.casefold() not in _active_labels
+    if label.casefold() not in _registry_labels
 )
-OPERATOR_MATCHES = _active + _historical
+OPERATOR_MATCHES = _registry + _historical
 
 
 def operator_for_agent(agent: str) -> str:

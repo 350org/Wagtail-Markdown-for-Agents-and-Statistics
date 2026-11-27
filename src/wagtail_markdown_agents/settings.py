@@ -54,7 +54,8 @@ DEFAULTS: dict[str, Any] = {
     "STATS_RETENTION_DAYS": 90,
     # Count HTML page reads by registry agents, next to Markdown (#61).
     "COUNT_HTML": True,
-    # Registry agent labels or purposes ("training", ...) whose HTML is not counted.
+    # Registry agent labels, purposes ("training") or kinds ("reference") whose
+    # HTML is not counted (#96).
     "COUNT_HTML_EXCLUDE": [],
     # Frontmatter toggles (parity with the WordPress plugin).
     "INCLUDE_HIERARCHY": False,

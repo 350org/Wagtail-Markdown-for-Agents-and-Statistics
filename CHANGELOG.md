@@ -6,7 +6,49 @@ versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Agent registry `2026-11-27.1` has the same 52 active agents as revision 4 of the
+  shared agent-signals list** (#96, #60). The rule: an active entry is an AI agent, an
+  AI browser or automation agent, or a reference crawler (a search engine whose index
+  feeds AI answers), and it sends a real HTTP token.
+  - **Serving changes for three agents.** `KeenableBot` and `ClueWeb-Crawler` are now
+    served Markdown on their User-Agent: logs show them choosing Markdown.
+    `Kimi-SearchBot` is retired and now gets HTML. That makes 25 agents served
+    automatically, out of 52. **Update the Cloudflare cache-bypass rule** when
+    deploying (`python -m wagtail_markdown_agents.cloudflare`): it gains `keenablebot`
+    and `clueweb-crawler` and loses `kimi-searchbot`. Keep `kimi-searchbot` in the
+    rule until the new version is live.
+  - **Added, not served:** `Geminibot`, `Google-GeminiNotebook`, `RiverBot`
+    (training), `ibou-search`, `LinkupBot`, `YouBot` and `AzureAI-SearchBot`.
+    `RiverBot`, `ibou-search`, `ClueWeb-Crawler` and `AzureAI-SearchBot` have no
+    operator, as in agent-signals, and are reported as Unattributed.
+  - **Retired (29):** 18 that aren't AI agents (WARDBot, netEstate NE Crawler,
+    EasyScan, QATechBot, Retool/, make.com, magpie-crawler, Awario, BorderxBot,
+    AdpResearchBot/, SelectikaScraper, SemrushBot-OCOB, SemrushBot-SWA/,
+    ygs-scraper-bot, HIFIBot, Nava/, Instapaper, alphalens-bot), 8 that only ingest
+    for a site owner's own AI tools (Element451Bot, atlassian-bot, CloudVertexBot,
+    bigsur.ai, QualifiedBot, NavuBot, CitibotSiteCrawler, ChathiveCrawler),
+    OAI-AdsBot, Kimi-SearchBot and FacebookBot. Their User-Agents no longer match, so
+    their HTML reads stop being counted and Markdown they ask for is counted as
+    unknown. Retired entries stay in the registry with `"retired": true`, so past
+    report rows keep their purpose and operator.
+  - `Googlebot-Image`, `Googlebot-News` and `Googlebot-Video` count as `Googlebot`.
+  - No migration is needed.
+
 ### Added
+
+- Every active registry entry has a `kind`: `agent`, `browser` or `reference` (#96).
+  `browser` and `reference` entries are never served Markdown on their User-Agent, and
+  a test enforces it. `COUNT_HTML_EXCLUDE` accepts kinds, so
+  `COUNT_HTML_EXCLUDE = ["reference"]` stops counting Googlebot's and bingbot's HTML
+  reads. Reference crawlers are still counted by default, as the baseline for AI
+  agents.
+- The agent access report's **HTML reads by agent** section shows reference crawlers
+  in their own table, and leaves them out of the pages read most as HTML. Each table
+  has a **Chose Markdown** column: Markdown asked for by query, `Accept` header or
+  export URL, not given on the User-Agent. It's the evidence for serving an agent on
+  its User-Agent (#96).
 
 - Agent registry `2026-11-23.1` serves Markdown automatically to `meta-webindexer`,
   Meta's crawler for Meta AI search, which was recognition-only. Meta now documents it,
