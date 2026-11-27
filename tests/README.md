@@ -23,9 +23,12 @@ This is a navigation aid, not an exhaustive test inventory. Use the
 - `stats_volume` tests are included in the full suite. Use
   `uv run pytest -m stats_volume` to focus on them; measurements and query budgets
   are explained in the [benchmark guide](../docs/contributing/agent-stats-benchmarks.md).
-- `fixtures/agents-wordpress-1.7.0.json` is retained provenance used by category
-  tests, not the active HTTP agent registry. Update the registry through its
-  [review procedure](../docs/contributing/agent-registry-review.md).
+- `fixtures/agent-signals-conformance-cases.json` is agent-signals' conformance cases
+  (CC0), pinned at the release `data/agent-signals-differences.json` records. Refresh
+  both at a registry review, through its
+  [review procedure](../docs/contributing/agent-registry-review.md) (#93).
+- `fixtures/agent-labels-staging-2026-11-27.json` is a staging site's stored labels
+  before migration `0008`, with the expected result.
 - The `*_urls.py` modules configure test routes, including translated URLs and
   missing export routes. They are support modules rather than collected tests.
 

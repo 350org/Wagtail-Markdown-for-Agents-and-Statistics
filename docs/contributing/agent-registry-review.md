@@ -279,6 +279,31 @@ differences, and the policy ones (serving `ICC-Crawler` and `Cotoyogi`, purposes
 PetalBot's, operators such as ShapBot's, labels with a trailing slash), are for the
 differences file in #93.
 
+## Changes in 2026-11-27.2
+
+The owner decided on 27 November 2026 to align tightly: the registry holds exactly the
+entries of agent-signals revision 6 (release v0.4.1), active and retired, with the
+same labels, operators, purposes, kinds, retirement and serving (#93). Where this
+review had operator evidence agent-signals lacked, agent-signals took it first, as
+revision 5 (agent-signals#14). Revision 6 then unserved its retired entries and
+matches `bingbot/` and `Devin/` with their slash, which this package's product-token
+matcher already did in effect.
+
+| Change | Entries |
+| --- | --- |
+| One purpose, agent-signals' category | Applebot, Googlebot, bingbot (search); CloudflareBrowserRenderingCrawler (training). `other` becomes `unknown` |
+| Label loses its trailing slash (migration `0008`) | ShapBot, ICC-Crawler, Cotoyogi, meta-externalfetcher, AdpResearchBot, Nava, Retool, SemrushBot-SWA |
+| Dropped, rows to unknown (migration `0008`) | FacebookBot, Kimi-SearchBot, OAI-AdsBot |
+| Added as retired, from agent-signals | Claude-Web, anthropic-ai, Google-Extended, Applebot-Extended, cohere-ai, amazon-kendra-, Anchor Browser, FishBot, Gemini-User, Google-NotebookLM |
+
+Serving is unchanged: 25 agents, the same Cloudflare expression. The tables above
+this section are the record of earlier reviews and keep the labels and purposes of
+their time.
+
+The drift check (`scripts/agent_signals_drift.py`) finds no differences from revision
+6 except the matching method. Of agent-signals' 169 conformance cases, only
+`MyGPTBotClone/1.0` gets another answer here.
+
 ## Read-time category changes
 
 Categories are calculated when reports are read, so these corrections apply to

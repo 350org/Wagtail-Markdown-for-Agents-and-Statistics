@@ -1,8 +1,6 @@
 """Read-time intent classification and the reviewed dataset contract (#34/#76)."""
 
-import json
 from datetime import date
-from pathlib import Path
 
 import pytest
 from wagtail import hooks
@@ -114,24 +112,17 @@ def test_history_reclassified_without_database_writes(django_assert_num_queries,
     assert AgentAccess.objects.values().get() == before
 
 
-def test_retired_labels_keep_their_frozen_classification():
-    from wagtail_markdown_agents.data.legacy_agents import LEGACY_CATEGORIES
-
-    fixture = Path(__file__).with_name("fixtures") / "agents-wordpress-1.7.0.json"
-    reference = json.loads(fixture.read_text())
-    assert {k: list(v) for k, v in LEGACY_CATEGORIES.items()} == reference["categories"]
-    # Registry entries, active or retired (#96), own their labels' purposes.
-    registry = {agent.label.lower() for agent in AGENTS + RETIRED_AGENTS}
-    for category, labels in LEGACY_CATEGORIES.items():
-        for label in labels:
-            if label.lower() not in registry:
-                assert categorise_agent(label) == category
+def test_every_registry_label_has_its_one_category():
+    # Active and retired alike: agent-signals' category is the only source (#93).
+    for agent in AGENTS + RETIRED_AGENTS:
+        assert categorise_agent(agent.label) == agent.category == agent.purposes[0]
+    assert set(AGENT_CATEGORIES) == {"on-demand", "search", "training", "unknown"}
 
 
-def test_current_metadata_reports_mixed_and_unspecified_purposes():
-    assert categorise_agent("Applebot") == "mixed"
-    assert categorise_agent("Googlebot") == "mixed"
-    assert categorise_agent("bingbot") == "mixed"
+def test_current_metadata_reports_one_purpose_each():
+    assert categorise_agent("Applebot") == "search"
+    assert categorise_agent("Googlebot") == "search"
+    assert categorise_agent("bingbot") == "search"
     assert categorise_agent("GoogleOther") == "unknown"
     assert categorise_agent("CloudVertexBot") == "search"
     # Historical controls must not be caught by the shorter active identity.

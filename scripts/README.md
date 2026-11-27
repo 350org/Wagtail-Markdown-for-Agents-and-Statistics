@@ -7,6 +7,7 @@ Run these from the repository root after installing development dependencies wit
 | --- | --- | --- |
 | `bash scripts/bakerydemo-setup.sh` | Creates or updates a sibling bakerydemo checkout, installs dependencies, patches its configuration, migrates/seeds its database and generates exports. | [Development](../docs/contributing/development.md) |
 | `uv run python -m scripts.agent_simulator --help` | Traffic planning, execution and counter reconciliation. Planning can fetch public documents; `run` sends HTTP requests and writes evidence. Use the module entry point so helper imports resolve. | [Simulator procedures](../docs/agent-simulator.md) |
+| `uv run python scripts/agent_signals_drift.py AGENTS_JSON [--cases CASES_JSON]` | Compares the agent registry with a local copy of agent-signals' list and conformance cases. Reads files only; exits non-zero on any difference the differences file doesn't list. | [Agent registry](../docs/agent-registry.md#the-drift-check) |
 | `uv run python scripts/benchmark-stats-write.py` | Creates, exercises and drops the counter table in an empty scratch database named `agentmd_stats_benchmark_*`. Defaults to the sandbox MySQL settings; has no `--help` mode. | [Benchmark setup and limitations](../docs/contributing/agent-stats-benchmarks.md) |
 
 `traffic_simulator/` contains the simulator's planning, transport and reconciliation

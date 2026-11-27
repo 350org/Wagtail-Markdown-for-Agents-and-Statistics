@@ -34,10 +34,10 @@ From a source checkout, prefix the command with `PYTHONPATH=src`. This prints th
 expression and does not contact Cloudflare. The generator uses only automatic
 Markdown-serving identities, not every recognised agent. For example, Googlebot,
 Applebot, bingbot, Google-Agent and Claude-Agent remain normal HTML clients unless they
-explicitly request Markdown. Registry version `2026-11-27.1` enables 25 automatic identities
-(26 tokens). It adds `keenablebot` and `clueweb-crawler` to the expression and removes
-`kimi-searchbot`, so update the rule when you deploy it. Because it adds as well as
-removes, keep `kimi-searchbot` in the rule until the new version is live: that's the
+explicitly request Markdown. Registry version `2026-11-27.2` enables 25 automatic identities
+(26 tokens), the same expression as `2026-11-27.1`. `2026-11-27.1` added `keenablebot`
+and `clueweb-crawler` and removed `kimi-searchbot`; if your rule is older than that,
+update it, and keep `kimi-searchbot` in it until the new version is live: that's the
 temporary union described below.
 
 In **Caching → Cache Rules**, edit the existing Markdown **Bypass cache** rule,

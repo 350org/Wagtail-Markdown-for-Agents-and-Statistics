@@ -8,6 +8,32 @@ versioning: [SemVer](https://semver.org/).
 
 ### Changed
 
+- **Agent registry `2026-11-27.2` holds exactly agent-signals revision 6's entries**
+  (release v0.4.1), active and retired, with the same labels, operators, purposes,
+  kinds, retirement and serving (#93). Only the matching method differs: product
+  token here, substring there.
+  - **Serving doesn't change.** The same 25 agents are served automatically, and the
+    Cloudflare cache-bypass expression is the same.
+  - **One purpose per entry**, agent-signals' category. Applebot, Googlebot and
+    bingbot count as search, CloudflareBrowserRenderingCrawler as training. The
+    **Mixed purposes** tile, chart series and filter are gone, and the `other`
+    purpose is now `unknown`. A category hook that writes to `categories["mixed"]`
+    must change. Past rows are read with the new purposes.
+  - **Labels without a trailing slash:** `ShapBot`, `ICC-Crawler`, `Cotoyogi`,
+    `meta-externalfetcher`, `AdpResearchBot`, `Nava`, `Retool` and `SemrushBot-SWA`.
+  - **Dropped:** FacebookBot, Kimi-SearchBot and OAI-AdsBot, which agent-signals
+    doesn't hold. **Added as retired:** agent-signals' WordPress-era labels
+    (Claude-Web, anthropic-ai, Google-Extended, Applebot-Extended, cohere-ai,
+    amazon-kendra-, Anchor Browser, FishBot, Gemini-User, Google-NotebookLM).
+    Retired entries take agent-signals' categories and operators.
+  - **Migration `0008`** renames the eight slashed labels' rows, merging counts, and
+    moves rows under the three dropped labels to unknown. Daily totals are
+    unchanged. Run it before starting the new version: older workers still store the
+    slashed labels.
+  - Only the first 2,048 characters of a User-Agent are matched, as in agent-signals.
+  - **Removed:** the frozen WordPress 1.7.0 categories (`data/legacy_agents.py`), the
+    historical operator labels and their fixture. No Wagtail site held WordPress
+    counters.
 - **Agent registry `2026-11-27.1` has the same 52 active agents as revision 4 of the
   shared agent-signals list** (#96, #60). The rule: an active entry is an AI agent, an
   AI browser or automation agent, or a reference crawler (a search engine whose index
@@ -34,10 +60,15 @@ versioning: [SemVer](https://semver.org/).
     unknown. Retired entries stay in the registry with `"retired": true`, so past
     report rows keep their purpose and operator.
   - `Googlebot-Image`, `Googlebot-News` and `Googlebot-Video` count as `Googlebot`.
-  - No migration is needed.
+  - No migration is needed for `2026-11-27.1`.
 
 ### Added
 
+- `scripts/agent_signals_drift.py` compares the registry with an agent-signals
+  `agents.json` and its conformance cases, and fails on any difference that
+  `data/agent-signals-differences.json` doesn't list (#93). agent-signals' conformance
+  cases are pinned in `tests/fixtures/agent-signals-conformance-cases.json`, so CI
+  checks them offline.
 - Every active registry entry has a `kind`: `agent`, `browser` or `reference` (#96).
   `browser` and `reference` entries are never served Markdown on their User-Agent, and
   a test enforces it. `COUNT_HTML_EXCLUDE` accepts kinds, so
