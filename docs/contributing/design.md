@@ -662,7 +662,7 @@ view and prune command ship with it.
 
 `AgentAccess` model: (page_id, agent ≤100 chars, access_method ≤20, access_date), unique
 together, daily upsert (`count = count + 1`). Intent categories (on-demand / search /
-training / mixed / unknown) derived **at read time** from the registry and historical category map. Review classification changes
+training / unknown) derived **at read time** from the registry, one per entry as in agent-signals (#93). Review classification changes
 explicitly because they can relabel historical reports. Wagtail admin
 reporting view: date presets, filters, chart by intent, stat tiles with trends. Prune
 command + retention setting.

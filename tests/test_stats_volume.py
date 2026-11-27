@@ -40,7 +40,7 @@ AGENTS = {
     "GPTBot": "training",
     "": "unknown",
 }
-INTENTS = ("on-demand", "search", "training", "mixed", "unknown")
+INTENTS = ("on-demand", "search", "training", "unknown")
 METHODS = ("query-param", "accept-header", "ua", "export-url")
 TABLE = AgentAccess._meta.db_table
 

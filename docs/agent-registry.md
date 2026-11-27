@@ -1,19 +1,18 @@
 # Agent registry
 
-Registry `2026-11-27.1` has 52 active HTTP identities and serves Markdown
-automatically to 25 of them. Another 29 entries are retired: they no longer match
-requests, but their labels keep their purposes and operators for past report rows.
-The active set is the same as revision 4 of the shared list in
-`chancery-lane-project/agent-signals` (#96, #60): 37 `agent`, 9 `browser` and 6
-`reference` entries.
+Registry `2026-11-27.2` holds exactly the entries of the shared list in
+`chancery-lane-project/agent-signals`, revision 6 (release v0.4.1): 52 active HTTP
+identities, 25 of them served Markdown automatically, and 36 retired entries (#93).
+Active entries are 37 `agent`, 9 `browser` and 6 `reference`. Retired entries no
+longer match requests, but their labels keep their purpose and operator, so past
+report rows still read.
 
-Every one of the 69 strings inherited from the WordPress plugin has a recorded
-disposition:
-
-- 35 are active;
-- 26 were restored in `2026-09-28.1` and retired in `2026-11-27.1`;
-- 4 are excluded with evidence (retired or robots.txt-only);
-- 4 are deferred with a stated evidence gap.
+Label, operator, purpose, `kind`, retirement and serving all follow agent-signals,
+and a change starts there. This package adds only its own token aliases, sources,
+review dates and notes. The one deliberate difference is how a header is matched:
+by product token here, by substring there (see [matching](#matching)). The package
+doesn't read agent-signals at runtime; a [drift check](#the-drift-check) compares the
+two at each review.
 
 See the [review record](contributing/agent-registry-review.md) for the matrix, sources and
 each change. Absence from the registry does not mean that a bot does not exist.
@@ -36,16 +35,12 @@ following Markdown links or sending `Accept: text/markdown`. A test enforces the
 part. The report's "chose Markdown" figure gives the evidence for the second
 ([statistics](agent-access-stats.md#html-reads-by-registry-agents-61)).
 
-Identity (label, tokens, operator, `kind`, retired) follows agent-signals, and a change
-starts there. Serving (`auto_markdown`), the `other` purpose, sources and notes are
-this package's own. The package doesn't read agent-signals at runtime. #93 tracks a
-drift check against it.
-
 ## Source and serving policy
 
 `src/wagtail_markdown_agents/data/agent-registry.json` is the source of truth. Each
-record has a stable statistics `label`, operator, HTTP product `tokens`, one or more
-purposes, an explicit `auto_markdown` flag, evidence URLs, review date and notes.
+record has a stable statistics `label`, operator, HTTP product `tokens`, one purpose
+(a one-item `purposes` list), an explicit `auto_markdown` flag, evidence URLs, review
+date and notes.
 Sources are factual identity references; their prose is not imported. Prefer operator
 documentation. Use [Cloudflare Radar](https://radar.cloudflare.com/bots/directory)
 for discovery and documented identities when operator evidence is unavailable, and
@@ -69,127 +64,101 @@ without disabling recognition on explicit Markdown requests.
 
 ## Identities
 
-The table lists the 22 September baseline. The
-[review](contributing/agent-registry-review.md#matrix) lists every restored identity. Of those, 7
-serve Markdown automatically: `KimiBot` (training), and `Amzn-SearchBot`,
-`Cloudflare-AI-Search`, `LinerBot`, `ShapBot/`, `KernelSearchBot` and `Anomura`
-(search). The other 37 restored identities, including 14 whose operators describe
-non-AI tooling (purpose `other`), are recognition-only. `2026-09-28.2` adds four
-operator-documented siblings with automatic Markdown: `Kimi-User`, `Amzn-User` and
-`Shap-User` (on-demand), and `Kimi-SearchBot` (search). See the
-[review](contributing/agent-registry-review.md#additions-in-2026-09-282).
-`2026-11-06.1` adds Anthropic's hosted browser, `Claude-Agent`, as recognition-only; see
-[the review](contributing/agent-registry-review.md#additions-in-2026-11-061).
-`2026-11-23.1` serves `meta-webindexer` automatically, now that Meta documents it as
-its Meta AI search crawler; see
-[the review](contributing/agent-registry-review.md#changes-in-2026-11-231).
-`2026-11-27.1` adds nine agents, serving `KeenableBot` and `ClueWeb-Crawler`, and retires
-29 entries, including `Kimi-SearchBot`, which was served; see
-[the review](contributing/agent-registry-review.md#changes-in-2026-11-271).
+Each entry has one purpose, agent-signals' category: `on-demand`, `search`,
+`training` or `unknown`. `unknown` is for an operator that describes none of the
+three, such as SEO checks, uptime or compliance scanning, or automation. Purpose
+describes possible use, not proof of what happened to a specific response.
 
-| Stored label | Estimated purpose | Automatic Markdown |
-| --- | --- | --- |
-| `GPTBot` | training | Yes |
-| `ChatGPT-User` | on-demand | Yes |
-| `ClaudeBot` | training | Yes |
-| `Claude-User` | on-demand | Yes |
-| `Claude-SearchBot` | search | Yes |
-| `OAI-SearchBot` | search | Yes |
-| `PerplexityBot` | search | Yes |
-| `Perplexity-User` | on-demand | Yes |
-| `meta-externalagent` | training | Yes |
-| `meta-externalfetcher/` | on-demand | Yes |
-| `meta-webindexer` | search | Yes, from `2026-11-23.1` |
-| `MistralAI-User` | on-demand | Yes |
-| `DuckAssistBot` | on-demand | Yes |
-| `Google-Agent` | on-demand | No |
-| `Claude-Agent` | on-demand | No |
-| `Amazonbot` | training | No |
-| `CCBot` | training | No |
-| `FacebookBot` | training | Retired in `2026-11-27.1` |
-| `Applebot` | search, training | No |
-| `Googlebot` | search, training | No |
-| `bingbot` | search, training | No |
-| `GoogleOther` | other | No |
-| `CloudVertexBot` | search | Retired in `2026-11-27.1` |
-| `OAI-AdsBot` | other | Retired in `2026-11-27.1` |
+Served automatically (25): `GPTBot`, `ChatGPT-User`, `ClaudeBot`, `Claude-User`,
+`Claude-SearchBot`, `OAI-SearchBot`, `PerplexityBot`, `Perplexity-User`,
+`meta-externalagent`, `meta-externalfetcher`, `meta-webindexer`, `MistralAI-User`,
+`DuckAssistBot`, `KimiBot`, `Amzn-SearchBot`, `Cloudflare-AI-Search`, `LinerBot`,
+`ShapBot`, `KernelSearchBot`, `Anomura`, `Kimi-User`, `Amzn-User`, `Shap-User`,
+`KeenableBot` and `ClueWeb-Crawler`. Every other active entry is recognition-only. The
+JSON has each entry's purpose, operator, sources and notes.
 
-Purpose describes possible use, not proof of what happened to a specific response.
-Multiple recognised intents contribute to the **Mixed purposes** bucket, counted
-once. `other` maps to **Unknown** intent. Cloudflare's current taxonomy permits
-multiple behaviours; the plugin deliberately avoids treating every bot as training.
-Meta-WebIndexer is recognition-only because Radar's description says AI search
-while its category says link preview. (Meta has since documented it, and `2026-11-23.1`
-serves it.) CCBot and Amazonbot retain the reference's training estimate, with
-recognition-only serving and explicit notes.
+`2026-11-27.2` aligns the registry with agent-signals revision 6 (#93):
 
-## Matching and history
+- Applebot, Googlebot and bingbot have one purpose, `search`, and
+  CloudflareBrowserRenderingCrawler `training`. There is no Mixed purposes bucket.
+- The `other` purpose becomes `unknown`, as in agent-signals.
+- Eight labels lose their trailing slash: `ShapBot`, `ICC-Crawler`, `Cotoyogi`,
+  `meta-externalfetcher`, and the retired `AdpResearchBot`, `Nava`, `Retool` and
+  `SemrushBot-SWA`. Migration `0008` renames their rows.
+- FacebookBot, Kimi-SearchBot and OAI-AdsBot are dropped, because agent-signals
+  doesn't hold them. Migration `0008` moves their rows to unknown.
+- agent-signals' retired WordPress-era labels are added as retired entries:
+  Claude-Web, anthropic-ai, Google-Extended, Applebot-Extended, cohere-ai,
+  amazon-kendra-, Anchor Browser, FishBot, Gemini-User and Google-NotebookLM. None
+  of them sends a usable HTTP token.
+- Retired entries take agent-signals' categories and operators.
+
+Serving doesn't change, so the [Cloudflare expression](cdn-caching.md) is the same.
+
+## Matching
 
 `identify_agent(header)` returns a frozen record or `None`; `detect_agent(header)`
-returns its canonical stored label. Matching is ASCII case-insensitive and requires
-a product boundary (start, whitespace, semicolon or opening parenthesis), followed
-by a version slash, whitespace, semicolon, closing parenthesis or end. This avoids
-matching `NotGPTBot`, `GPTBotFake` or a bot name appearing only in a documentation
-URL. It does not authenticate identities: client headers remain spoofable.
+returns its canonical stored label. Only the first 2,048 characters of the header
+are read, as agent-signals cuts every header to 2,048 bytes. Matching is ASCII
+case-insensitive and requires a product boundary (start, whitespace, semicolon or
+opening parenthesis), followed by a version slash, whitespace, semicolon, closing
+parenthesis or end. This avoids matching `NotGPTBot`, `GPTBotFake` or a bot name
+appearing only in a URL or contact address. It does not authenticate identities:
+client headers remain spoofable.
+
+agent-signals matches by substring instead, so a few of its entries match with a
+trailing slash (`ClaudeBot/`, `Applebot/`, `bingbot/`, `Devin/`) to avoid names in
+other agents' headers. The product-token matcher here gives those answers without
+the slash. The two differ only for a name inside a longer product name, such as
+`MyGPTBotClone/1.0`. That is the one entry in
+`data/agent-signals-differences.json`.
 
 Registry order is the documented tie-breaker when a header claims several identities.
 The same selected record determines both serving and statistics. Aliases belong to
-one record, e.g. Google's image/video GoogleOther products store `GoogleOther`.
-Some records keep their existing statistics labels while matching a different
-product token:
-
-- `meta-externalfetcher/` keeps its label, including the slash.
-- The restored `ShapBot/`, `ICC-Crawler/` and `Cotoyogi/` keep their WordPress labels,
-  including the slash, and match the token before it. So did the now-retired `Nava/`,
-  `Retool/`, `AdpResearchBot/` and `SemrushBot-SWA/`.
-- `Googlebot` also matches `Googlebot-Image`, `Googlebot-News` and `Googlebot-Video`,
-  from `2026-11-27.1`.
-
-agent-signals matches by substring, so revision 4 matches `ClaudeBot/` and `Applebot/`
-with their slash: otherwise `+claudebot@anthropic.com` in a Claude-SearchBot header, or
-`Applebot-Extended`, would be read as those agents. The product-token matcher here
-already gives the same answers, and tests pin them.
-
-Aliases must be listed explicitly. A token followed by `-` does not match, so
-`Cloudflare-AI-Search-External` and the GoogleOther image and video products are
-separate tokens.
-
-`Google-Extended` and `Applebot-Extended` are robots.txt controls and never detect
-an HTTP identity. `Gemini-User` remains historical category-only data without a
-verified HTTP identity. Claude-Web and anthropic-ai are excluded because Anthropic
-retired them. cohere-ai, FishBot, Anchor Browser and amazon-kendra- are deferred until
-there is a usable, attributable HTTP token. Deferral is not a claim that they are
-retired. Unrecognised clients share the existing anonymous unknown bucket.
+one record and must be listed explicitly: Google's image and video GoogleOther
+products store `GoogleOther`, and `Googlebot` also matches `Googlebot-Image`,
+`Googlebot-News` and `Googlebot-Video`. A token followed by `-` does not match, so
+`Cloudflare-AI-Search-External` is a separate token.
 
 A retired entry stays in `agent-registry.json` with `"retired": true` and no `kind`. It
 never matches or serves, and isn't in the Cloudflare expression. Reports still read its
-label with its recorded purposes and operator, so retiring an entry doesn't change past
-rows. Never delete an entry: retire it.
+label with its purpose and operator. Retire an entry when agent-signals does; drop it
+only when agent-signals doesn't hold it, with a migration for its rows. Unrecognised
+clients share the anonymous unknown bucket.
 
-`data/legacy_agents.py` freezes the WordPress categories and their source attribution.
-The WordPress fixture verifies that snapshot, not active-list equality. Retired
-labels remain readable without becoming detectable. Registry entries, active or
-retired, take precedence over the frozen categories. Current active metadata owns
-classification for continuing identities. The initial corrections are GoogleOther
-(training → unknown) and CloudVertexBot (training → search). Registry
-`2026-09-28.1` corrects 24 restored labels to match operator evidence; they are listed
-in the [review](contributing/agent-registry-review.md#read-time-category-changes). These changes
-affect historical report categorisation, because categories are calculated at read
-time. Counts and
-stored labels are unchanged. Exact category matches precede substring compatibility
-matches, so historical Applebot-Extended does not become mixed merely because the
-new Applebot identity exists. Project category hooks retain ordered mutation; use
-exact canonical labels for overrides.
+Purposes are calculated at read time, so a change to an entry's purpose changes how
+its past rows read. Exact label matches come before substring compatibility matches,
+so Applebot-Extended rows don't read as Applebot. Project category hooks retain
+ordered mutation; use exact canonical labels for overrides.
 
-Apply existing migration `0006` before starting the updated application. Its frozen
-known-label set is intentionally unchanged. There is no new data migration.
+Apply migration `0008` before starting the updated application: older workers still
+store the slashed labels. Like `0006`, it runs in batches and can be rerun after an
+interruption.
+
+## The drift check
+
+`scripts/agent_signals_drift.py` compares the registry with an agent-signals
+`agents.json`, and optionally its conformance cases:
+
+```sh
+uv run python scripts/agent_signals_drift.py ../agent-signals/data/agents.json \
+    --cases ../agent-signals/tests/conformance/cases.json
+```
+
+It fails on any entry or operator that differs, on a conformance case that differs
+without being listed in `data/agent-signals-differences.json` (or is listed and no
+longer differs), and on a revision other than the one the differences file records.
+It reads local files only. `tests/fixtures/agent-signals-conformance-cases.json` pins
+the cases of the recorded release, so CI checks them offline. A weekly workflow waits
+until agent-signals is public (#93).
 
 ## Reviewing a registry update
 
-1. Start from the latest agent-signals revision: an identity change (a new agent, a
-   retirement, a `kind`, tokens or an operator) is made there first. Reopen the operator
-   or directory evidence. Verify an actual HTTP token separately from robots.txt
-   directives, display names, hashes, IP lists and documentation URLs.
+1. Start from the latest agent-signals revision: any change to an entry (a new
+   agent, a retirement, a `kind`, an operator, a purpose or serving) is made there
+   first. Run the [drift check](#the-drift-check) against that release. Reopen the
+   operator or directory evidence. Verify an actual HTTP token separately from
+   robots.txt directives, display names, hashes, IP lists and documentation URLs.
 2. Add or revise the record with the review date, source URLs and uncertainty notes.
    Preserve canonical labels for the same identity. Record aliases explicitly.
 3. Decide recognition and automatic serving separately; default new or ambiguous
@@ -201,8 +170,9 @@ known-label set is intentionally unchanged. There is no new data migration.
    logs since the last review. Set `"retired": true` and `auto_markdown: false`, drop
    `kind`, and record the reason in its notes. Never delete an entry.
 5. Increment the registry version. Review the JSON diff for added/removed tokens,
-   changed serving policy, label collisions and changed purposes. Update this table,
-   the changelog and any stated cardinality bounds.
+   changed serving policy, label collisions and changed purposes. Update the drift
+   check's recorded revision and pinned cases, this page, the changelog and any stated
+   cardinality bounds. A label change needs a data migration, as `0008` is.
 6. Add meaningful HTTP-header examples and negative matching cases. Run registry,
    negotiation, statistics/report, simulator and Cloudflare tests, then the project's
    full required checks. CI must remain offline with respect to source websites.

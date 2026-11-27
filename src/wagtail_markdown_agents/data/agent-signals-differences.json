@@ -1,0 +1,18 @@
+{
+  "agent_signals": {
+    "revision": 6,
+    "release": "v0.4.1",
+    "checked": "2026-11-27"
+  },
+  "differences": [
+    {
+      "field": "matching",
+      "ours": "product token: the name at the start of the header or after whitespace, a semicolon or an opening parenthesis, followed by a slash, whitespace, a semicolon, a closing parenthesis or the end",
+      "theirs": "substring, ignoring case",
+      "reason": "A name inside a longer product name or a URL is not an identity here (#93). It changes the answer only for headers such as MyGPTBotClone/1.0. Both cut the header to 2,048 bytes first.",
+      "cases": [
+        "the match is a substring, not a token"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,6 @@
 """The independent registry records evidence and separates identity from serving."""
 
-import json
 from datetime import date
-from pathlib import Path
 
 import pytest
 from django.test import RequestFactory
@@ -33,17 +31,19 @@ def test_registry_integrity_and_review_metadata():
         assert agent.operator or "operator" in agent.notes.casefold()
         assert all(source.startswith("https://") for source in agent.sources)
         assert date.fromisoformat(agent.reviewed) <= date.today()
-        assert set(agent.purposes) <= {"on-demand", "search", "training", "other"}
-        assert agent.purposes
+        # One purpose per entry: agent-signals' category (#93).
+        assert len(agent.purposes) == 1
+        assert agent.category in {"on-demand", "search", "training", "unknown"}
+        assert agent.label == agent.label.rstrip("/")
         assert type(agent.auto_markdown) is bool
         assert categorise_agent(agent.label) == agent.category
         assert operator_for_agent(agent.label) != "unattributed" or not agent.operator
 
 
-def test_revision_4_shape_and_kinds():
-    # Same active set as agent-signals revision 4 (#96, #60).
+def test_revision_6_shape_and_kinds():
+    # Exactly agent-signals revision 6's entries, active and retired (#93).
     assert len(AGENTS) == 52
-    assert len(RETIRED_AGENTS) == 29
+    assert len(RETIRED_AGENTS) == 36
     kinds = [agent.kind for agent in AGENTS]
     assert {kind: kinds.count(kind) for kind in KINDS} == {
         "agent": 37,
@@ -117,7 +117,7 @@ def test_one_identity_decision_drives_serving_and_statistics():
 
 
 def test_documented_aliases_keep_stable_labels():
-    assert detect_agent("meta-externalfetcher/1.1") == "meta-externalfetcher/"
+    assert detect_agent("meta-externalfetcher/1.1") == "meta-externalfetcher"
     assert detect_agent("GoogleOther-Image/1.0") == "GoogleOther"
     # Googlebot's products count as Googlebot, as in agent-signals revision 4.
     for product in ("Googlebot-Image/1.0", "Googlebot-News", "Googlebot-Video/1.0"):
@@ -133,59 +133,41 @@ def test_recognition_only_identity_is_recorded_on_explicit_markdown_access():
     record_access(page_id=123, user_agent="Applebot/0.1", access_method="export-url")
     row = AgentAccess.objects.get()
     assert row.agent == "Applebot"
-    assert categorise_agent(row.agent) == "mixed"
+    assert categorise_agent(row.agent) == "search"
 
 
-# Registry 2026-09-28.1 (#19): every inherited WordPress string has a recorded
-# disposition. Active labels keep the exact historical spelling.
-EXCLUDED = {"Claude-Web", "anthropic-ai", "Google-Extended", "Applebot-Extended"}
-DEFERRED = {"cohere-ai", "FishBot", "Anchor Browser", "amazon-kendra-"}
-RESTORED_AUTO = {
+# Served on the User-Agent: agent-signals revision 6's 25 (#93).
+SERVED = {
+    "GPTBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Claude-User",
+    "Claude-SearchBot",
+    "OAI-SearchBot",
+    "PerplexityBot",
+    "Perplexity-User",
+    "meta-externalagent",
+    "meta-externalfetcher",
+    "meta-webindexer",
+    "MistralAI-User",
+    "DuckAssistBot",
     "KimiBot",
     "Amzn-SearchBot",
     "Cloudflare-AI-Search",
     "LinerBot",
-    "ShapBot/",
+    "ShapBot",
     "KernelSearchBot",
     "Anomura",
+    "Kimi-User",
+    "Amzn-User",
+    "Shap-User",
+    "KeenableBot",
+    "ClueWeb-Crawler",
 }
-# Operator-documented siblings of reviewed identities, added in 2026-09-28.2.
-# Kimi-SearchBot was one, until 2026-11-27.1 retired it (#96).
-SIBLINGS_AUTO = {"Kimi-User", "Amzn-User", "Shap-User"}
-# Served on log evidence of choosing Markdown, from 2026-11-27.1 (#60).
-EVIDENCE_AUTO = {"KeenableBot", "ClueWeb-Crawler"}
 
 
-def test_every_inherited_string_is_active_excluded_or_deferred():
-    fixture = Path(__file__).with_name("fixtures") / "agents-wordpress-1.7.0.json"
-    inherited = json.loads(fixture.read_text())["detection"]
-    active = {agent.label for agent in AGENTS}
-    retired = {agent.label for agent in RETIRED_AGENTS}
-    assert len(inherited) == 69
-    assert not (EXCLUDED | DEFERRED) & (active | retired)
-    assert set(inherited) == (set(inherited) & (active | retired)) | EXCLUDED | DEFERRED
-    # 2026-11-27.1 (#96) retired 26 of the 61 that 2026-09-28.1 kept active.
-    assert len(set(inherited) & active) == 35
-    assert len(set(inherited) & retired) == 26
-    assert {a.label for a in AGENTS if a.auto_markdown} == {
-        "GPTBot",
-        "ChatGPT-User",
-        "ClaudeBot",
-        "Claude-User",
-        "Claude-SearchBot",
-        "OAI-SearchBot",
-        "PerplexityBot",
-        "Perplexity-User",
-        "meta-externalagent",
-        "meta-externalfetcher/",
-        # Operator-documented Meta AI search crawler, served from 2026-11-23.1.
-        "meta-webindexer",
-        "MistralAI-User",
-        "DuckAssistBot",
-        *RESTORED_AUTO,
-        *SIBLINGS_AUTO,
-        *EVIDENCE_AUTO,
-    }
+def test_served_agents_are_agent_signals_served_set():
+    assert {a.label for a in AGENTS if a.auto_markdown} == SERVED
 
 
 @pytest.mark.parametrize(
@@ -194,15 +176,15 @@ def test_every_inherited_string_is_active_excluded_or_deferred():
         # Verbatim examples from operator pages or Cloudflare Radar records.
         (
             "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ShapBot/0.1.0",
-            "ShapBot/",
+            "ShapBot",
         ),
         (
             "Mozilla/5.0 (compatible; Cotoyogi/4.0; +https://ds.rois.ac.jp/center8/crawler/)",
-            "Cotoyogi/",
+            "Cotoyogi",
         ),
         (
             "ICC-Crawler/3.0 (Mozilla-compatible; ; https://ucri.nict.go.jp/en/icccrawler.html)",
-            "ICC-Crawler/",
+            "ICC-Crawler",
         ),
         (
             "Cloudflare-AI-Search-External (https://developers.cloudflare.com/ai-search; "
@@ -254,15 +236,15 @@ def test_published_headers_match_restored_identities(ua, label):
         (
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/131.0.0.0 Safari/537.36 (Nava/1.0)",
-            "Nava/",
+            "Nava",
             "on-demand",
             "nava",
         ),
-        ("Retool/2.0 (+https://docs.tryretool.com/docs/apis)", "Retool/", "unknown", "retool"),
-        ("AdpResearchBot/1.0", "AdpResearchBot/", "unknown", "adp"),
+        ("Retool/2.0 (+https://docs.tryretool.com/docs/apis)", "Retool", "unknown", "retool"),
+        ("AdpResearchBot/1.0", "AdpResearchBot", "unknown", "adp"),
         (
             "Mozilla/5.0 (compatible; SemrushBot-SWA/0.1; +http://www.semrush.com/bot.html)",
-            "SemrushBot-SWA/",
+            "SemrushBot-SWA",
             "unknown",
             "semrush",
         ),
@@ -283,15 +265,15 @@ def test_published_headers_match_restored_identities(ua, label):
         ("OnirocoCrawler/1.0", "ChathiveCrawler", "search", "oniroco"),
         ("Instaparser/1.0", "Instapaper", "on-demand", "instapaper"),
         ("Google-CloudVertexBot/1.0", "CloudVertexBot", "search", "google"),
-        ("OAI-AdsBot/1.0", "OAI-AdsBot", "unknown", "openai"),
-        ("Mozilla/5.0 (compatible; FacebookBot/1.0)", "FacebookBot", "training", "meta"),
-        (
-            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Kimi-SearchBot/1.0; "
-            "+https://www.kimi.com/policies/kimi-crawlers",
-            "Kimi-SearchBot",
-            "search",
-            "moonshot",
-        ),
+        # agent-signals' retired WordPress-era labels, held here from 2026-11-27.2 (#93).
+        ("Claude-Web/1.0", "Claude-Web", "on-demand", "anthropic"),
+        ("anthropic-ai", "anthropic-ai", "training", "anthropic"),
+        ("Google-Extended", "Google-Extended", "training", "google"),
+        ("Mozilla/5.0 (compatible; Applebot-Extended/1.0)", "Applebot-Extended", "search", "apple"),
+        ("cohere-ai", "cohere-ai", "training", "cohere"),
+        ("FishBot/1.0", "FishBot", "training", "unattributed"),
+        ("Gemini-User", "Gemini-User", "on-demand", "google"),
+        ("Google-NotebookLM", "Google-NotebookLM", "on-demand", "google"),
     ],
 )
 def test_retired_identities_stop_matching_and_keep_their_past_rows(ua, label, purpose, operator):
@@ -444,12 +426,20 @@ def test_unreviewed_or_incidental_strings_are_not_identities(ua):
 def test_restored_labels_correct_historical_categories_at_read_time():
     # Stored labels are unchanged; categories follow current operator evidence.
     assert categorise_agent("LinerBot") == "search"
-    assert categorise_agent("AdpResearchBot/") == "unknown"
+    assert categorise_agent("AdpResearchBot") == "unknown"
     assert categorise_agent("WARDBot") == "unknown"
     assert categorise_agent("Awario") == "unknown"
-    assert categorise_agent("CloudflareBrowserRenderingCrawler") == "mixed"
-    assert categorise_agent("ShapBot/") == "search"
-    assert categorise_agent("Nava/") == "on-demand"
+    assert categorise_agent("CloudflareBrowserRenderingCrawler") == "training"
+    assert categorise_agent("ShapBot") == "search"
+    assert categorise_agent("Nava") == "on-demand"
+
+
+@pytest.mark.parametrize("label", ["FacebookBot", "Kimi-SearchBot", "OAI-AdsBot"])
+def test_labels_agent_signals_does_not_hold_are_dropped(label):
+    # Dropped in 2026-11-27.2 (#93); migration 0008 moves their rows to unknown.
+    assert label.casefold() not in {a.label.casefold() for a in AGENTS + RETIRED_AGENTS}
+    assert categorise_agent(label) == "unknown"
+    assert operator_for_agent(label) == "unattributed"
 
 
 def test_anthropics_hosted_browser_is_an_on_demand_agent_served_html():
@@ -466,3 +456,14 @@ def test_anthropics_hosted_browser_is_an_on_demand_agent_served_html():
     # Claude Code still counts as Claude-User.
     claude_code = "Claude-User (claude-code/2.1.284; +https://support.anthropic.com/)"
     assert detect_agent(claude_code) == "Claude-User"
+
+
+def test_only_the_first_2048_bytes_are_matched():
+    # As agent-signals cuts every header before matching (#93).
+    padding = "Mozilla/5.0 " + "x" * 2020
+    early = padding + " GPTBot/1.4"
+    assert len(early) <= 2048 and identify_agent(early).label == "GPTBot"
+    late = padding + "y" * 30 + " GPTBot/1.4"
+    assert len(late) > 2048 and late.index("GPTBot") + len("GPTBot") > 2048
+    assert identify_agent(late) is None
+    assert detect(RequestFactory().get("/", HTTP_USER_AGENT=late)) is None

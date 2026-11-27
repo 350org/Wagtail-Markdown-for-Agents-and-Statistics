@@ -30,7 +30,7 @@
     {% if object_list %}
         <section class="agentmd-chart" aria-labelledby="agentmd-chart-title">
             <h2 id="agentmd-chart-title">{% trans "Requests by purpose" %}</h2>
-            <p>{% trans "On-demand is the best estimate of human reads; Search means indexing for answers and citations; Training means collecting content for models; Mixed has several known purposes; Unknown means the purpose cannot be identified." %}</p>
+            <p>{% trans "On-demand is the best estimate of human reads; Search means indexing for answers and citations; Training means collecting content for models; Unknown means the purpose is something else or cannot be identified." %}</p>
             <p>{% if summary.grain == "daily" %}{% trans "Daily buckets" %}{% elif summary.grain == "monthly" %}{% trans "Monthly buckets" %}{% else %}{% trans "Yearly buckets" %}{% endif %} · UTC</p>
             <ul class="agentmd-legend" aria-label="{% trans 'Chart legend' %}">
                 {% for series in summary.series %}<li class="agentmd-{{ series.key }}"><span aria-hidden="true"></span>{{ series.label }}</li>{% endfor %}

@@ -5,8 +5,7 @@
     --agentmd-dark-grey: #17292E;
     --agentmd-orange: #FFA902;
     --agentmd-teal: #40D7D4;
-    --agentmd-red: #FF6112;
-    --agentmd-mixed: #80959C;
+    --agentmd-grey: #80959C;
     padding-block: 2rem;
 }
 
@@ -131,11 +130,7 @@
 }
 
 .agentmd-unknown {
-    --agentmd-series: var(--agentmd-mixed);
-}
-
-.agentmd-mixed {
-    --agentmd-series: var(--agentmd-red);
+    --agentmd-series: var(--agentmd-grey);
 }
 
 .agentmd-chart {

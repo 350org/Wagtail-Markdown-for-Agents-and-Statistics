@@ -43,7 +43,7 @@ IP addresses or User-Agent headers. Settings:
 | Key | Default | Effect |
 | --- | --- | --- |
 | `COUNT_HTML` | `True` | `False` stops recording HTML reads. Counts already recorded stay until pruned. |
-| `COUNT_HTML_EXCLUDE` | `[]` | Registry labels (`"GPTBot"`), purposes (`"training"`, `"search"`, `"on-demand"`, `"mixed"`, `"unknown"`) or kinds (`"agent"`, `"browser"`, `"reference"`) whose HTML reads aren't recorded, case-insensitive. For busy sites that don't want a counter write for every crawler page view. |
+| `COUNT_HTML_EXCLUDE` | `[]` | Registry labels (`"GPTBot"`), purposes (`"training"`, `"search"`, `"on-demand"`, `"unknown"`) or kinds (`"agent"`, `"browser"`, `"reference"`) whose HTML reads aren't recorded, case-insensitive. For busy sites that don't want a counter write for every crawler page view. |
 
 Neither setting changes rendered documents, so changing them doesn't trigger
 regeneration.
@@ -88,7 +88,7 @@ use the first matching entry from the dataset, preserving its canonical spelling
 Identification still runs with `NEGOTIATE_USER_AGENT = False`; that setting affects
 serving only. All other clients, including curl and browsers, share the empty
 label `""`, displayed as `unknown`. Arbitrary header fragments are never stored.
-With registry `2026-11-27.1`, at most 53 labels can be newly recorded per page,
+With registry `2026-11-27.2`, at most 53 labels can be newly recorded per page,
 method and UTC date (52 active identities plus unknown), regardless of how many
 different User-Agent values arrive. Retired labels are never recorded again.
 Methods are at most 20 characters.
@@ -150,7 +150,7 @@ counter write. This package does not configure a deployment's scheduler or proxy
 ## Intent categories and overrides (#34)
 
 Call `wagtail_markdown_agents.stats.categorise_agent(row.agent)` when reading a
-counter. It returns `on-demand`, `search`, `training`, `mixed` or `unknown`.
+counter. It returns `on-demand`, `search`, `training` or `unknown`.
 No category is stored, and classification performs no database queries. Empty or unmatched labels
 are unknown. Matching first checks case-insensitive exact labels in category-map
 order, then
@@ -250,13 +250,13 @@ filter count, so first/last monthly or yearly buckets can be partial. SQL groups
 counts by bucket and agent before Python applies the shared category snapshot;
 the report does not load each daily record to draw charts or issue per-page queries.
 
-Total plus on-demand, search, training, mixed purposes and unknown tiles show
+Total plus on-demand, search, training and unknown tiles show
 counts and Pearson correlation **r** against successive time buckets. Positive/negative
 values indicate rising/falling association with time, never percentage change or
 statistical significance. Undefined correlation (flat or fewer than two buckets)
 is neutral; values rounding to zero at two decimal places are also neutral.
 The stacked bar chart uses the 350.org palette with labelled intent colours and
-an expandable table of exact bucket counts. All five intents contribute to bar
+an expandable table of exact bucket counts. All four intents contribute to bar
 heights, including unknown, so the chart reconciles to the total tile. The on-demand tile and legend explicitly say **estimate**.
 
 The report states the CDN/static bypass and aggregate-download exclusions above.
@@ -288,16 +288,25 @@ serving policy. WordPress 1.7.0 remains a frozen historical reference, not the
 required active list. Removed detection entries stay in historical classification;
 existing counters are neither deleted nor rewritten. Active metadata is used when
 reading reports, so reviewed purpose corrections affect earlier rows too. This
-release moves `GoogleOther` from training to unknown and `CloudVertexBot` from
-training to search. Googlebot, Applebot and bingbot use mixed purposes. A mixed
-counter contributes once to the total and once to the mixed bucket.
+release moved `GoogleOther` from training to unknown and `CloudVertexBot` from
+training to search. Until `2026-11-27.2`, Googlebot, Applebot and bingbot had mixed
+purposes and a Mixed purposes bucket. Since then every entry has one purpose,
+agent-signals' category, and all three count as search (#93).
 
 All intent labels describe estimated purposes, not what a particular request will
 actually do. Recognition does not verify identity. Recognition-only bots are counted
 under a Markdown method when they explicitly obtain page Markdown, and as `html`
 when they read a page as HTML (#61).
 
-The frozen WordPress fixture and `data/legacy_agents.py` retain provenance and
-historical categories. Migration `0006` keeps its original frozen labels; it must
-run before the new application starts recording new identities. No new database
-migration or deletion of existing counters is required.
+Migration `0006` keeps its original frozen labels; it must run before the new
+application starts recording new identities.
+
+### Aligned with agent-signals — 27 November 2026
+
+Registry `2026-11-27.2` holds exactly agent-signals' entries (#93), so the frozen
+WordPress categories (`data/legacy_agents.py`) and operator labels are gone: no
+Wagtail site held WordPress counters. Migration `0008` renames the eight stored labels
+that ended in a slash (`ShapBot/` becomes `ShapBot`, and so on), merging counts with
+any row already under the new label, and moves rows under labels agent-signals
+doesn't hold (FacebookBot, Kimi-SearchBot, OAI-AdsBot) to unknown. Daily totals are
+unchanged. Run it before the new application starts.

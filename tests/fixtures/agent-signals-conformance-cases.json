@@ -1,0 +1,2605 @@
+{
+  "source": "chancery-lane-project/agent-signals tests/conformance/cases.json, release v0.4.1 (list revision 6), copied unchanged. CC0 1.0: dedicated to the public domain by agent-signals.",
+  "revision": 6,
+  "release": "v0.4.1",
+  "cases": [
+    {
+      "name": "listed UA beats X-Agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+        "X-Agent": "muse/1.2"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ChatGPT-User",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "muse",
+        "signer": ""
+      }
+    },
+    {
+      "name": "listed UA beats a signature, and the claimed signer is still reported",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ChatGPT-User",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "signature headers with a listed UA and no Signature-Agent",
+      "headers": {
+        "User-Agent": "RiverBot/1.0 (+https://river.ai/bot)",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "RiverBot",
+        "category": "training",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "X-Agent beats a signature",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "Muse/1.0",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Muse (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "muse",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "X-Agent beats an unlisted product name",
+      "headers": {
+        "User-Agent": "curl/8.5.0",
+        "X-Agent": "grok"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Grok (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "grok",
+        "signer": ""
+      }
+    },
+    {
+      "name": "a signature beats an unlisted product name",
+      "headers": {
+        "User-Agent": "python-httpx/0.28.1",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://agent.example\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "agent.example"
+      }
+    },
+    {
+      "name": "on-demand agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-User",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "search agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.3; +https://openai.com/searchbot"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "OAI-SearchBot",
+        "category": "search",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "training agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.3; +https://openai.com/gptbot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "agent with no reviewed operator",
+      "headers": {
+        "User-Agent": "AzureAI-SearchBot/1.0"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "AzureAI-SearchBot",
+        "category": "search",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "listed agent whose UA starts with another product",
+      "headers": {
+        "User-Agent": "facebookexternalhit/1.1 meta-externalfetcher/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "meta-externalfetcher",
+        "category": "on-demand",
+        "operator": "meta",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "slash match: Nava/1.0 is Nava",
+      "headers": {
+        "User-Agent": "Nava/1.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Nava",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "slash match: Navajo is not Nava",
+      "headers": {
+        "User-Agent": "Navajo/2.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Navajo",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "slash match: the bare name without a slash is not matched",
+      "headers": {
+        "User-Agent": "Retool"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Retool",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "labelled but not served: Geminibot riding on curl",
+      "headers": {
+        "User-Agent": "curl/7.81.0 Geminibot"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Geminibot",
+        "category": "on-demand",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "labelled but not served: Geminibot riding on a browser UA",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Geminibot"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Geminibot",
+        "category": "on-demand",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "labelled but not served: Claude-Agent is a real browser",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-Agent/1.0) Chrome/154.0.0.0 Safari/537.36"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-Agent",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "search agent served on its User-Agent: meta-webindexer",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 (compatible; meta-webindexer/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler))"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "meta-webindexer",
+        "category": "search",
+        "operator": "meta",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "labelled but not served: LinkupBot",
+      "headers": {
+        "User-Agent": "LinkupBot/1.0 (LinkupBot for web indexing; https://linkup.so/bot; bot@linkup.so)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "LinkupBot",
+        "category": "search",
+        "operator": "linkup",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "labelled but not served: ibou-search",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ibou-search/2.0; +https://ibou.com/crawlers.html)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ibou-search",
+        "category": "search",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "mixed case: lower-case User-Agent",
+      "headers": {
+        "User-Agent": "mozilla/5.0 (compatible; gptbot/1.3; +https://openai.com/gptbot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "mixed case: upper-case User-Agent",
+      "headers": {
+        "User-Agent": "MOZILLA/5.0 (COMPATIBLE; CLAUDEBOT/1.0)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ClaudeBot",
+        "category": "training",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "the match is a substring, not a token",
+      "headers": {
+        "User-Agent": "MyGPTBotClone/1.0"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "two listed names: the earlier one in the list wins, wherever it sits in the UA",
+      "headers": {
+        "User-Agent": "ChatGPT-User/1.0 GPTBot/1.3"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "header names match ignoring case",
+      "headers": {
+        "user-agent": "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+        "x-agent": "Dot/2"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "PerplexityBot",
+        "category": "search",
+        "operator": "perplexity",
+        "serves_markdown": true,
+        "introduction": "dot",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: muse sent as \"Muse/1.0\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "Muse/1.0"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Muse (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "muse",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: instinct sent as \"instinct\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "instinct"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Instinct (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "instinct",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: openclaw sent as \"OpenClaw 2.1 (linux)\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "OpenClaw 2.1 (linux)"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "OpenClaw (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "openclaw",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: dot sent as \"dot/1\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "dot/1"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Dot (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "dot",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: dots sent as \"Dots/3.0\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "Dots/3.0"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Dot (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "dots",
+        "signer": ""
+      }
+    },
+    {
+      "name": "introduction: grok sent as \"  GROK\\t\"",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "  GROK\t"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Grok (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "grok",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unknown X-Agent name",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "SomeNewAgent/0.3"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "X-Agent (other)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "somenewagent",
+        "signer": ""
+      }
+    },
+    {
+      "name": "X-Agent text never becomes the label",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "<script>alert(1)</script>"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "X-Agent (other)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "scriptalert(1)",
+        "signer": ""
+      }
+    },
+    {
+      "name": "X-Agent with no User-Agent",
+      "headers": {
+        "X-Agent": "muse"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "Muse (X-Agent)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "muse",
+        "signer": ""
+      }
+    },
+    {
+      "name": "X-Agent that starts with a slash has no name",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "/1.0"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "X-Agent (other)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "a known name is only the first piece",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "agent muse"
+      },
+      "expect": {
+        "kind": "introduced",
+        "label": "X-Agent (other)",
+        "category": "on-demand",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "agent",
+        "signer": ""
+      }
+    },
+    {
+      "name": "blank X-Agent is no introduction",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "X-Agent": "   "
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: quoted-string form",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "ChatGPT agent (signed)",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "signer: dictionary form",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "sig1=\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "ChatGPT agent (signed)",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "signer: host is lowercased",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://ChatGPT.com\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "ChatGPT agent (signed)",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "signer: unreviewed host",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://agent.example\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "agent.example"
+      }
+    },
+    {
+      "name": "signer: port and path are dropped",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://agent.example:443/keys\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "agent.example"
+      }
+    },
+    {
+      "name": "signer: IP address is not a host",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://192.0.2.1\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: http is not accepted",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"http://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: single-label host is not accepted",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://localhost\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: host over 64 characters is not accepted",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: no Signature-Agent header",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()"
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signer: a value still carrying added slashes does not parse (unslash before classifying)",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\\\"https://chatgpt.com\\\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "Signed (other)",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "signed request with no User-Agent",
+      "headers": {
+        "User-Agent": "",
+        "Signature": "sig1=:abc:",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "signed",
+        "label": "ChatGPT agent (signed)",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": "chatgpt.com"
+      }
+    },
+    {
+      "name": "Signature without Signature-Input is not a signature",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature": "sig1=:abc:",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "Signature-Input without Signature is not a signature",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+        "Signature-Input": "sig1=()",
+        "Signature-Agent": "\"https://chatgpt.com\""
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "browser: Chrome",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "browser: Gemini iPhone app is a person, not an agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 GoogleWv/1.0 (WKWebView) GeminiiOS/1.2026.4171302"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "browser: a compatible token without a version is not a product",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: bingbot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/116.0.1938.76 Safari/537.36"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "bingbot",
+        "category": "search",
+        "operator": "microsoft",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Googlebot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.52 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Googlebot",
+        "category": "search",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Applebot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15 (Applebot/0.1; +http://www.apple.com/go/applebot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Applebot",
+        "category": "search",
+        "operator": "apple",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted product: version is dropped",
+      "headers": {
+        "User-Agent": "python-requests/2.34.2"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "python-requests",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted product: no slash, first word",
+      "headers": {
+        "User-Agent": "Chrome Privacy Preserving Prefetch Proxy"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Chrome",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted product: bare name",
+      "headers": {
+        "User-Agent": "curl"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "curl",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted product: another crawler from the same operator",
+      "headers": {
+        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "facebookexternalhit",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted label: markup characters are stripped",
+      "headers": {
+        "User-Agent": "My<b>Bot</b>/1.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "MybBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted label: punctuation outside the allowed set is stripped",
+      "headers": {
+        "User-Agent": "Bot@Home!+1/2.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "BotHome1",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted label: non-ASCII bytes are stripped",
+      "headers": {
+        "User-Agent": "Bötchen/1.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Btchen",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted label: cut to 64 characters",
+      "headers": {
+        "User-Agent": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/1.0"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "a User-Agent with nothing storable is nothing",
+      "headers": {
+        "User-Agent": "<<<>>>/1.0"
+      },
+      "expect": {
+        "kind": "none",
+        "label": "",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "a User-Agent starting with a slash has no product, so the whole string is sanitised",
+      "headers": {
+        "User-Agent": "/1.0 thing"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "1.0 thing",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "empty request",
+      "headers": {},
+      "expect": {
+        "kind": "none",
+        "label": "",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "empty User-Agent",
+      "headers": {
+        "User-Agent": ""
+      },
+      "expect": {
+        "kind": "none",
+        "label": "",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "oversized header: cut to 2,048 bytes before matching, so a name after that is not seen",
+      "headers": {
+        "User-Agent": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx GPTBot/1.3"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "oversized header: a name inside the first 2,048 bytes is seen",
+      "headers": {
+        "User-Agent": "GPTBot/1.3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: GPTBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; GPTBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GPTBot",
+        "category": "training",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ChatGPT-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ChatGPT-User/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ChatGPT-User",
+        "category": "on-demand",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ClaudeBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ClaudeBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ClaudeBot",
+        "category": "training",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Claude-Web no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Claude-Web/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Claude-Web",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: anthropic-ai no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; anthropic-ai/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "anthropic-ai",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: PerplexityBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "PerplexityBot",
+        "category": "search",
+        "operator": "perplexity",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Google-Extended no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Google-Extended/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Google-Extended",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Amazonbot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Amazonbot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Amazonbot",
+        "category": "training",
+        "operator": "amazon",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: cohere-ai no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; cohere-ai/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "cohere-ai",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: meta-externalagent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; meta-externalagent/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "meta-externalagent",
+        "category": "training",
+        "operator": "meta",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Bytespider",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Bytespider/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Bytespider",
+        "category": "training",
+        "operator": "bytedance",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: CCBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; CCBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "CCBot",
+        "category": "training",
+        "operator": "common-crawl",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Applebot-Extended no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Applebot-Extended/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Applebot-Extended",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: OAI-SearchBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "OAI-SearchBot",
+        "category": "search",
+        "operator": "openai",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Claude-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Claude-User/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-User",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Perplexity-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Perplexity-User/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Perplexity-User",
+        "category": "on-demand",
+        "operator": "perplexity",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: meta-externalfetcher",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; meta-externalfetcher/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "meta-externalfetcher",
+        "category": "on-demand",
+        "operator": "meta",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: MistralAI-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; MistralAI-User/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "MistralAI-User",
+        "category": "on-demand",
+        "operator": "mistral",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Google-Agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Google-Agent/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Google-Agent",
+        "category": "on-demand",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: DuckAssistBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; DuckAssistBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "DuckAssistBot",
+        "category": "on-demand",
+        "operator": "duckduckgo",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Devin",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Devin/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Devin",
+        "category": "on-demand",
+        "operator": "cognition",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: TwinAgent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; TwinAgent/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "TwinAgent",
+        "category": "on-demand",
+        "operator": "twin",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ApifyWebsiteContentCrawler",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ApifyWebsiteContentCrawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ApifyWebsiteContentCrawler",
+        "category": "on-demand",
+        "operator": "apify",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: ChathiveCrawler no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ChathiveCrawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "ChathiveCrawler",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: CledaraBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; CledaraBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "CledaraBot",
+        "category": "on-demand",
+        "operator": "cledara",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: EasyScan no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; EasyScan/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "EasyScan",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: HarkBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; HarkBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "HarkBot",
+        "category": "on-demand",
+        "operator": "hark",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: HIFIBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; HIFIBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "HIFIBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: QATechBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; QATechBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "QATechBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Instapaper no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Instapaper/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Instapaper",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Nava no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Nava/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Nava",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Retool no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Retool/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Retool",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Claude-SearchBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Claude-SearchBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-SearchBot",
+        "category": "search",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Bravebot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Bravebot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Bravebot",
+        "category": "search",
+        "operator": "brave",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Amzn-SearchBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Amzn-SearchBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Amzn-SearchBot",
+        "category": "search",
+        "operator": "amazon",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Cloudflare-AI-Search",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Cloudflare-AI-Search/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Cloudflare-AI-Search",
+        "category": "search",
+        "operator": "cloudflare",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Anomura",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Anomura/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Anomura",
+        "category": "search",
+        "operator": "direqt",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Element451Bot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Element451Bot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Element451Bot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: KernelSearchBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; KernelSearchBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "KernelSearchBot",
+        "category": "search",
+        "operator": "kernel",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ShapBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ShapBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ShapBot",
+        "category": "search",
+        "operator": "parallel",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: alphalens-bot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; alphalens-bot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "alphalens-bot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: KimiBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; KimiBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "KimiBot",
+        "category": "training",
+        "operator": "moonshot",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: PetalBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; PetalBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "PetalBot",
+        "category": "search",
+        "operator": "huawei",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: GoogleOther",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; GoogleOther/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "GoogleOther",
+        "category": "unknown",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: CloudVertexBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; CloudVertexBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "CloudVertexBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ICC-Crawler",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ICC-Crawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ICC-Crawler",
+        "category": "training",
+        "operator": "nict",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Cotoyogi",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Cotoyogi/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Cotoyogi",
+        "category": "training",
+        "operator": "rois-ds",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: atlassian-bot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; atlassian-bot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "atlassian-bot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: LinerBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; LinerBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "LinerBot",
+        "category": "search",
+        "operator": "liner",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: magpie-crawler no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; magpie-crawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "magpie-crawler",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: bigsur.ai no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; bigsur.ai/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "bigsur.ai",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: QualifiedBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; QualifiedBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "QualifiedBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Awario no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Awario/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Awario",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: amazon-kendra- no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; amazon-kendra-/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "amazon-kendra-",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Anchor Browser no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Anchor Browser/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Mozilla",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: BorderxBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; BorderxBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "BorderxBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: CitibotSiteCrawler no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; CitibotSiteCrawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "CitibotSiteCrawler",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: CloudflareBrowserRenderingCrawler",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; CloudflareBrowserRenderingCrawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "CloudflareBrowserRenderingCrawler",
+        "category": "training",
+        "operator": "cloudflare",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: netEstate NE Crawler no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; netEstate NE Crawler/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Crawler",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: FishBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; FishBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "FishBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: make.com no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; make.com/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "make.com",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: NavuBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; NavuBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "NavuBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Novellum",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Novellum/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Novellum",
+        "category": "on-demand",
+        "operator": "novellum",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: AdpResearchBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; AdpResearchBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "AdpResearchBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: SelectikaScraper no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; SelectikaScraper/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "SelectikaScraper",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: SemrushBot-OCOB no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; SemrushBot-OCOB/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "SemrushBot-OCOB",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: SemrushBot-SWA no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; SemrushBot-SWA/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "SemrushBot-SWA",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: WARDBot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; WARDBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "WARDBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: ygs-scraper-bot no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ygs-scraper-bot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "ygs-scraper-bot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Gemini-User no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Gemini-User/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Gemini-User",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Geminibot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Geminibot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Geminibot",
+        "category": "on-demand",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "retired: Google-NotebookLM no longer matches",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Google-NotebookLM/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "Google-NotebookLM",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Claude-Agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; Claude-Agent/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-Agent",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: meta-webindexer",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; meta-webindexer/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "meta-webindexer",
+        "category": "search",
+        "operator": "meta",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: LinkupBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; LinkupBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "LinkupBot",
+        "category": "search",
+        "operator": "linkup",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: RiverBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; RiverBot/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "RiverBot",
+        "category": "training",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ibou-search",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; ibou-search/1.0; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ibou-search",
+        "category": "search",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: YouBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; YouBot/1.0; +https://docs.you.com/youbot; env:prod) Chrome/142.0.0.0 Safari/537.36"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "YouBot",
+        "category": "search",
+        "operator": "you-com",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: KeenableBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; KeenableBot/1.0; +https://keenable.ai/bot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "KeenableBot",
+        "category": "search",
+        "operator": "keenable",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: ClueWeb-Crawler",
+      "headers": {
+        "User-Agent": "ClueWeb-Crawler/1.0 (+https://boston.lti.cs.cmu.edu/CMU-ClueWeb-Crawler/; mailto:cmu-clueweb-crawler@andrew.cmu.edu)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ClueWeb-Crawler",
+        "category": "training",
+        "operator": null,
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: AzureAI-SearchBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; AzureAI-SearchBot/1.0;"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "AzureAI-SearchBot",
+        "category": "search",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Google-GeminiNotebook",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 (compatible; Google-GeminiNotebook; +https://developers.google.com/crawling/docs/crawlers-fetchers/google-gemininotebook)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Google-GeminiNotebook",
+        "category": "on-demand",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Kimi-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Kimi-User/1.0; +https://www.kimi.com/policies/kimi-crawlers"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Kimi-User",
+        "category": "on-demand",
+        "operator": "moonshot",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Amzn-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Amzn-User/0.1)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Amzn-User",
+        "category": "on-demand",
+        "operator": "amazon",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Shap-User",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Shap-User/0.1.0"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Shap-User",
+        "category": "on-demand",
+        "operator": "parallel",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "ClaudeBot/: ClaudeBot with its contact address",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ClaudeBot",
+        "category": "training",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "ClaudeBot/: ClaudeBot after a Chrome User-Agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36; ClaudeBot/1.0; +claudebot@anthropic.com)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "ClaudeBot",
+        "category": "training",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "ClaudeBot/: Claude-SearchBot with the claudebot@ address is not ClaudeBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-SearchBot/1.0; +claudebot@anthropic.com)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-SearchBot",
+        "category": "search",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "ClaudeBot/: Claude-User with the claudebot@ address is not ClaudeBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +claudebot@anthropic.com)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-User",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted Mozilla-prefixed bot: YandexBot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "YandexBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "unlisted Mozilla-prefixed bot with no compatible token (synthetic)",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15 (ExampleBot/0.1; +https://example.com/bot)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "ExampleBot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Googlebot-Image is labelled Googlebot",
+      "headers": {
+        "User-Agent": "Googlebot-Image/1.0"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Googlebot",
+        "category": "search",
+        "operator": "google",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "list: Applebot is not mistaken for the retired Applebot-Extended",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1 (Applebot/0.1; +http://www.apple.com/go/applebot)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Applebot",
+        "category": "search",
+        "operator": "apple",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "Claude Code is labelled Claude-User",
+      "headers": {
+        "User-Agent": "Claude-User (claude-code/2.1.318; +https://support.anthropic.com/)"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Claude-User",
+        "category": "on-demand",
+        "operator": "anthropic",
+        "serves_markdown": true,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "bingbot/: AdIdxBot linking to bingbot.htm is not bingbot",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (compatible; adidxbot/2.0; +http://www.bing.com/bingbot.htm)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "adidxbot",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "bingbot/: bingbot with its own bingbot.htm address",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/136.0.0.0 Safari/537.36"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "bingbot",
+        "category": "search",
+        "operator": "microsoft",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "Devin/: a devin@ contact address is not Devin",
+      "headers": {
+        "User-Agent": "CompetitorWatch/1.0 (+https://www.example.org/; contact devin@example.org)"
+      },
+      "expect": {
+        "kind": "unlisted",
+        "label": "CompetitorWatch",
+        "category": "unknown",
+        "operator": null,
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    },
+    {
+      "name": "Devin/: Devin after a Chrome User-Agent",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36; Devin/1.0; +https://devin.ai"
+      },
+      "expect": {
+        "kind": "listed",
+        "label": "Devin",
+        "category": "on-demand",
+        "operator": "cognition",
+        "serves_markdown": false,
+        "introduction": "",
+        "signer": ""
+      }
+    }
+  ]
+}
